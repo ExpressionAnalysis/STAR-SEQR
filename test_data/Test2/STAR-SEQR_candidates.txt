@@ -1,0 +1,2 @@
+name	left_counts	right_counts	pairs_for	pairs_rev	subset	dist
+chr2:29447649:+:chr2:42524142:-:0:0	26.0	64.0	11	12		13076493

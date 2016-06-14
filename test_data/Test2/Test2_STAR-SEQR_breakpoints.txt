@@ -1,0 +1,2 @@
+ann	name	dist	spans_unique_spans	jxn_first	jxn_second	jxnleft_unique_for_first	jxnleft_unique_for_second	jxnleft_unique_rev_first	jxnleft_unique_rev_second	jxnright_unique_for_first	jxnright_unique_for_second	jxnright_unique_rev_first	jxnright_unique_rev_second	velvet
+ALK:EML4	chr2:29447649:+:chr2:42524142:-:0:0	13076493	15	29	15	0	1	0	0	29	14	0	0	TTTTTCAAATCCATTCACCTGAATGTCTAAGCTTGGCAGATATGGTGCCATCCCTCAAAGGGACAGGATAATA
