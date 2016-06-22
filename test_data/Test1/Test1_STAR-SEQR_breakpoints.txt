@@ -1,2 +1,0 @@
-ann	name	dist	spans_unique_spans	jxn_first	jxn_second	jxnleft_unique_for_first	jxnleft_unique_for_second	jxnleft_unique_rev_first	jxnleft_unique_rev_second	jxnright_unique_for_first	jxnright_unique_for_second	jxnright_unique_rev_first	jxnright_unique_rev_second	velvet
-RET:CCDC6	chr10:43609951:-:chr10:61638610:+:0:4	18028659	20	32	38	0	0	4	4	0	0	28	34	GGTAGCAGTGGATGCAGAAGGCAGACAGCAGCACCGAGACGATGAAGGAGAAGAGGACAGCGGCTGCGATCACCGTGCGGCAAGGAATTATTTAACAATTATGACTATTCATTTAGGCCAAGCCATAAGGGAAAGGAAAGGAAAGGATGCAGTTTG

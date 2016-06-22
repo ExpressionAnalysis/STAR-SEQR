@@ -20,7 +20,7 @@ __email__ = "jasper1918@gmail.com"
 
 
 def parse_args():
-    usage = " -j *Chimeric.out.junction -s *Chimeric.out.SAM -n 10 -d 500"
+    usage = " "
     parser = ArgumentParser(
         description="STAR-SEQR Parameters:", epilog=usage)
     parser.add_argument('-1', '--fastq1', type=str, required=True,
@@ -166,10 +166,8 @@ def get_distance(jxn):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     if chrom1 == chrom2:
         dist_between = abs(int(pos1) - int(pos2))
-    # if pos1 == int(0) or pos2 == int(0):
-    #     dist_between = 0
     else:
-        dist_between = 10**8
+        dist_between = 10**9
     return dist_between
 
 
@@ -256,6 +254,7 @@ def main():
     if args.bed_file:
         groups_t['subset'] = groups_t.apply(lambda x: subset_bed_func(x['name'], bed_path), axis=1)
         groups_t = groups_t[groups_t['subset'] >= 1]
+
     if not args.bidir or args.nucleic_type == "RNA":
         tfilt = groups_t[(groups_t["left_counts"] >= args.jxn_reads) |
                          (groups_t["right_counts"] >= args.jxn_reads)].sort_values("left_counts", ascending=False)
@@ -271,6 +270,7 @@ def main():
     # Get discordant read pair info. This is slow!
     logger.info('Getting pair info')
     tfilt['pairs_for'], tfilt['pairs_rev'] = zip(*tfilt.apply(lambda x: get_pairs_func(x['name'], rawdf), axis=1))
+
     logger.info('Filtering junctions based on pairs and distance')
     if not args.bidir or args.nucleic_type == "RNA":
         tfilt2 = tfilt[((tfilt["pairs_for"] >= args.span_reads) |
@@ -281,7 +281,7 @@ def main():
                         (tfilt["pairs_rev"] >= args.span_reads)) &
                        (tfilt['dist'] >= args.dist)]
     # print(tfilt2.sort_values("right_counts", ascending=False).head())
-    tfilt2.to_csv(path_or_buf="STAR-SEQR_candidates.txt", header=True, sep="\t", mode='a',
+    tfilt2.to_csv(path_or_buf="STAR-SEQR_candidates.txt", header=True, sep="\t", mode='w',
                   index=False, columns=["name", "left_counts", "right_counts", "pairs_for",
                                         "pairs_rev", "subset", "dist"])
 
@@ -297,14 +297,11 @@ def main():
         finaldf = pd.merge(tfilt2, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
                            right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
         # finaldf.set_index('name', inplace=True)
-        # Sort values
         finaldf['jxn_first'] = finaldf["jxnleft_unique_for_first"] + finaldf["jxnleft_unique_rev_first"] + \
                                finaldf["jxnright_unique_for_first"] + finaldf["jxnright_unique_rev_first"]
         finaldf['jxn_second'] = finaldf["jxnleft_unique_for_second"] + finaldf["jxnleft_unique_rev_second"] + \
                                finaldf["jxnright_unique_for_second"] + finaldf["jxnright_unique_rev_second"]
-        finaldf.sort_values(['jxn_first', "spans_unique_spans"], ascending=[True, True], inplace=True)
         finaldf['ann'] = ann.get_gene_info(cfgpaths['ref_file'], finaldf)
-        # finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
         if not args.bidir or args.nucleic_type == "RNA":
             finaldf = finaldf[(finaldf["spans_unique_spans"] >= args.span_reads) &
                               ((finaldf["jxn_first"] >= args.jxn_reads) |
@@ -314,23 +311,28 @@ def main():
                               (finaldf["jxn_first"] >= args.jxn_reads) &
                               (finaldf["jxn_second"] >= args.jxn_reads)]
         # print(finaldf.head)
+        finaldf.sort_values(['jxn_first', "spans_unique_spans"], ascending=[False, False], inplace=True)
         outcols = ["ann", "name", "dist", "spans_unique_spans", "jxn_first", "jxn_second",
                    "jxnleft_unique_for_first", "jxnleft_unique_for_second",
                    "jxnleft_unique_rev_first", "jxnleft_unique_rev_second",
                    "jxnright_unique_for_first", "jxnright_unique_for_second",
                    "jxnright_unique_rev_first", "jxnright_unique_rev_second",
-                   "velvet"] # , "primers"
+                   "velvet", "primers"]
         if args.spades:
             outcols.append("spades")
+            finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['spades']), axis=1).apply(lambda x: ",".join(x))
+        else:
+            finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
         finaldf.to_csv(path_or_buf=args.prefix + "_STAR-SEQR_breakpoints.txt", header=True, sep="\t",
                        columns=outcols, mode='w', index=False)
-        # Make VCF
+
+        # Make bedpe and VCF
         vcf.process(finaldf, args)
         logger.info('Breakpoint identified:' + str(len(finaldf.index)))
     else:
         logger.info("No candidate junctions identified.")
 
-    # Close up
+    # Finish
     end = time.time()
     elapsed = end - start
     logger.info("Program took  %g seconds" % (elapsed))

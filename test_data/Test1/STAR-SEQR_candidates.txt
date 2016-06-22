@@ -1,2 +1,0 @@
-name	left_counts	right_counts	pairs_for	pairs_rev	subset	dist
-chr10:43609951:-:chr10:61638610:+:0:4	49	40	14	9		18028659

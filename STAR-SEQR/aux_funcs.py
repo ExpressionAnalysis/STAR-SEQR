@@ -611,11 +611,11 @@ def run_assembly_fxn(jxn, in_bam, cfg, args, *opts):
     junctionfq = jxn_dir + 'junctions.fastq'
     bam2fastq(jxn_dir, support_bam, junctionfq, pairfq)
     errlog = open(jxn_dir + "assembly_log.txt", "w")
-    # velvet_all = do_velvet(jxn_dir + "assem_pair", junctionfq, 17, errlog, pairfq)
-    velvet_jxn = do_velvet(jxn_dir + "assem_jxn", junctionfq, 17, errlog)
+    velvet_all = do_velvet(jxn_dir + "assem_pair", junctionfq, 17, errlog, pairfq)
+    # velvet_jxn = do_velvet(jxn_dir + "assem_jxn", junctionfq, 17, errlog)
     errlog.close()
-    if velvet_jxn:
-        vname, vseq = velvet_jxn[0]
+    if velvet_all:
+        vname, vseq = velvet_all[0]
         results['velvet'] = vseq
     if args.spades:
         splog = open(jxn_dir + "spades_log.txt", "w")

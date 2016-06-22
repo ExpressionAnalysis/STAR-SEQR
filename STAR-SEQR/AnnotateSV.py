@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import os
-import sys
 import gzip
 import re
 import time
@@ -50,7 +48,7 @@ def get_gene_info(reftable, svtable):
         else:
             anndict['AnnR'].append(("NA", "NA", "NA"))
         # write to df
-        svtable.loc[index, "ann"] = anndict['AnnL'][0][0] + ":" + anndict['AnnR'][0][0]
+        svtable.loc[index, "ann"] = anndict['AnnL'][0][0] + "--" + anndict['AnnR'][0][0]
     end = time.time()
     elapsed = end - start
     logger.info("Annotation took  %g seconds" % (elapsed))
