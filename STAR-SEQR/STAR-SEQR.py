@@ -11,7 +11,7 @@ import pandas as pd
 from intervaltree_bio import GenomeIntervalTree
 import aux_funcs as aux
 import AnnotateSV as ann
-import SV2VCF as vcf
+import sv2bedpe
 import run_primer3 as primer3
 import logging
 
@@ -327,7 +327,7 @@ def main():
                        columns=outcols, mode='w', index=False)
 
         # Make bedpe and VCF
-        vcf.process(finaldf, args)
+        sv2bedpe.process(finaldf, args)
         logger.info('Breakpoint identified:' + str(len(finaldf.index)))
     else:
         logger.info("No candidate junctions identified.")
