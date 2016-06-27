@@ -22,7 +22,7 @@ def write_header(args, fh, file_type):
               '##source=STAR-SV', '##reference=' + 'hg19',
               '##FILTER=<ID=PASS,Description="All filters passed">',
               '##FILTER=<ID=FAIL,Description="Site failed to reach confidence">',
-              '##INFO=<ID=ANN,Number=1,Type=String,Description="Gene Annotation">',
+              '##INFO=<ID=ANN,Number=.,Type=String,Description="Functional annotations: \'Symbol\'">',
               '##INFO=<ID=IMPRECISE,Number=0,Type=Flag,Description="Imprecise structural variation">',
               '##INFO=<ID=CIPOS,Number=2,Type=Integer,Description="Confidence interval around POS for imprecise variants">',
               '##INFO=<ID=CIEND,Number=2,Type=Integer,Description="Confidence interval around END for imprecise variants">',
@@ -44,6 +44,9 @@ def write_header(args, fh, file_type):
               '##FORMAT=<ID=SP,Number=1,Type=String,Description="Number of paired discordant spanning reads">',
               '##FORMAT=<ID=JXL,Number=1,Type=String,Description="Number of reads coming from the left">',
               '##FORMAT=<ID=JXR,Number=1,Type=String,Description="Number of reads coming from the right">',
+              '##FORMAT=<ID=SPU,Number=1,Type=String,Description="Number of unique paired discordant spanning reads">',
+              '##FORMAT=<ID=JXLU,Number=1,Type=String,Description="Number of unique reads coming from the left">',
+              '##FORMAT=<ID=JXRU,Number=1,Type=String,Description="Number of unique reads coming from the right">',
               '##FORMAT=<ID=GQ,Number=1,Type=String,Description="Genotype Quality">',
               '##FORMAT=<ID=AF,Number=1,Type=Float,Description="Allele Frequency">',
               '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Total Depth at position">',
@@ -63,19 +66,19 @@ def write_header(args, fh, file_type):
 
 
 def get_svtype_func(str1, str2, c1, c2):
-    # Translocations are represented as BND
+    # Translocations are represented as BNDs
     if c1 != c2:
         svtype = "BND"
     else:
-        # STAR notation is same as LUMPY after strand2 is flipped.
+        # STAR notation is same as other tools after strand2 is flipped.
         if str(str1) == "+" and str(str2) == "+":
-            svtype = "INV"  # DEL
+            svtype = "INV"
         elif str(str1) == "-" and str(str2) == "-":
-            svtype = "INV"  # DUP
+            svtype = "INV"
         elif str(str1) == "+" and str(str2) == "-":
-            svtype = "DEL"  # INV
+            svtype = "DEL"
         elif str(str1) == "-" and str(str2) == "+":
-            svtype = "DUP"  # INV
+            svtype = "DUP"
     return svtype
 
 
@@ -100,48 +103,56 @@ def get_bnd_alt_func(c1, c2, s1, s2, str1, str2, which_bnd):
             alt = "]" + str(c1) + ":" + str(s1) + "]" + "N"
     return alt
 
+# "SEQLEN=" + df['velvet'].str.len().astype(int).astype(str)
+
 
 def get_bedpestuff_func(df_in, svtype):
     if svtype == "BND":
         df = df_in[df_in['svtype'] == "BND"]
-        df['REF_A'] = "N"
-        df['ALT_A'] = df.apply(lambda x: get_bnd_alt_func(x['c1'], x['c2'], x['s1'], x['s2'], x['st1'], x['st2'], "A"), axis=1)
-        df['NAME_A'] = df['id'].astype(int).astype(str) + "_1"
-        df['NAME_B'] = df['id'].astype(int).astype(str) + "_2"
-        df['REF_B'] = "N"
-        df['ALT_B'] = df.apply(lambda x: get_bnd_alt_func(x['c1'], x['c2'], x['s1'], x['s2'], x['st1'], x['st2'], "B"), axis=1)
-        df['INFO_A'] = "SVTYPE=" + df['svtype'] + ';' + \
-                       "POS=" + df['s1'].astype(str) + ';' + \
-                       "END=" + df['s2'].astype(str) + ';' + \
-                       "ANN=" + df['ann'] + ';' + \
-                       "HOMLEN=" + df['a1'] + ';' + \
-                       "MATEID=" + df['NAME_B'] + ';' + \
-                       "EVENT=" + df['id'].astype(str)  # + ';' + \
-                       #"SEQLEN=" + df['velvet'].str.len().astype(int).astype(str)
-        df['INFO_B'] = "SVTYPE=" + df['svtype'] + ';' + \
-                       "POS=" + df['s1'].astype(str) + ';' + \
-                       "END=" + df['s2'].astype(str) + ';' + \
-                       "ANN=" + df['ann'] + ';' + \
-                       "HOMLEN=" + df['a1'] + ';' + \
-                       "MATEID=" + df['NAME_A'] + ';' + \
-                       "EVENT=" + df['id'].astype(str) + ';' + \
-                       "SECONDARY"  # + ';' + \
-                       # "SEQLEN=" + df['velvet'].str.len().astype(int).astype(str)
+        if len(df.index) > 0:
+            df['REF_A'] = "N"
+            df['ALT_A'] = df.apply(lambda x: get_bnd_alt_func(x['c1'], x['c2'], x['s1'], x['s2'], x['st1'], x['st2'], "A"), axis=1)
+            df['NAME_A'] = df['id'].astype(int).astype(str) + "_1"
+            df['NAME_B'] = df['id'].astype(int).astype(str) + "_2"
+            df['REF_B'] = "N"
+            df['ALT_B'] = df.apply(lambda x: get_bnd_alt_func(x['c1'], x['c2'], x['s1'], x['s2'], x['st1'], x['st2'], "B"), axis=1)
+            df['INFO_A'] = "SVTYPE=" + df['svtype'] + ';' + \
+                "POS=" + df['s1'].astype(str) + ';' + \
+                "END=" + df['s2'].astype(str) + ';' + \
+                "ANN=" + df['ann'] + ';' + \
+                "CIPOS=" + "0," + df['a1'] + ';' + \
+                "HOMLEN=" + df['a1'] + ';' + \
+                "MATEID=" + df['NAME_B'] + ';' + \
+                "EVENT=" + df['id'].astype(str) + ';' + \
+                "SEQLEN=" + df['velvet'].str.len().astype(str)
+            df['INFO_B'] = "SVTYPE=" + df['svtype'] + ';' + \
+                "POS=" + df['s1'].astype(str) + ';' + \
+                "END=" + df['s2'].astype(str) + ';' + \
+                "ANN=" + df['ann'] + ';' + \
+                "CIPOS=" + "0," + df['a2'] + ';' + \
+                "HOMLEN=" + df['a1'] + ';' + \
+                "MATEID=" + df['NAME_A'] + ';' + \
+                "EVENT=" + df['id'].astype(str) + ';' + \
+                "SECONDARY" + ';' + \
+                "SEQLEN=" + df['velvet'].str.len().astype(str)
     else:
         df = df_in[df_in['svtype'] != "BND"]
-        df['REF_A'] = "N"
-        df['ALT_A'] = "<" + df['svtype'] + ">"
-        df['NAME_A'] = df['id'].astype(int).astype(str)
-        df['NAME_B'] = "."
-        df['REF_B'] = "."
-        df['ALT_B'] = "."
-        df['INFO_A'] = "SVTYPE=" + df['svtype'] + ';' + \
-                       "POS=" + df['s1'].astype(str) + ';' + \
-                       "END=" + df['s2'].astype(str) + ';' + \
-                       "ANN=" + df['ann'] + ';' + \
-                       "SVLEN=" + df['dist'].astype(str)  # + ';' + \
-                       # "SEQLEN=" + df['velvet'].str.len().astype(int).astype(str)
-        df['INFO_B'] = "."
+        if len(df.index) > 0:
+            df['REF_A'] = "N"
+            df['ALT_A'] = "<" + df['svtype'] + ">"
+            df['NAME_A'] = df['id'].astype(int).astype(str)
+            df['NAME_B'] = "."
+            df['REF_B'] = "."
+            df['ALT_B'] = "."
+            df['INFO_A'] = "SVTYPE=" + df['svtype'] + ';' + \
+                "POS=" + df['s1'].astype(str) + ';' + \
+                "END=" + df['s2'].astype(str) + ';' + \
+                "ANN=" + df['ann'] + ';' + \
+                "CIPOS=" + "0," + df['a1'] + ';' + \
+                "HOMLEN=" + df['a1'] + ';' + \
+                "SVLEN=" + df['dist'].astype(str) + ';' + \
+                "SEQLEN=" + df['velvet'].str.len().astype(str)
+            df['INFO_B'] = "."
     return df
 
 
@@ -159,8 +170,8 @@ def write_bedpe(df, args):
     df['e2'] = df['s2']
     df['s1'] = df['s1'].astype(int) - 1  # Convert start to 0-based coordinates
     df['s2'] = df['s2'].astype(int) - 1
-    df['id'] = df['index'].astype(int)
-    df['qual'] = df['jxn_first'] + df['jxn_second']  # Eventually get a handle on a scoring metric besides number of reads
+    df['id'] = df['index'].astype(int) + 1
+    df['qual'] = df['jxn_first_unique'] + df['jxn_second_unique']  # Eventually get a handle on a scoring metric besides number of reads
     df['svtype'] = df.apply(lambda x: get_svtype_func(x['st1'], x['st2'], x['c1'], x['c2']), axis=1)
     df['filter'] = "PASS"
 
@@ -170,14 +181,13 @@ def write_bedpe(df, args):
     df_nonbnd = get_bedpestuff_func(df, "nonBND")
     df2 = pd.concat([df_bnd, df_nonbnd], ignore_index=True).sort_values(['c1', 's1'], ascending=[True, True])   #
 
-    df2['FORMAT'] = "GT:SP:JXL:JXR"
-    df2[args.prefix] = "./." + ":" + df2['spans_unique_spans'].astype(str) + ":" + df2['jxn_first'].astype(str) + ":" + df2['jxn_second'].astype(str)
+    df2['FORMAT'] = "GT:SP:JXL:JXR:SPU:JXLU:JXRU"
+    df2[args.prefix] = "./." + ":" + df2['spans_disc_all'].astype(str) + ":" + df2['jxn_first_all'].astype(str) + ":" + df2['jxn_second_all'].astype(
+        str) + ":" + df2['spans_disc_unique'].astype(str) + ":" + df2['jxn_first_unique'].astype(str) + ":" + df2['jxn_second_unique'].astype(str)
     outcols = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'id', 'qual', 'st1', 'st2', 'svtype', 'filter',
                'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix]
     df2.to_csv(path_or_buf=bedpe_fh, header=False, sep='\t', columns=outcols, mode='a', index=False)
 
 
 def process(df, args):
-    # vcf_sv_fh = open(args.prefix + '_sv.vcf', 'w')
-    # write_header(args, vcf_sv_fh, "vcf")
     write_bedpe(df, args)

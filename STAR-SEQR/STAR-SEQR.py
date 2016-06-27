@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree
 import aux_funcs as aux
-import AnnotateSV as ann
+import annotate_sv as ann
 import sv2bedpe
 import run_primer3 as primer3
 import logging
@@ -183,10 +183,10 @@ def get_pairs_func(jxn, rawdf):
     This is slow!!!
     '''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    pos1_less = int(pos1) - 1000
-    pos1_plus = int(pos1) + 1000
-    pos2_less = int(pos2) - 1000
-    pos2_plus = int(pos2) + 1000
+    pos1_less = int(pos1) - 100000
+    pos1_plus = int(pos1) + 100000
+    pos2_less = int(pos2) - 100000
+    pos2_plus = int(pos2) + 100000
 
     forward = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom1) & (rawdf['chrom2'] == chrom2) &
@@ -227,12 +227,14 @@ def main():
     if args.bed_file:
         bed_path = os.path.realpath(args.bed_file)
     # make sample folder
-    if not os.path.exists(args.prefix):
-        os.makedirs(args.prefix)
-    os.chdir(args.prefix)
+    if not os.path.exists(args.prefix + "_STAR-SEQR"):
+        os.makedirs(args.prefix + "_STAR-SEQR")
+    os.chdir(args.prefix + "_STAR-SEQR")
     aux.check_file_exists(fq1_path)
     aux.check_file_exists(fq2_path)
     aux.run_star(cfgpaths, fq1_path, fq2_path, args)
+    # start a stats file
+    stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
 
     # import all jxns
     rawdf = import_jxns_pandas(args.prefix + ".Chimeric.out.junction")
@@ -274,7 +276,7 @@ def main():
     logger.info('Filtering junctions based on pairs and distance')
     if not args.bidir or args.nucleic_type == "RNA":
         tfilt2 = tfilt[((tfilt["pairs_for"] >= args.span_reads) |
-                       (tfilt["pairs_rev"] >= args.span_reads)) &
+                        (tfilt["pairs_rev"] >= args.span_reads)) &
                        (tfilt['dist'] >= args.dist)]
     else:
         tfilt2 = tfilt[((tfilt["pairs_for"] >= args.span_reads) &
@@ -287,6 +289,7 @@ def main():
 
     # Process candidates to see if they pass when duplicates are considered.
     logger.info('Candidates:' + str(len(tfilt2.index)))
+    stats_fh.write('Candidates' + '\t' + str(len(tfilt2.index)) + '\n')
     if len(tfilt2.index) >= 1:
         # mark duplicates
         aux.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths)
@@ -297,26 +300,31 @@ def main():
         finaldf = pd.merge(tfilt2, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
                            right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
         # finaldf.set_index('name', inplace=True)
-        finaldf['jxn_first'] = finaldf["jxnleft_unique_for_first"] + finaldf["jxnleft_unique_rev_first"] + \
-                               finaldf["jxnright_unique_for_first"] + finaldf["jxnright_unique_rev_first"]
-        finaldf['jxn_second'] = finaldf["jxnleft_unique_for_second"] + finaldf["jxnleft_unique_rev_second"] + \
-                               finaldf["jxnright_unique_for_second"] + finaldf["jxnright_unique_rev_second"]
+        finaldf['jxn_first_unique'] = finaldf["jxnleft_unique_for_first"] + finaldf["jxnleft_unique_rev_first"] + \
+            finaldf["jxnright_unique_for_first"] + finaldf["jxnright_unique_rev_first"]
+        finaldf['jxn_second_unique'] = finaldf["jxnleft_unique_for_second"] + finaldf["jxnleft_unique_rev_second"] + \
+            finaldf["jxnright_unique_for_second"] + finaldf["jxnright_unique_rev_second"]
+        finaldf['jxn_first_all'] = finaldf["jxnleft_all_for_first"] + finaldf["jxnleft_all_rev_first"] + \
+            finaldf["jxnright_all_for_first"] + finaldf["jxnright_all_rev_first"]
+        finaldf['jxn_second_all'] = finaldf["jxnleft_all_for_second"] + finaldf["jxnleft_all_rev_second"] + \
+            finaldf["jxnright_all_for_second"] + finaldf["jxnright_all_rev_second"]
         finaldf['ann'] = ann.get_gene_info(cfgpaths['ref_file'], finaldf)
         if not args.bidir or args.nucleic_type == "RNA":
-            finaldf = finaldf[(finaldf["spans_unique_spans"] >= args.span_reads) &
-                              ((finaldf["jxn_first"] >= args.jxn_reads) |
-                              (finaldf["jxn_second"] >= args.jxn_reads))]
+            finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
+                              ((finaldf["jxn_first_unique"] >= args.jxn_reads) |
+                               (finaldf["jxn_second_unique"] >= args.jxn_reads))]
         else:
-            finaldf = finaldf[(finaldf["spans_unique_spans"] >= args.span_reads) &
-                              (finaldf["jxn_first"] >= args.jxn_reads) &
-                              (finaldf["jxn_second"] >= args.jxn_reads)]
+            finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
+                              (finaldf["jxn_first_unique"] >= args.jxn_reads) &
+                              (finaldf["jxn_second_unique"] >= args.jxn_reads)]
         # print(finaldf.head)
-        finaldf.sort_values(['jxn_first', "spans_unique_spans"], ascending=[False, False], inplace=True)
-        outcols = ["ann", "name", "dist", "spans_unique_spans", "jxn_first", "jxn_second",
-                   "jxnleft_unique_for_first", "jxnleft_unique_for_second",
-                   "jxnleft_unique_rev_first", "jxnleft_unique_rev_second",
-                   "jxnright_unique_for_first", "jxnright_unique_for_second",
-                   "jxnright_unique_rev_first", "jxnright_unique_rev_second",
+        finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
+        outcols = ["ann", "name", "dist", "spans_disc_all", "jxn_first_all", "jxn_second_all",
+                   "spans_disc_unique", "jxn_first_unique", "jxn_second_unique",
+                   # "jxnleft_unique_for_first", "jxnleft_unique_for_second",
+                   # "jxnleft_unique_rev_first", "jxnleft_unique_rev_second",
+                   # "jxnright_unique_for_first", "jxnright_unique_for_second",
+                   # "jxnright_unique_rev_first", "jxnright_unique_rev_second",
                    "velvet", "primers"]
         if args.spades:
             outcols.append("spades")
@@ -328,7 +336,8 @@ def main():
 
         # Make bedpe and VCF
         sv2bedpe.process(finaldf, args)
-        logger.info('Breakpoint identified:' + str(len(finaldf.index)))
+        logger.info('Breakpoints_identified:' + str(len(finaldf.index)))
+        stats_fh.write('Breakpoints' + '\t' + str(len(finaldf.index)) + '\n')
     else:
         logger.info("No candidate junctions identified.")
 

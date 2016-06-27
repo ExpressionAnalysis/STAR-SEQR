@@ -34,7 +34,7 @@ def run_star(cfg, fq1, fq2, args):
     if not os.path.isfile(args.prefix + ".Chimeric.out.junction"):
         if args.nucleic_type == "DNA":
             STAR_args = [cfg['star_exec'], '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
-                         '--runThreadN', args.threads, '--genomeDir', cfg['star_index'],
+                         '--runThreadN', args.threads, '--genomeDir', cfg['star_index_dna'],
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
                          '--alignIntronMax', 1, '--alignMatesGapMax', 0, '--sjdbOverhang', 0,
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', 0]
@@ -62,18 +62,18 @@ def run_star(cfg, fq1, fq2, args):
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
                          '--alignIntronMax', 200000, '--alignMatesGapMax', 200000,
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', -1,
-                         '--alignSJDBoverhangMin', 10]  # '--alignSJstitchMismatchNmax', '5 -1 5 5'] throws errors
+                         '--alignSJDBoverhangMin', 10]  # , '--outSJfilterCountTotalMin', '5 -1 5 5']
             # choose sensitivity mode
             if (args.mode == 0):
-                sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
+                sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None']
+                               '--chimFilter', 'None', '--twopassMode', "Basic"]
             elif (args.mode == 1):
                 sens_params = ['--chimSegmentMin', 5, '--chimJunctionOverhangMin', 5,
                                '--chimScoreMin', 0, '--chimScoreDropMax', 10,
                                '--chimScoreSeparation', 5, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None']
+                               '--chimFilter', 'None', '--twopassMode', "Basic"]
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = map(str, STAR_args)
@@ -226,23 +226,23 @@ def get_genome_bounds(bam):
 def find_discspan(jxn, bam):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     pairDict = {}
-    pairDict[('all', 'spans')] = {}
-    pairDict[('unique', 'spans')] = {}
+    pairDict[('disc', 'all')] = {}
+    pairDict[('disc', 'unique')] = {}
     # consider 129,65(F,F)  97,145(F,R) 113,177(R,R)
     # Can these ever be proper paired? What if short indel?
     # need the minus 1 to be exact.
     if str1 == "+":
-        pos1left = int(pos1) - 500
+        pos1left = int(pos1) - 100000
         pos1right = int(pos1) + int(repright) - 1
     if str2 == "-":
-        pos2left = int(pos2) - 500
+        pos2left = int(pos2) - 100000
         pos2right = int(pos2) + int(repright) - 1
     if str1 == "-":
         pos1left = int(pos1) - int(repright) - 1
-        pos1right = int(pos1) + 500
+        pos1right = int(pos1) + 100000
     if str2 == "+":
         pos2left = int(pos2) - int(repright) - 1
-        pos2right = int(pos2) + 500
+        pos2right = int(pos2) + 100000
     # print(pos1left, pos1right, pos2left, pos2right)
     for read in bam:
         if (read.next_reference_name == chrom2 and
@@ -256,9 +256,9 @@ def find_discspan(jxn, bam):
                     # print(read.reference_start, read.next_reference_start,
                     #  read.query_name, read.flag, read.mate_is_reverse)
                     if read.is_paired:
-                        pairDict[('all', 'spans')][read.query_name] = read.flag
+                        pairDict[('disc', 'all')][read.query_name] = read.flag
                     if not read.is_duplicate and read.is_paired:
-                        pairDict[('unique', 'spans')][read.query_name] = read.flag
+                        pairDict[('disc', 'unique')][read.query_name] = read.flag
     return pairDict
 
 
@@ -278,17 +278,17 @@ def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, reprigh
     jxnDict[('unique', 'rev', 'second')] = {}
 
     if str1 == "+":
-        pos1left = int(pos1) - 1000
-        pos1right = int(pos1) + int(repright) - 1
+        pos1left = int(pos1) - 100000
+        pos1right = int(pos1) + int(repright) - 1  # -1 ?
     if str2 == "-":
-        pos2left = int(pos2) - 1000
+        pos2left = int(pos2) - 100000
         pos2right = int(pos2) + int(repright) - 1
     if str1 == "-":
         pos1left = int(pos1) - int(repright) - 1
-        pos1right = int(pos1) + 1000
+        pos1right = int(pos1) + 100000
     if str2 == "+":
         pos2left = int(pos2) - int(repright) - 1
-        pos2right = int(pos2) + 1000
+        pos2right = int(pos2) + 100000
     # print(pos1left, pos1right, pos2left, pos2right)
 
     for read in bam:
@@ -602,7 +602,7 @@ def run_assembly_fxn(jxn, in_bam, cfg, args, *opts):
                     f2.write(all_reads + "\n")
     f2.close
     # subset supporting reads to bam
-    support_bam = jxn_dir + "/supporting.bam"
+    support_bam = jxn_dir + "supporting.bam"
     logger.info("*Subsetting reads from bam")
     subset_bam_by_reads(in_bam, support_bam, read_ids, cfg)
     pysam.index(support_bam)
