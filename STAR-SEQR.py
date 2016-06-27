@@ -9,10 +9,10 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree
-import star-seqr.aux_funcs as aux
-import star-seqr.annotate_sv as ann
-import star-seqrs.sv2bedpe
-import star-seqr.run_primer3 as primer3
+import starseqr.aux_funcs as aux
+import starseqr.annotate_sv as ann
+import starseqrs.sv2bedpe as sv2bedpe
+import starseqr.run_primer3 as primer3
 import logging
 
 __author__ = "Jeff Jasper"
