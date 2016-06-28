@@ -17,7 +17,6 @@ __author__ = "Jeff Jasper"
 __email__ = "jasper1918@gmail.com"
 
 logger = logging.getLogger("STAR-SEQR")
-print(pysam.__version__)
 
 
 def check_file_exists(path):

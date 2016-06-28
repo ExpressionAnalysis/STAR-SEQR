@@ -6,6 +6,7 @@ import time
 import pandas as pd
 import string
 import logging
+import subprocess as sp
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -156,9 +157,13 @@ def get_bedpestuff_func(df_in, svtype):
     return df
 
 
-def write_bedpe(df, args):
-    bedpe_fh = open(args.prefix + '_STAR-SEQR_breakpoints.bedpe', 'w')
+def write_bedpe(bkpt_path, out_bedpe, args):
+    bedpe_fh = open(out_bedpe, 'w')
     write_header(args, bedpe_fh, "bedpe")
+    try:
+        df = pd.read_csv(bkpt_path, sep="\t", header=1)
+    except:
+        return
     df = df.reset_index()
     df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
     # STAR has second object flipped
@@ -187,7 +192,32 @@ def write_bedpe(df, args):
     outcols = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'id', 'qual', 'st1', 'st2', 'svtype', 'filter',
                'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix]
     df2.to_csv(path_or_buf=bedpe_fh, header=False, sep='\t', columns=outcols, mode='a', index=False)
+    logger.info("bedpe creation was succesful!")
+
+def write_vcf(in_bed, out_vcf, cfg):
+    sv_args = ['python', cfg['svtools_bedpetovcf'], '-b', in_bed, '-o', out_vcf]
+    sv_args = map(str, sv_args)
+    logger.info("*svtools Command: " + " ".join(sv_args))
+    # run svtools
+    try:
+        p = sp.Popen(sv_args, stdout=sp.PIPE, stderr=sp.PIPE)
+        stdout, stderr = p.communicate()
+        if stdout:
+            logger.info(stdout)
+        if stderr:
+            logger.error(stderr)
+        if p.returncode != 0:
+            logger.error("Error: svtools failed", exc_info=True)
+            sys.exit(1)
+    except (OSError) as o:
+        logger.error("Exception: " + str(o))
+        logger.error("sv Failed", exc_info=True)
+        sys.exit(1)
+    logger.info("VCF creation was succesful!")
 
 
-def process(df, args):
-    write_bedpe(df, args)
+def process(bkpt_path, args, cfg):
+    bedpe_path = args.prefix + '_STAR-SEQR_breakpoints.bedpe'
+    vcf_path = args.prefix + '_STAR-SEQR_breakpoints.vcf'
+    write_bedpe(bkpt_path, bedpe_path, args)
+    write_vcf(bedpe_path, vcf_path, cfg)

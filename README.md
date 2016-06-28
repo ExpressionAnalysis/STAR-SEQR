@@ -12,8 +12,8 @@ Breakpoint and Fusion Detection. More description to follow.
 ### Dependencies:
 * Python2.7
   * intervaltree_bio
-  * pandas # v 18.1
-  * pysam  # requires 0.9.0 or newer
+  * pandas >0.18.0
+  * pysam >0.9.0
 
 * Other tools
   * primer3-py
