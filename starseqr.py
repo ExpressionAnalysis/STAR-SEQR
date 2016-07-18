@@ -46,7 +46,7 @@ def parse_args():
                         help='minimum number of spanning discordant read pairs to call junctions.',
                         metavar="spanning_depth")
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
-                        default="DNA",
+                        default="RNA",
                         help='nucleic acid type (DNA, RNA)',
                         metavar="nucleic acid type")
     parser.add_argument('-m', '--mode', type=int, required=False,
@@ -62,11 +62,12 @@ def parse_args():
     parser.add_argument('-b', '--bed_file', type=str, required=False,
                         help='Bed file to subset analysis',
                         metavar="Bed file, 3 col minimal")
-    parser.add_argument('-c', '--config_file', type=str, required=True,
-                        help='Config file of paths to key programs and files',
-                        metavar="config file.ini")
+    parser.add_argument('-c', '--config_file', type=str, required=False,
+                        help='Config file of parameters and paths',
+                        metavar="starseqr_config.ini",
+                        default=os.path.join(os.path.dirname(os.path.realpath(__file__)), "starseqr_config.ini"))
     parser.add_argument('-w', '--workers', type=int, required=False,
-                        default=3,
+                        default=10,
                         help='number of workers',
                         metavar="number of workers")
     parser.add_argument('--spades', '--spades', action='store_true',
@@ -318,8 +319,9 @@ def main():
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
                 mydir = os.path.dirname(os.path.realpath(__file__))
-                refgene = os.path.join(mydir, "resources/refGene.txt.gz")
-                finaldf['ann'] = ann.get_gene_info(refgene, finaldf)
+                refgene = os.path.join(mydir, "starseqr/resources/refGene.txt.gz")
+                ensgene = os.path.join(mydir, "starseqr/resources/enGene.txt.gz")
+                finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
                 finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
@@ -403,8 +405,9 @@ def main():
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
                 mydir = os.path.dirname(os.path.realpath(__file__))
-                refgene = os.path.join(mydir, "resources/refGene.txt.gz")
-                finaldf['ann'] = ann.get_gene_info(refgene, finaldf)
+                refgene = os.path.join(mydir, "starseqr/resources/refGene.txt.gz")
+                ensgene = os.path.join(mydir, "starseqr/resources/enGene.txt.gz")
+                finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
                 finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",

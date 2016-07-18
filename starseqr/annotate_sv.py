@@ -15,12 +15,15 @@ logger = logging.getLogger("STAR-SEQR")
 # can also use ucsc or ensg
 
 
-def get_gene_info(reftable, svtable):
+def get_gene_info(reftable, svtable, kg_type):
     logger.info('Annotating each breakpoint')
     start = time.time()
     kg_open = gzip.open if reftable.endswith('.gz') else open
     kg = kg_open(reftable)
-    gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
+    if kg_type == "refgene":
+        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
+    elif kg_type == "ensgene":
+        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     for index, row in svtable.iterrows():
         chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', row['name'])
         resL = gtree[chrom1].search(int(pos1))
