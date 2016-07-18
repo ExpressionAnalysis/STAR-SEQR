@@ -149,7 +149,7 @@ def get_bedpestuff_func(df_in, svtype):
                 "POS=" + df['s1'].astype(str) + ';' + \
                 "END=" + df['s2'].astype(str) + ';' + \
                 "ANN=" + df['ann'] + ';' + \
-                "CIPOS=" + "0," + df['a1'] + ';' + \
+                "CIPOS=" + df['a1'] + "," + df['a2'] + ';' + \
                 "HOMLEN=" + df['a1'] + ';' + \
                 "SVLEN=" + df['dist'].astype(str) + ';' + \
                 "SEQLEN=" + df['velvet'].str.len().astype(str)
@@ -161,8 +161,9 @@ def write_bedpe(bkpt_path, out_bedpe, args):
     bedpe_fh = open(out_bedpe, 'w')
     write_header(args, bedpe_fh, "bedpe")
     try:
-        df = pd.read_csv(bkpt_path, sep="\t", header=1)
-    except:
+        df = pd.read_csv(bkpt_path, sep="\t", header=0)
+    except ValueError, e:
+        logger.info("ValueError: " + str(e))
         return
     df = df.reset_index()
     df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
@@ -194,8 +195,9 @@ def write_bedpe(bkpt_path, out_bedpe, args):
     df2.to_csv(path_or_buf=bedpe_fh, header=False, sep='\t', columns=outcols, mode='a', index=False)
     logger.info("bedpe creation was succesful!")
 
-def write_vcf(in_bed, out_vcf, cfg):
-    sv_args = ['python', cfg['svtools_bedpetovcf'], '-b', in_bed, '-o', out_vcf]
+
+def write_vcf(in_bed, out_vcf):
+    sv_args = ['svtools', 'bedpetovcf', '-b', in_bed, '-o', out_vcf]
     sv_args = map(str, sv_args)
     logger.info("*svtools Command: " + " ".join(sv_args))
     # run svtools
@@ -216,8 +218,8 @@ def write_vcf(in_bed, out_vcf, cfg):
     logger.info("VCF creation was succesful!")
 
 
-def process(bkpt_path, args, cfg):
+def process(bkpt_path, args):
     bedpe_path = args.prefix + '_STAR-SEQR_breakpoints.bedpe'
     vcf_path = args.prefix + '_STAR-SEQR_breakpoints.vcf'
     write_bedpe(bkpt_path, bedpe_path, args)
-    write_vcf(bedpe_path, vcf_path, cfg)
+    write_vcf(bedpe_path, vcf_path)

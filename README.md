@@ -14,15 +14,14 @@ Breakpoint and Fusion Detection. More description to follow.
   * intervaltree_bio
   * pandas >0.18.0
   * pysam >0.9.0
-
-* Other tools
   * primer3-py
+
+* Tools that need to be on path
   * biobambam2
   * STAR
   * Velvet
   * Spades
   * samtools
 
-### Config file must have paths to programs
 
 
