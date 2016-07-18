@@ -1,0 +1,100 @@
+[0.000001] Reading FastQ file support/chr19_580462_pos_chr6_37012738_pos_1_0/junctions.fastq;
+[0.000075] 1 sequences found
+[0.000077] Done
+[0.003009] Reading read set file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/Sequences;
+[0.003043] 1 sequences found
+[0.003520] Done
+[0.003522] 1 sequences in total.
+[0.006821] Writing into roadmap file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/Roadmaps...
+[0.006839] Inputting sequences...
+[0.006840] Inputting sequence 0 / 1
+[0.007184]  === Sequences loaded in 0.000347 s
+[0.012756] Done inputting sequences
+[0.012759] Destroying splay table
+[0.012823] Splay table destroyed
+[0.000000] Reading roadmap file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/Roadmaps
+[0.000462] 1 roadmaps read
+[0.000475] Creating insertion markers
+[0.000477] Ordering insertion markers
+[0.000478] Counting preNodes
+[0.000479] 0 preNodes counted, creating them now
+[0.000717] Adjusting marker info...
+[0.000719] Connecting preNodes
+[0.000721] Cleaning up memory
+[0.000722] Done creating preGraph
+[0.000722] Concatenation...
+[0.000723] Renumbering preNodes
+[0.000723] Initial preNode count 0
+[0.000724] Destroyed 0 preNodes
+[0.000725] Concatenation over!
+[0.000725] Clipping short tips off preGraph
+[0.000726] Concatenation...
+[0.000726] Renumbering preNodes
+[0.000726] Initial preNode count 0
+[0.000726] Destroyed 0 preNodes
+[0.000727] Concatenation over!
+[0.000727] 0 tips cut off
+[0.000727] 0 nodes left
+[0.003069] Writing into pregraph file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/PreGraph...
+[0.006215] Reading read set file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/Sequences;
+[0.006238] 1 sequences found
+[0.007790] Done
+[0.008833] Reading pre-graph file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/PreGraph
+[0.008853] Graph has 0 nodes and 1 sequences
+[0.008861] Correcting graph with cutoff 0.200000
+[0.008940] Determining eligible starting points
+[0.008943] Done listing starting nodes
+[0.008944] Initializing todo lists
+[0.008945] Done with initilization
+[0.008947] Activating arc lookup table
+[0.008948] Done activating arc lookup table
+[0.008948] Concatenation...
+[0.008949] Renumbering nodes
+[0.008950] Initial node count 0
+[0.008951] Removed 0 null nodes
+[0.008951] Concatenation over!
+[0.008952] Clipping short tips off graph, drastic
+[0.008952] Concatenation...
+[0.008953] Renumbering nodes
+[0.008953] Initial node count 0
+[0.008954] Removed 0 null nodes
+[0.008954] Concatenation over!
+[0.008955] 0 nodes left
+[0.010261] Writing into graph file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/Graph...
+[0.014561] Removing contigs with coverage < 2.000000...
+[0.014569] Concatenation...
+[0.014570] Renumbering nodes
+[0.014570] Initial node count 0
+[0.014571] Removed 0 null nodes
+[0.014572] Concatenation over!
+[0.014572] Concatenation...
+[0.014572] Renumbering nodes
+[0.014573] Initial node count 0
+[0.014573] Removed 0 null nodes
+[0.014573] Concatenation over!
+[0.014575] Clipping short tips off graph, drastic
+[0.014576] Concatenation...
+[0.014576] Renumbering nodes
+[0.014576] Initial node count 0
+[0.014577] Removed 0 null nodes
+[0.014577] Concatenation over!
+[0.014577] 0 nodes left
+[0.014578] WARNING: NO EXPECTED COVERAGE PROVIDED
+[0.014578] Velvet will be unable to resolve any repeats
+[0.014579] See manual for instructions on how to set the expected coverage parameter
+[0.014579] Concatenation...
+[0.014579] Renumbering nodes
+[0.014580] Initial node count 0
+[0.014580] Removed 0 null nodes
+[0.014580] Concatenation over!
+[0.014581] Removing reference contigs with coverage < 2.000000...
+[0.014581] Concatenation...
+[0.014582] Renumbering nodes
+[0.014582] Initial node count 0
+[0.014582] Removed 0 null nodes
+[0.014582] Concatenation over!
+[0.018907] Writing contigs into support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/contigs.fa...
+[0.022002] Writing into stats file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/stats.txt...
+[0.031258] Writing into graph file support/chr19_580462_pos_chr6_37012738_pos_1_0/assem_jxn/LastGraph...
+[0.037793] EMPTY GRAPH
+Final graph has 0 nodes and n50 of 0, max 0, total 0, using 0/1 reads

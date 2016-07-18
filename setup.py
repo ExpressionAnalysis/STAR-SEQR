@@ -12,15 +12,15 @@ setup(
     url='https://github.com/jasper1918/STAR-SEQR',
     author_email='jasper1918@gmail.com',
     version='0.0.1',
-    install_requires=['pysam>=0.9.0', 'numpy'],
-    packages=find_packages(),
+    install_requires=['pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
+    packages=['starseqr'],
+    # packages=find_packages(),
     package_data={"starseqr": ["resources/*"]},
     ext_modules=[],
-    scripts=['starseqr.py'],
+    scripts=['scripts/starseqr.py'],
     name='starseqr',
     license='APACHE',
     include='README.md',
-    package_data={'': ['README.md']}
 )
 
 stderr.write("Installation successful!\n")
