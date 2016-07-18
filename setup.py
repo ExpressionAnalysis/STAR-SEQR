@@ -14,9 +14,10 @@ setup(
     version='0.0.1',
     install_requires=['pysam>=0.9.0', 'numpy'],
     packages=find_packages(),
+    package_data={"starseqr": ["resources/*"]},
     ext_modules=[],
-    scripts=['STAR-SEQR.py'],
-    name='STAR-SEQR',
+    scripts=['starseqr.py'],
+    name='starseqr',
     license='APACHE',
     include='README.md',
     package_data={'': ['README.md']}
