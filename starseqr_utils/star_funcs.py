@@ -26,8 +26,8 @@ def run_star(cfg, fq1, fq2, args):
     logger.info("Starting STAR Alignment")
     if not os.path.isfile(args.prefix + ".Chimeric.out.junction"):
         if args.nucleic_type == "DNA":
-            if not os.path.isfile(cfg['star_index_dna']):
-                logger.error("Error: STAR index was not found. Please update the config file.", exc_info=True)
+            if not os.path.isdir(cfg['star_index_dna']):
+                logger.error("Error: STAR index was not found at " + cfg['star_index_dna'] + " Please update the config file.", exc_info=True)
                 sys.exit(1)
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
                          '--runThreadN', args.threads, '--genomeDir', cfg['star_index_dna'],
@@ -53,8 +53,8 @@ def run_star(cfg, fq1, fq2, args):
             # Need to convert all to string
             STAR_args = map(str, STAR_args)
         elif args.nucleic_type == "RNA":
-            if not os.path.isfile(cfg['star_index_rna']):
-                logger.error("Error: STAR index was not found. Please update the config file.", exc_info=True)
+            if not os.path.isdir(cfg['star_index_rna']):
+                logger.error("Error: STAR index was not found at " + cfg['star_index_rna'] + " Please update the config file.", exc_info=True)
                 sys.exit(1)
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
                          '--runThreadN', args.threads, '--genomeDir', cfg['star_index_rna'],

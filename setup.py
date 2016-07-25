@@ -20,11 +20,11 @@ setup(
     author='Jeff Jasper',
     author_email='jasper1918@gmail.com',
     url='https://github.com/jasper1918/STAR-SEQR',
-    # packages=find_packages(),
-    packages=['starseqr_utils'],
+    packages=find_packages(),
     install_requires=['pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
     package_data={"starseqr_utils": ["resources/*"]},
-    scripts=['scripts/starseqr.py'],
+    scripts=['starseqr.py'],
+    zip_safe= False,
 )
 
 stderr.write("Installation successful!\n")

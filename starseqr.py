@@ -10,6 +10,7 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree
+import starseqr_utils
 import starseqr_utils.star_funcs as star
 import starseqr_utils.assembly_funcs as assem
 import starseqr_utils.annotate_sv as ann
@@ -65,8 +66,8 @@ def parse_args():
                         metavar="Bed file, 3 col minimal")
     parser.add_argument('-c', '--config_file', type=str, required=False,
                         help='Config file of parameters and paths',
-                        metavar="starseqr_config.ini, defaults to " + os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir, "starseqr_config.ini")),
-                        default=os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir, "starseqr_config.ini")))
+                        metavar="Config file, defaults to " + get_resource("starseqr_config.ini"),
+                        default=get_resource("starseqr_config.ini"))
     parser.add_argument('-w', '--workers', type=int, required=False,
                         default=10,
                         help='number of workers',
@@ -91,6 +92,13 @@ def parse_config(config_file):
     cfgparser.read(config_file)
     # print(json.dumps(cfgparser._sections['PARAMS'], sort_keys=True, indent=4))
     return cfgparser._sections['PARAMS']
+
+
+def get_resource(filename):
+    packagedir = starseqr_utils.__path__[0]
+    dirname = os.path.join(packagedir, 'resources')
+    fullname = os.path.abspath(os.path.join(dirname, filename))
+    return fullname
 
 
 def set_log_level_from_verbose(ch, args):
@@ -323,12 +331,11 @@ def main():
                 else:
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
-                mydir = os.path.dirname(os.path.realpath(__file__))
                 if args.ann_source == "refgene":
-                    refgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
-                    finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "ensgene")
+                    refgene = get_resource("refGene.txt.gz")
+                    finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "refgene")
                 elif args.ann_source == "ensgene":
-                    ensgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
+                    ensgene = get_resource("ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
@@ -412,12 +419,11 @@ def main():
                 else:
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
-                mydir = os.path.dirname(os.path.realpath(__file__))
                 if args.ann_source == "refgene":
-                    ensgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
-                    finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "ensgene")
+                    refgene = get_resource("refGene.txt.gz")
+                    finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "refgene")
                 elif args.ann_source == "ensgene":
-                    ensgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
+                    ensgene = get_resource("ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
