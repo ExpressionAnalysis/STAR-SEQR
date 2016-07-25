@@ -10,7 +10,7 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree
-import starseqr.star_funcs as star
+from starseqr import star_funcs as star
 import starseqr.assembly_funcs as assem
 import starseqr.annotate_sv as ann
 import starseqr.sv2bedpe as sv2bedpe
