@@ -1,6 +1,6 @@
 #!/bin/bash
 
-STARSEQR="starseqr.py"
+STARSEQR="run_starseqr.py"
 cmd="python $STARSEQR -1 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz -2 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz -p RNA_test -vvv"
 echo $cmd
 eval $cmd

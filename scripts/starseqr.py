@@ -10,11 +10,11 @@ from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree
-import starseqr.star_funcs as star
-import starseqr.assembly_funcs as assem
-import starseqr.annotate_sv as ann
-import starseqr.sv2bedpe as sv2bedpe
-import starseqr.run_primer3 as primer3
+import starseqr_utils.star_funcs as star
+import starseqr_utils.assembly_funcs as assem
+import starseqr_utils.annotate_sv as ann
+import starseqr_utils.sv2bedpe as sv2bedpe
+import starseqr_utils.run_primer3 as primer3
 import logging
 
 __author__ = "Jeff Jasper"
@@ -34,7 +34,8 @@ def parse_args():
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files',
                         metavar="prefix")
-    parser.add_argument('-d', '--dist', type=int, required=False, default=500,
+    parser.add_argument('-d', '--dist', type=int, required=False,
+                        default=500,
                         help='minimum distance to call junctions',
                         metavar="distance_threshold")
     parser.add_argument('-j', '--jxn_reads', type=int, required=False,
@@ -64,8 +65,8 @@ def parse_args():
                         metavar="Bed file, 3 col minimal")
     parser.add_argument('-c', '--config_file', type=str, required=False,
                         help='Config file of parameters and paths',
-                        metavar="starseqr_config.ini",
-                        default=os.path.join(os.path.dirname(os.path.realpath(__file__)), "starseqr_config.ini"))
+                        metavar="starseqr_config.ini, defaults to " + os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir, "starseqr_config.ini")),
+                        default=os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.path.pardir, "starseqr_config.ini")))
     parser.add_argument('-w', '--workers', type=int, required=False,
                         default=10,
                         help='number of workers',
@@ -324,10 +325,10 @@ def main():
                 # Get Annotation
                 mydir = os.path.dirname(os.path.realpath(__file__))
                 if args.ann_source == "refgene":
-                    refgene = os.path.join(mydir, "starseqr/resources/ensGene.txt.gz")
+                    refgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "ensgene")
                 elif args.ann_source == "ensgene":
-                    ensgene = os.path.join(mydir, "starseqr/resources/ensGene.txt.gz")
+                    ensgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
@@ -413,10 +414,10 @@ def main():
                 # Get Annotation
                 mydir = os.path.dirname(os.path.realpath(__file__))
                 if args.ann_source == "refgene":
-                    ensgene = os.path.join(mydir, "starseqr/resources/ensGene.txt.gz")
+                    ensgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "ensgene")
                 elif args.ann_source == "ensgene":
-                    ensgene = os.path.join(mydir, "starseqr/resources/ensGene.txt.gz")
+                    ensgene = os.path.join(mydir, "starseqr_utils/resources/ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)

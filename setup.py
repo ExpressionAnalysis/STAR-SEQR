@@ -2,25 +2,29 @@
 
 from setuptools import setup, find_packages
 import sys
+import os
 from sys import stderr
 from ez_setup import use_setuptools
 use_setuptools()
 
+def read(fname):
+    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+
+
 setup(
-    description='',
-    author='Jeff Jasper',
-    url='https://github.com/jasper1918/STAR-SEQR',
-    author_email='jasper1918@gmail.com',
+    name='STAR-SEQR',
     version='0.0.1',
-    install_requires=['pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
-    packages=['starseqr'],
-    # packages=find_packages(),
-    package_data={"starseqr": ["resources/*"]},
-    ext_modules=[],
-    scripts=['scripts/starseqr.py'],
-    name='starseqr',
+    description='',
+    long_description=read('README.md'),
     license='APACHE',
-    include='README.md',
+    author='Jeff Jasper',
+    author_email='jasper1918@gmail.com',
+    url='https://github.com/jasper1918/STAR-SEQR',
+    # packages=find_packages(),
+    packages=['starseqr_utils'],
+    install_requires=['pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
+    package_data={"starseqr_utils": ["resources/*"]},
+    scripts=['scripts/starseqr.py'],
 )
 
 stderr.write("Installation successful!\n")
