@@ -1,12 +1,13 @@
 #!/bin/bash
 
 STARSEQR="../starseqr.py"
-cmd="python $STARSEQR -1 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz -2 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz -m 1 -p RNA_test -vvv -j 1 -s 1"
+cmd="python $STARSEQR -1 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz -2 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz -m 1 -p RNA_test -vvv -j 1 -s 1 -d 1000000 --ann_source refgene"
 echo $cmd
 eval $cmd
 
 test_TP=$(fgrep -wf truth RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt | wc -l)
 test_FP=$(fgrep -vwf truth RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt | wc -l)
+test_FP=$((test_FP-1))
 test_FN=$(fgrep -vwf $(cut -f2 RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt) truth | wc -l)
 
 echo "TP = $test_TP"

@@ -66,8 +66,8 @@ def parse_args():
                         metavar="Bed file, 3 col minimal")
     parser.add_argument('-c', '--config_file', type=str, required=False,
                         help='Config file of parameters and paths',
-                        metavar="Config file, defaults to " + get_resource("starseqr_config.ini"),
-                        default=get_resource("starseqr_config.ini"))
+                        metavar="Config file, defaults to " + find_resource("starseqr_config.ini"),
+                        default=find_resource("starseqr_config.ini"))
     parser.add_argument('-w', '--workers', type=int, required=False,
                         default=10,
                         help='number of workers',
@@ -94,7 +94,7 @@ def parse_config(config_file):
     return cfgparser._sections['PARAMS']
 
 
-def get_resource(filename):
+def find_resource(filename):
     packagedir = starseqr_utils.__path__[0]
     dirname = os.path.join(packagedir, 'resources')
     fullname = os.path.abspath(os.path.join(dirname, filename))
@@ -204,7 +204,7 @@ def get_pairs_func(jxn, rawdf):
     pos1_plus = int(pos1) + 100000
     pos2_less = int(pos2) - 100000
     pos2_plus = int(pos2) + 100000
-
+    # TODO: get more specific based on directionality
     forward = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom1) & (rawdf['chrom2'] == chrom2) &
                     (rawdf['pos1'] > pos1_less) & (rawdf['pos1'] < pos1_plus) &
@@ -285,16 +285,14 @@ def main():
 
             # Get discordant read pair info. This is slow!
             logger.info('Getting pair info')
-            jxn_filt['pairs_for_id'], jxn_filt['pairs_rev_id'] = zip(*jxn_filt.apply(lambda x: get_pairs_func(x['name'], rawdf), axis=1))
-            jxn_filt['pairs_for'] = jxn_filt['pairs_for_id'].str.split(',').apply(len)
-            jxn_filt['pairs_rev'] = jxn_filt['pairs_rev_id'].str.split(',').apply(len)
-            logger.info('Filtering junctions based on pairs and distance')
-            jxn_filt2 = jxn_filt[((jxn_filt["pairs_for"] >= args.span_reads) |
-                                  (jxn_filt["pairs_rev"] >= args.span_reads)) &
-                                 (jxn_filt['dist'] >= args.dist)]
+            # jxn_filt['pairs_for_id'], jxn_filt['pairs_rev_id'] = zip(*jxn_filt.apply(lambda x: get_pairs_func(x['name'], rawdf), axis=1))
+            # jxn_filt['pairs_for'] = jxn_filt['pairs_for_id'].str.split(',').apply(len)
+            # jxn_filt['pairs_rev'] = jxn_filt['pairs_rev_id'].str.split(',').apply(len)
+            # logger.info('Filtering junctions based on pairs and distance')
+            jxn_filt2 = jxn_filt[(jxn_filt['dist'] >= args.dist)]
             # print(jxn_filt2.sort_values("right_counts", ascending=False).head())
             jxn_filt2.to_csv(path_or_buf="STAR-SEQR_candidates.txt", header=True, sep="\t", mode='w',
-                             index=False)  # , columns=["name", "left_counts", "right_counts", "pairs_for", "pairs_rev", "subset", "dist"])
+                             index=False)
 
             # Log Stats
             stats_res['Candidate_Breakpoints'] = len(jxn_filt2.index)
@@ -307,6 +305,7 @@ def main():
                 assemdict = assem.run_assembly_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
                 logger.info("Finished parallel assembly.")
                 assemdf = pd.DataFrame.from_records(assemdict, index='name')
+                assemdf.to_csv(path_or_buf="STAR-SEQR_candidates_assembled.txt", header=True, sep="\t", mode='w',index=True)
                 # Merge Stats for use
                 finaldf = pd.merge(jxn_filt2, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
                                    right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
@@ -323,8 +322,8 @@ def main():
 
                 # remove this once a qual is assigned.
                 finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
-                                  (finaldf["jxn_first_unique"] >= args.jxn_reads) |
-                                  (finaldf["jxn_second_unique"] >= args.jxn_reads)]
+                                  ((finaldf["jxn_first_unique"] >= args.jxn_reads) |
+                                  (finaldf["jxn_second_unique"] >= args.jxn_reads))]
                 # Generate Primers
                 if args.spades:
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['spades']), axis=1).apply(lambda x: ",".join(x))
@@ -332,10 +331,10 @@ def main():
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
                 if args.ann_source == "refgene":
-                    refgene = get_resource("refGene.txt.gz")
+                    refgene = find_resource("refGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "refgene")
                 elif args.ann_source == "ensgene":
-                    ensgene = get_resource("ensGene.txt.gz")
+                    ensgene = find_resource("ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
@@ -420,10 +419,10 @@ def main():
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
                 if args.ann_source == "refgene":
-                    refgene = get_resource("refGene.txt.gz")
+                    refgene = find_resource("refGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "refgene")
                 elif args.ann_source == "ensgene":
-                    ensgene = get_resource("ensGene.txt.gz")
+                    ensgene = find_resource("ensGene.txt.gz")
                     finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)

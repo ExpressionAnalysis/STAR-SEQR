@@ -14,9 +14,31 @@ logger = logging.getLogger("STAR-SEQR")
 # http://hgdownload.cse.ucsc.edu/goldenpath/hg38/database/knownGene.txt.gz
 # can also use ucsc or ensg
 
+def get_jxn_transcripts(jxn, gtree):
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    resL = gtree[chrom1].search(int(pos1))
+    resR = gtree[chrom2].search(int(pos2))
+    anndict = {}
+    anndict['AnnL'] = set()
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            Lsymbol = list(resL)[idx].data['name']
+            anndict['AnnL'].add(Lsymbol)
+    else:
+        anndict['AnnL'].add("NA")
+    # From the right
+    anndict['AnnR'] = set()
+    if len(resR) > 0:
+        for idx, val in enumerate(resR):
+            Rsymbol = list(resR)[idx].data['name']
+            anndict['AnnR'].add(Rsymbol)
+    else:
+        anndict['AnnR'].add("NA")
+    return anndict
+
 
 def get_gene_info(reftable, svtable, kg_type):
-    logger.info('Annotating each breakpoint')
+    logger.info('Annotating each breakpoint from file ' + reftable)
     start = time.time()
     kg_open = gzip.open if reftable.endswith('.gz') else open
     kg = kg_open(reftable)
@@ -34,7 +56,7 @@ def get_gene_info(reftable, svtable, kg_type):
         anndict['AnnL'] = []
         if len(resL) > 0:
             for idx, val in enumerate(resL):
-                Lsymbol = list(resL)[idx].data['name2']
+                Lsymbol = list(resL)[idx].data['name2'] # symbol
                 Ltrx = list(resL)[idx].data['name']
                 Lstr = list(resL)[idx].data['strand']
                 anndict['AnnL'].append((Lsymbol, Ltrx, Lstr))
@@ -44,7 +66,7 @@ def get_gene_info(reftable, svtable, kg_type):
         anndict['AnnR'] = []
         if len(resR) > 0:
             for idx, val in enumerate(resR):
-                Rsymbol = list(resR)[idx].data['name2']
+                Rsymbol = list(resR)[idx].data['name2'] # symbol
                 Rtrx = list(resR)[idx].data['name']
                 Rstr = list(resR)[idx].data['strand']
                 anndict['AnnR'].append((Rsymbol, Rtrx, Rstr))

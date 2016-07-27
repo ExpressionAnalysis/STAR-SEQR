@@ -481,4 +481,141 @@ Shared memory is not used for genomes. Allocated a private copy of the genome.
 Genome file size: 3202885682 bytes; state: good=1 eof=0 fail=0 bad=0
 Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 3202885682 bytes
 SA file size: 24322521749 bytes; state: good=1 eof=0 fail=0 bad=0
-Loading SA ... 
+Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 24322521749 bytes
+Loading SAindex ... done: 1565873619 bytes
+Finished loading the genome: Mon Jul 25 16:52:31 2016
+
+Processing splice junctions database sjdbN=254370,   sjdbOverhang=100 
+To accomodate alignIntronMax=200000 redefined winBinNbits=16
+To accomodate alignIntronMax=200000 and alignMatesGapMax=200000, redefined winFlankNbins=4 and winAnchorDistNbins=8
+Created thread # 1
+Created thread # 2
+Starting to map file # 0
+mate 1:   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
+mate 2:   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz
+Created thread # 3
+Created thread # 4
+Created thread # 5
+Created thread # 6
+Created thread # 7
+Created thread # 8
+Created thread # 9
+Created thread # 10
+Created thread # 11
+Thread #1 end of input stream, nextChar=-1
+Completed: thread #2
+Completed: thread #3
+Completed: thread #4
+Completed: thread #5
+Completed: thread #6
+Completed: thread #7
+Completed: thread #9
+Completed: thread #8
+Completed: thread #10
+Completed: thread #0
+Completed: thread #11
+Completed: thread #1
+Joined thread # 1
+Joined thread # 2
+Joined thread # 3
+Joined thread # 4
+Joined thread # 5
+Joined thread # 6
+Joined thread # 7
+Joined thread # 8
+Joined thread # 9
+Joined thread # 10
+Joined thread # 11
+Jul 25 16:52:36   Loaded database junctions from the generated genome /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA/sjdbList.out.tab: 254370 total junctions
+
+Jul 25 16:52:36   Loaded database junctions from the 1st pass file: RNA_test._STARpass1//SJ.out.tab: 254907 total junctions
+
+WARNING: long repeat for junction # 193210 : chr15 89398753 89398809; left shift = 14; right shift = 255
+Jul 25 16:52:36   Finished preparing junctions
+Jul 25 16:52:36 ..... inserting junctions into the genome indices
+Jul 25 16:52:37   Finished SA search: number of new junctions=2, old junctions=254370
+Jul 25 16:52:37   Finished sorting SA indicesL nInd=800
+Jul 25 16:53:59   Finished inserting junction indices
+Jul 25 16:54:03   Finished SAi
+Jul 25 16:54:03 ..... finished inserting junctions into genome
+
+   Input read files for mate 1, from input string /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
+-rw-rw-r-- 1 q804348 pipeline 932043 Jul 18 10:44 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
+
+   readsCommandsFile:
+exec > "RNA_test._STARtmp/tmp.fifo.read1"
+echo FILE 0
+zcat      "/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz"
+
+
+   Input read files for mate 2, from input string /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz
+-rw-rw-r-- 1 q804348 pipeline 932231 Jul 18 10:44 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz
+
+   readsCommandsFile:
+exec > "RNA_test._STARtmp/tmp.fifo.read2"
+echo FILE 0
+zcat      "/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz"
+
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread0 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread0 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread1 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread1 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread2 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread2 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread3 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread3 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread4 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread4 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread5 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread5 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread6 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread6 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread7 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread7 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread8 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread8 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread9 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread9 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread10 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread10 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.sam.thread11 ... ok
+Opening the file: RNA_test._STARtmp//Chimeric.out.junction.thread11 ... ok
+Created thread # 1
+Created thread # 2
+Starting to map file # 0
+mate 1:   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
+mate 2:   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz
+Created thread # 3
+Created thread # 4
+Created thread # 5
+Created thread # 6
+Created thread # 7
+Created thread # 8
+Created thread # 9
+Created thread # 10
+Created thread # 11
+Thread #1 end of input stream, nextChar=-1
+Completed: thread #2
+Completed: thread #3
+Completed: thread #4
+Completed: thread #5
+Completed: thread #6
+Completed: thread #7
+Completed: thread #8
+Completed: thread #9
+Completed: thread #10
+Completed: thread #0
+Completed: thread #11
+Completed: thread #1
+Joined thread # 1
+Joined thread # 2
+Joined thread # 3
+Joined thread # 4
+Joined thread # 5
+Joined thread # 6
+Joined thread # 7
+Joined thread # 8
+Joined thread # 9
+Joined thread # 10
+Joined thread # 11
+ALL DONE!

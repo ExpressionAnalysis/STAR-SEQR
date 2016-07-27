@@ -200,7 +200,6 @@ def fix_chimeric_flags(in_sam, out_sam):
 
 
 def markdups(in_sam, out_bam, cfg):
-    # get biobambam2 to cfg or param
     logger.info("Marking duplicate reads")
     sam_2_coord_bam(in_sam, "primary.bam")
     run_biobambam2_rmdup("primary.bam", "mrkdup_tmp.bam", cfg)

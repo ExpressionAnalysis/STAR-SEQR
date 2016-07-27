@@ -12,6 +12,7 @@ from itertools import groupby, islice
 import pysam  # requires 0.9.0 or newer
 import multiprocessing as mp
 import signal
+import annotate_sv as ann
 
 __author__ = "Jeff Jasper"
 __email__ = "jasper1918@gmail.com"
@@ -28,7 +29,14 @@ def make_new_dir(newdir):
         pass
 
 
-def find_discspan(jxn, bam):
+def find_resource(filename):
+    packagedir = starseqr_utils.__path__[0]
+    dirname = os.path.join(packagedir, 'resources')
+    fullname = os.path.abspath(os.path.join(dirname, filename))
+    return fullname
+
+
+def find_discspan(jxn, bam, jxn_transcripts, gtree):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     pairDict = {}
     pairDict[('disc', 'all')] = {}
@@ -67,7 +75,7 @@ def find_discspan(jxn, bam):
     return pairDict
 
 
-def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright):
+def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright, jxn_transcripts, gtree):
     '''
     flags: 321 and 385 are orient1. 337 and 401 are orient2.
     '''
@@ -108,6 +116,7 @@ def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, reprigh
                     int(read.next_reference_start) < pos2right):
                 # print(read.query_name, read.flag, read.reference_name,
                 #      read.reference_start, read.next_reference_name, read.next_reference_start)
+                # todo: check that read falls on same gene as breakpoint.
                 if int(read.get_tag('AS')) > 1:
                     if read.is_paired:
                         if read.flag & 16:
@@ -134,7 +143,7 @@ def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, reprigh
     return jxnDict
 
 
-def get_reads_from_bam(bam_file, jxn):
+def get_reads_from_bam(bam_file, jxn, args, gtree):
     '''
     Fetch reads from each direction of jxn and get an accounting of each if unique or duplicate.
     '''
@@ -159,15 +168,18 @@ def get_reads_from_bam(bam_file, jxn):
         dist2 = 0
     # account for genome boundaries
     # ++Todo: Need to get bam header to look for ends. write fxn for this. also remove circular chrom
+    logger.info("Getting jxn annot transcripts")
+    jxn_transcripts = ann.get_jxn_genes(jxn, gtree)
+    print(jxn_transcripts)
     logger.info("Extracting paired spanning reads for " + jxn)
     # spans
     bam = bamObject.fetch(chrom1, int(pos1) - int(dist1), int(pos1) + dist1)
-    spanD = find_discspan(jxn, bam)
+    spanD = find_discspan(jxn, bam, args, jxn_transcripts, gtree)
     results['spans'] = spanD
     # left junctions
     logger.info("Extracting junction reads originating from the first breakpoint for " + jxn)
     bam = bamObject.fetch(chrom1, int(pos1) - int(dist1), int(pos1) + dist1)
-    jxnD_for = find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright)
+    jxnD_for = find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright, jxn_transcripts, gtree)
     results['jxnleft'] = jxnD_for
     # right junctions
     logger.info("Extracting junction reads originating from the second breakpoint for " + jxn)
@@ -175,7 +187,7 @@ def get_reads_from_bam(bam_file, jxn):
     nstr1 = str1.translate(flipstr)
     nstr2 = str2.translate(flipstr)
     bam = bamObject.fetch(chrom2, int(pos2) - int(dist2), int(pos2) + dist2)
-    jxnD_rev = find_junctions(bam, chrom2, pos2, nstr2, chrom1, pos1, nstr1, repleft, repright)
+    jxnD_rev = find_junctions(bam, chrom2, pos2, nstr2, chrom1, pos1, nstr1, repleft, repright, args, jxn_transcripts, gtree)
     results['jxnright'] = jxnD_rev
     bamObject.close()
     logger.info("Finished extracting supporting read information for " + jxn)
@@ -373,8 +385,19 @@ def run_assembly_fxn(jxn, in_bam, cfg, args, *opts):
     clean_jxn = str(clean_jxn).replace("-", "neg")
     jxn_dir = "support" + "/" + clean_jxn + "/"
     make_new_dir(jxn_dir)
+    # get annot info
+    if args.ann_source == "refgene":
+        reftable = find_resource("refGene.txt.gz")
+        kg_open = gzip.open if reftable.endswith('.gz') else open
+        kg = kg_open(reftable)
+        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+    elif args.ann_source == "ensgene":
+        reftable = find_resource("ensGene.txt.gz")
+        kg_open = gzip.open if reftable.endswith('.gz') else open
+        kg = kg_open(reftable)
+        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     # get supporting reads
-    extracted = get_reads_from_bam(in_bam, jxn)
+    extracted = get_reads_from_bam(in_bam, jxn, args, gtree)
     logger.info("Found and extracted reads successfully")
     for entry in extracted:
         for entry2 in extracted[entry]:
