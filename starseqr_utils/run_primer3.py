@@ -67,13 +67,13 @@ def runp3(seq_id, sequence):
         sys.exit(1)
     end = time.time()
     elapsed = end - start
-    logger.info("Primer Design took  %g seconds" % (elapsed))
-    logger.info("Finished Primer Design")
+    logger.debug("Primer Design took  %g seconds" % (elapsed))
+    logger.debug("Finished Primer Design")
     return p3res
 
 
 def parsep3(p3output):
-    logger.info('Parsing Primer3 Results')
+    logger.debug('Parsing Primer3 Results')
     Lprimer = str(p3output['PRIMER_LEFT_0_SEQUENCE'])
     # Ltm = round(p3output['PRIMER_LEFT_0_TM'])
     Ltuple = p3output['PRIMER_LEFT_0']

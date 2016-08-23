@@ -9,14 +9,17 @@ import string
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import pandas as pd
-from intervaltree_bio import GenomeIntervalTree
+from intervaltree_bio import GenomeIntervalTree, UCSCTable
+import gzip
 import starseqr_utils
 import starseqr_utils.star_funcs as star
-import starseqr_utils.assembly_funcs as assem
+import starseqr_utils.assembly_funcs_dna as assem_dna
+import starseqr_utils.assembly_funcs_rna as assem_rna
 import starseqr_utils.annotate_sv as ann
 import starseqr_utils.sv2bedpe as sv2bedpe
 import starseqr_utils.run_primer3 as primer3
 import logging
+
 
 __author__ = "Jeff Jasper"
 __email__ = "jasper1918@gmail.com"
@@ -49,7 +52,8 @@ def parse_args():
                         metavar="spanning_depth")
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
-                        help='nucleic acid type (DNA, RNA)',
+                        help='nucleic acid type',
+                        choices=["RNA", "DNA"],
                         metavar="nucleic acid type")
     parser.add_argument('-m', '--mode', type=int, required=False,
                         default=0,
@@ -76,7 +80,8 @@ def parse_args():
                         help='do spades assembly')
     parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
                         default="refgene",
-                        help='annotation source (refgene, ensgene)',
+                        help='annotation source',
+                        choices=["refgene", "ensgene"],
                         metavar='name of annotaton')
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
@@ -125,7 +130,9 @@ def import_jxns_pandas(jxnFile):
 
 
 def choose_order(chrL1, posL1, chrL2, posL2):
-    ''' Choose one reprentation of jxn to merge on'''
+    ''' Choose one reprentation of jxn to merge on.
+    This is just for DNA breakpoints where bidirectional breakpoint detection occurs
+    Also for RNA to flip the name based on gene orientation'''
     mychrL1 = str(chrL1).replace("chr", "")
     mychrL2 = str(chrL2).replace("chr", "")
     chrList = [mychrL1, mychrL2]
@@ -142,6 +149,7 @@ def choose_order(chrL1, posL1, chrL2, posL2):
 
 
 def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, repright, order, args):
+    ''' this is mainly for DNA, but also makes an id for RNA'''
     flipstr = string.maketrans("-+", "+-")
     if order == 2 and not args.nucleic_type == "RNA":
         if strand1 == "-":
@@ -160,6 +168,26 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
     return newid
 
 
+def normalize_jxns_rna(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, repright, order, args):
+    ''' this is mainly for DNA, but also makes an id for RNA'''
+    flipstr = string.maketrans("-+", "+-")
+    if order == 2:
+        if strand1 == "-":
+            new_pos1 = str(chrom1) + ":" + str(pos1 - int(repright)) + ":" + strand1.translate(flipstr)
+        else:
+            new_pos1 = str(chrom1) + ":" + str(pos1 + int(repright)) + ":" + strand1.translate(flipstr)
+        if strand2 == "-":
+            new_pos2 = str(chrom2) + ":" + str(pos2 - int(repright)) + ":" + strand2.translate(flipstr)
+        else:
+            new_pos2 = str(chrom2) + ":" + str(pos2 + int(repright)) + ":" + strand2.translate(flipstr)
+        newid = new_pos2 + ":" + new_pos1 + ":" + str(repleft) + ":" + str(repright)
+    elif order == 1:
+        new_pos1 = str(chrom1) + ":" + str(pos1) + ":" + strand1
+        new_pos2 = str(chrom2) + ":" + str(pos2) + ":" + strand2
+        newid = new_pos1 + ":" + new_pos2 + ":" + str(repleft) + ":" + str(repright)
+    return newid
+
+
 def bed_to_tree(bed):
     with open(bed, 'r') as f:
         gtree = GenomeIntervalTree.from_bed(fileobj=f)
@@ -168,7 +196,6 @@ def bed_to_tree(bed):
 
 def subset_bed_func(jxn, bed_file):
     logger = logging.getLogger("STAR-SEQR")
-    logger.info('')
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     targets_tree = bed_to_tree(bed_file)
     intersect1 = len(targets_tree[str(chrom1)].search(int(pos1)))
@@ -180,15 +207,16 @@ def subset_bed_func(jxn, bed_file):
 
 
 def get_distance(jxn):
+    ''' reference distance'''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     if chrom1 == chrom2:
         dist_between = abs(int(pos1) - int(pos2))
     else:
-        dist_between = 10**9
+        dist_between = 10**9  # max value to use between chromosomes.
     return dist_between
 
 
-def get_pairs_func(jxn, rawdf):
+def get_pairs_func(jxn):
     '''
     Get paired end read data that supports each jxn from the junction file.
     discordant paired reads are only represented once.
@@ -197,25 +225,35 @@ def get_pairs_func(jxn, rawdf):
     Later eval the reads from the BAM file.
     This is meant to reduce search space and time processing the BAM later.
     These include duplicates.
-    This is slow!!!
+    This is slow!!! -- consider cython or numba
     '''
+    start = time.time()
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    pos1_less = int(pos1) - 100000
-    pos1_plus = int(pos1) + 100000
-    pos2_less = int(pos2) - 100000
-    pos2_plus = int(pos2) + 100000
-    # TODO: get more specific based on directionality
+    if str1 == "+":
+        pos1left = int(pos1) - 100000
+        pos1right = int(pos1) + int(repright) - 1
+    elif str1 == "-":
+        pos1left = int(pos1) - int(repright) - 1
+        pos1right = int(pos1) + 100000
+    if str2 == "+":
+        pos2left = int(pos2) - int(repright) - 1
+        pos2right = int(pos2) + 100000
+    elif str2 == "-":
+        pos2left = int(pos2) - 100000
+        pos2right = int(pos2) + int(repright) - 1
+
     forward = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom1) & (rawdf['chrom2'] == chrom2) &
-                    (rawdf['pos1'] > pos1_less) & (rawdf['pos1'] < pos1_plus) &
-                    (rawdf['pos2'] > pos2_less) & (rawdf['pos2'] < pos2_plus)]
+                    (rawdf['pos1'] > pos1left) & (rawdf['pos1'] < pos1right) &.06
+                    (rawdf['pos2'] > pos2left) & (rawdf['pos2'] < pos2right)]
     reverse = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom2) & (rawdf['chrom2'] == chrom1) &
-                    (rawdf['pos1'] > pos2_less) & (rawdf['pos1'] < pos2_plus) &
-                    (rawdf['pos2'] > pos1_less) & (rawdf['pos2'] < pos1_plus)]
-    for_reads = ','.join(forward['readid'].tolist())
-    rev_reads = ','.join(reverse['readid'].tolist())
-    return (for_reads, rev_reads)
+                    (rawdf['pos1'] > pos2left) & (rawdf['pos1'] < pos2right) &
+                    (rawdf['pos2'] > pos1left) & (rawdf['pos2'] < pos1right)]
+    # for_reads = ','.join(forward['readid'].tolist())
+    # rev_reads = ','.join(reverse['readid'].tolist())
+    print("Span support took  %g seconds" % (time.time() - start))
+    return len(forward.index) # + len(reverse.index)
 
 
 def main():
@@ -261,12 +299,14 @@ def main():
     if args.spades:
         breakpoint_cols.append("spades")
     print(*breakpoint_cols, sep='\t', file=breakpoints_fh)
-    # stats dict
-    stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
+
     # import all jxns
+    global rawdf
     rawdf = import_jxns_pandas(args.prefix + ".Chimeric.out.junction")
     jxns = rawdf[rawdf['jxntype'] >= 0].reset_index()  # junctions can be either 0, 1, 2
     if args.nucleic_type == "RNA":
+        # stats dict
+        stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
         jxns['order'] = 1
         jxns['name'] = jxns.apply(lambda x: normalize_jxns(x['chrom1'], x['chrom2'], x['pos1'], x['pos2'],
                                                            x['str1'], x['str2'], x['jxnleft'], x['jxnright'],
@@ -274,41 +314,49 @@ def main():
         jxns.to_csv(path_or_buf="STAR-SEQR_output_FC.txt", header=True, sep="\t")
         jxn_summary = jxns.groupby(['name', 'order'], as_index=True)['readid'].agg(lambda col: ','.join(col)).reset_index()
         jxn_summary['left_counts'] = jxn_summary['readid'].str.split(',').apply(len)
+        stats_res['Total_Breakpoints'] = len(jxn_summary.index)
+        logger.info('Total Breakpoints:' + str(stats_res['Total_Breakpoints']))
         if args.bed_file:
             jxn_summary['subset'] = jxn_summary.apply(lambda x: subset_bed_func(x['name'], bed_path), axis=1)
             jxn_summary = jxn_summary[jxn_summary['subset'] >= 1]
         jxn_filt = jxn_summary[(jxn_summary["left_counts"] >= args.jxn_reads)].sort_values("left_counts", ascending=False)
-        stats_res['Total_Breakpoints'] = len(jxn_filt.index)
-        logger.info('Total Breakpoints:' + str(stats_res['Total_Breakpoints']))
-        if len(jxn_filt.index) >= 1:
-            jxn_filt['dist'] = jxn_filt.apply(lambda x: get_distance(x['name']), axis=1)
 
-            # Get discordant read pair info. This is slow!
-            logger.info('Getting pair info')
-            # jxn_filt['pairs_for_id'], jxn_filt['pairs_rev_id'] = zip(*jxn_filt.apply(lambda x: get_pairs_func(x['name'], rawdf), axis=1))
-            # jxn_filt['pairs_for'] = jxn_filt['pairs_for_id'].str.split(',').apply(len)
-            # jxn_filt['pairs_rev'] = jxn_filt['pairs_rev_id'].str.split(',').apply(len)
-            # logger.info('Filtering junctions based on pairs and distance')
+        if len(jxn_filt.index) >= 1:
+            # ensembl = pyensembl.EnsemblRelease(release=75)
+            # jxn_filt['geneinfo'] = jxn_filt.apply(lambda x: get_genes(x['name'], ensembl), axis=1)
+            global gtree
+            if args.ann_source == "refgene":
+                refgene = find_resource("refGene.txt.gz")
+                kg = gzip.open(refgene)
+                gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
+            elif args.ann_source == "ensgene":
+                ensgene = find_resource("ensGene.txt.gz")
+                kg = gzip.open(ensgene)
+                gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+            jxn_filt['txinfo'] = jxn_filt.apply(lambda x: ann.get_jxn_info(x['name'], gtree), axis=1)
+            jxn_filt['dist'] = jxn_filt.apply(lambda x: get_distance(x['name']), axis=1)
             jxn_filt2 = jxn_filt[(jxn_filt['dist'] >= args.dist)]
             # print(jxn_filt2.sort_values("right_counts", ascending=False).head())
             jxn_filt2.to_csv(path_or_buf="STAR-SEQR_candidates.txt", header=True, sep="\t", mode='w',
                              index=False)
-
+            # jxn_filt2['span_counts'] = jxn_filt2.apply(lambda x: get_pairs_func(x['name']), axis=1)
             # Log Stats
             stats_res['Candidate_Breakpoints'] = len(jxn_filt2.index)
             logger.info('Candidate Breakpoints:' + str(stats_res['Candidate_Breakpoints']))
+
             # Process candidates to see if they pass when duplicates are considered.
             if len(jxn_filt2.index) >= 1:
                 # mark duplicates
                 star.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths)
-                # assemble unique reads
-                assemdict = assem.run_assembly_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
-                logger.info("Finished parallel assembly.")
+                # get support from unique reads
+                assemdict = assem_rna.run_support_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
+                logger.info("Finished aggregating support.")
                 assemdf = pd.DataFrame.from_records(assemdict, index='name')
-                assemdf.to_csv(path_or_buf="STAR-SEQR_candidates_assembled.txt", header=True, sep="\t", mode='w',index=True)
+                assemdf.to_csv(path_or_buf="STAR-SEQR_candidates_assembled.txt", header=True, sep="\t", mode='w', index=True)
                 # Merge Stats for use
                 finaldf = pd.merge(jxn_filt2, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
                                    right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
+                # collapse reads
                 finaldf['jxn_first_unique'] = finaldf["jxnleft_unique_for_first"] + finaldf["jxnleft_unique_rev_first"] + \
                     finaldf["jxnright_unique_for_first"] + finaldf["jxnright_unique_rev_first"]
                 finaldf['jxn_second_unique'] = finaldf["jxnleft_unique_for_second"] + finaldf["jxnleft_unique_rev_second"] + \
@@ -318,7 +366,7 @@ def main():
                 finaldf['jxn_second_all'] = finaldf["jxnleft_all_for_second"] + finaldf["jxnleft_all_rev_second"] + \
                     finaldf["jxnright_all_for_second"] + finaldf["jxnright_all_rev_second"]
                 # TODO: confirm breakpoint with bwa or bowtie
-                # TODO: probabilist module to assign quality score
+                # TODO: probabilistic module to assign quality score
 
                 # remove this once a qual is assigned.
                 finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
@@ -330,12 +378,7 @@ def main():
                 else:
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
-                if args.ann_source == "refgene":
-                    refgene = find_resource("refGene.txt.gz")
-                    finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "refgene")
-                elif args.ann_source == "ensgene":
-                    ensgene = find_resource("ensGene.txt.gz")
-                    finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
+                finaldf['ann'] = ann.get_gene_info(finaldf, gtree)
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
                 finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
@@ -350,6 +393,8 @@ def main():
             logger.info("No junctions found.")
 
     elif args.nucleic_type == "DNA":
+        # stats dict
+        stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
         jxns['order'] = jxns.apply(lambda x: choose_order(x['chrom1'], x['pos1'], x['chrom2'], x['pos2']), axis=1)
         logger.info('Normalizing junctions')
         jxns['name'] = jxns.apply(lambda x: normalize_jxns(x['chrom1'], x['chrom2'], x['pos1'], x['pos2'],
@@ -391,7 +436,7 @@ def main():
                 # mark duplicates
                 star.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths)
                 # assemble unique reads
-                assemdict = assem.run_assembly_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
+                assemdict = assem_dna.run_support_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
                 logger.info("Finished parallel assembly.")
                 assemdf = pd.DataFrame.from_records(assemdict, index='name')
                 # Merge Stats for use
@@ -445,9 +490,7 @@ def main():
     sv2bedpe.process(args.prefix + "_STAR-SEQR_breakpoints.txt", args)
 
     # Finish
-    end = time.time()
-    elapsed = end - start
-    logger.info("Program took  %g seconds" % (elapsed))
+    logger.info("Program took  %g seconds" % (time.time() - start))
 
 
 if __name__ == "__main__":

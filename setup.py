@@ -7,6 +7,7 @@ from sys import stderr
 from ez_setup import use_setuptools
 use_setuptools()
 
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
@@ -24,7 +25,7 @@ setup(
     install_requires=['pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
     package_data={"starseqr_utils": ["resources/*"]},
     scripts=['starseqr.py'],
-    zip_safe= False,
+    zip_safe=False,
 )
 
 stderr.write("Installation successful!\n")

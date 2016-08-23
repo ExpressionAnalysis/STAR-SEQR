@@ -45,10 +45,6 @@ def run_star(cfg, fq1, fq2, args):
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
                                '--chimScoreSeparation', 5, '--chimSegmentReadGapMax', 0,
                                '--chimFilter', 'None']
-                # no affect
-                # , '--outSJfilterCountTotalMin', '1 1 1 1',
-                # '--outSJfilterCountUniqueMin', '1 1 1 1', '--outSJfilterOverhangMin', '12 12 12 12',
-                # '--outSJfilterIntronMaxVsReadN', '10000 20000 30000', '--alignSJstitchMismatchNmax', '0 0 0 0']
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = map(str, STAR_args)
@@ -57,22 +53,24 @@ def run_star(cfg, fq1, fq2, args):
                 logger.error("Error: STAR index was not found at " + cfg['star_index_rna'] + " Please update the config file.", exc_info=True)
                 sys.exit(1)
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
-                         '--runThreadN', args.threads, '--genomeDir', cfg['star_index_rna'],
+                         '--runThreadN', str(args.threads), '--genomeDir', cfg['star_index_rna'],
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
                          '--alignIntronMax', 200000, '--alignMatesGapMax', 200000,
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', -1,
-                         '--alignSJDBoverhangMin', 10]  # , '--outSJfilterCountTotalMin', '5 -1 5 5']
+                         '--alignSJDBoverhangMin', 10, 'outFilterMultimapScoreRange', 1 ]
             # choose sensitivity mode
             if (args.mode == 0):
                 sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic"]
+                               '--chimFilter', 'None', '--twopassMode', "Basic",
+                               'outFilterMultimapNmax', 1, '--outSJfilterCountTotalMin', 5, -1, 5, 5]
             elif (args.mode == 1):
                 sens_params = ['--chimSegmentMin', 5, '--chimJunctionOverhangMin', 5,
                                '--chimScoreMin', 0, '--chimScoreDropMax', 40,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic"]
+                               '--chimFilter', 'None', '--twopassMode', "Basic",
+                               'outFilterMultimapNmax', 5, '--outSJfilterCountTotalMin', 2, -1, 2, 2]
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = map(str, STAR_args)

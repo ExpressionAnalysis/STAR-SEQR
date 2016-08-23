@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import gzip
 import re
 import time
 import logging
-from intervaltree_bio import GenomeIntervalTree, UCSCTable
+# from intervaltree_bio import GenomeIntervalTree, UCSCTable
+
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -14,38 +14,45 @@ logger = logging.getLogger("STAR-SEQR")
 # http://hgdownload.cse.ucsc.edu/goldenpath/hg38/database/knownGene.txt.gz
 # can also use ucsc or ensg
 
-def get_jxn_transcripts(jxn, gtree):
+def get_jxn_info(jxn, gtree):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     resL = gtree[chrom1].search(int(pos1))
     resR = gtree[chrom2].search(int(pos2))
-    anndict = {}
-    anndict['AnnL'] = set()
+    genesL = set()
     if len(resL) > 0:
         for idx, val in enumerate(resL):
             Lsymbol = list(resL)[idx].data['name']
-            anndict['AnnL'].add(Lsymbol)
+            genesL.add(Lsymbol)
+            # Lstrand = list(resL)[0].data['strand']  # Just use the first gene for now.
     else:
-        anndict['AnnL'].add("NA")
+        genesL.add("NA")
     # From the right
-    anndict['AnnR'] = set()
+    genesR = set()
     if len(resR) > 0:
         for idx, val in enumerate(resR):
             Rsymbol = list(resR)[idx].data['name']
-            anndict['AnnR'].add(Rsymbol)
+            genesR.add(Rsymbol)
+            # Rstrand = list(resL)[0].data['strand'] # Just use the first gene for now.
     else:
-        anndict['AnnR'].add("NA")
-    return anndict
+        genesR.add("NA")
+    return list(genesL.union(genesR)) # takes union of genes
 
 
-def get_gene_info(reftable, svtable, kg_type):
-    logger.info('Annotating each breakpoint from file ' + reftable)
+def get_pos_genes(chrom1, pos1, gtree):
+    resL = gtree[chrom1].search(int(pos1))
+    genesL = set()
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            Lsymbol = list(resL)[idx].data['name']
+            genesL.add(Lsymbol)
+    else:
+        genesL.add("NA")
+    return list(genesL)
+
+
+def get_gene_info(svtable, gtree):
+    logger.info('Annotating each breakpoint')
     start = time.time()
-    kg_open = gzip.open if reftable.endswith('.gz') else open
-    kg = kg_open(reftable)
-    if kg_type == "refgene":
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
-    elif kg_type == "ensgene":
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     for index, row in svtable.iterrows():
         chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', row['name'])
         resL = gtree[chrom1].search(int(pos1))

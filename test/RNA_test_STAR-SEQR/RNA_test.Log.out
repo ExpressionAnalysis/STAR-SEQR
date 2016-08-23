@@ -144,7 +144,7 @@ quantTranscriptomeBan             IndelSoftclipSingleend
 twopass1readsN                    18446744073709551615
 twopassMode                       None
 ##### Command Line:
-STAR --readFilesIn /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz --readFilesCommand zcat --runThreadN 12 --genomeDir /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA --outFileNamePrefix  RNA_test. --outSAMtype None --alignIntronMax 200000 --alignMatesGapMax 200000 --chimOutType SeparateSAMold --chimScoreJunctionNonGTAG -1 --alignSJDBoverhangMin 10 --chimSegmentMin 5 --chimJunctionOverhangMin 5 --chimScoreMin 0 --chimScoreDropMax 40 --chimScoreSeparation 10 --chimSegmentReadGapMax 3 --chimFilter None --twopassMode Basic
+STAR --readFilesIn /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz --readFilesCommand zcat --runThreadN 12 --genomeDir /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA --outFileNamePrefix  RNA_test. --outSAMtype None --alignIntronMax 200000 --alignMatesGapMax 200000 --chimOutType SeparateSAMold --chimScoreJunctionNonGTAG -1 --alignSJDBoverhangMin 10 outFilterMultimapScoreRange 1 --chimSegmentMin 5 --chimJunctionOverhangMin 5 --chimScoreMin 0 --chimScoreDropMax 40 --chimScoreSeparation 10 --chimSegmentReadGapMax 3 --chimFilter None --twopassMode Basic outFilterMultimapNmax 1 --outSJfilterCountTotalMin 2 -1 2 2
 ##### Initial USER parameters from Command Line:
 outFileNamePrefix                 RNA_test.
 ###### All USER parameters from Command Line:
@@ -167,6 +167,7 @@ chimScoreSeparation           10     ~RE-DEFINED
 chimSegmentReadGapMax         3     ~RE-DEFINED
 chimFilter                    None        ~RE-DEFINED
 twopassMode                   Basic     ~RE-DEFINED
+outSJfilterCountTotalMin      2   -1   2   2        ~RE-DEFINED
 ##### Finished reading parameters from all sources
 
 ##### Final user re-defined parameters-----------------:
@@ -176,6 +177,7 @@ readFilesIn                       /mounts/isilon/data/eahome/q804348/opt/scripts
 readFilesCommand                  zcat   
 outFileNamePrefix                 RNA_test.
 outSAMtype                        None   
+outSJfilterCountTotalMin          2   -1   2   2   
 alignIntronMax                    200000
 alignMatesGapMax                  200000
 alignSJDBoverhangMin              10
@@ -192,7 +194,7 @@ twopassMode                       Basic
 
 -------------------------------
 ##### Final effective command line:
-STAR   --runThreadN 12   --genomeDir /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA   --readFilesIn /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz      --readFilesCommand zcat      --outFileNamePrefix RNA_test.   --outSAMtype None      --alignIntronMax 200000   --alignMatesGapMax 200000   --alignSJDBoverhangMin 10   --chimSegmentMin 5   --chimScoreMin 0   --chimScoreDropMax 40   --chimScoreSeparation 10   --chimScoreJunctionNonGTAG -1   --chimJunctionOverhangMin 5   --chimOutType SeparateSAMold   --chimFilter None      --chimSegmentReadGapMax 3   --twopassMode Basic
+STAR   --runThreadN 12   --genomeDir /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA   --readFilesIn /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz      --readFilesCommand zcat      --outFileNamePrefix RNA_test.   --outSAMtype None      --outSJfilterCountTotalMin 2   -1   2   2      --alignIntronMax 200000   --alignMatesGapMax 200000   --alignSJDBoverhangMin 10   --chimSegmentMin 5   --chimScoreMin 0   --chimScoreDropMax 40   --chimScoreSeparation 10   --chimScoreJunctionNonGTAG -1   --chimJunctionOverhangMin 5   --chimOutType SeparateSAMold   --chimFilter None      --chimSegmentReadGapMax 3   --twopassMode Basic
 
 ##### Final parameters after user input--------------------------------:
 versionSTAR                       20201
@@ -254,7 +256,7 @@ outSAMmultNmax                    18446744073709551615
 outSAMattrIHstart                 1
 outSJfilterReads                  All
 outSJfilterCountUniqueMin         3   1   1   1   
-outSJfilterCountTotalMin          3   1   1   1   
+outSJfilterCountTotalMin          2   -1   2   2   
 outSJfilterOverhangMin            30   12   12   12   
 outSJfilterDistToOtherSJmin       10   0   5   10   
 outSJfilterIntronMaxVsReadN       50000   100000   200000   
@@ -469,7 +471,7 @@ Number of real (reference) chromosomes= 93
 92	chrUn_gl000226	15008	3151233024
 93	chr18_gl000207_random	4262	3151495168
 --sjdbOverhang = 100 taken from the generated genome
-Started loading the genome: Mon Jul 25 16:49:58 2016
+Started loading the genome: Mon Aug 15 18:15:43 2016
 
 checking Genome sizefile size: 3202885682 bytes; state: good=1 eof=0 fail=0 bad=0
 checking SA sizefile size: 24322521749 bytes; state: good=1 eof=0 fail=0 bad=0
@@ -483,17 +485,17 @@ Loading Genome ... done! state: good=1 eof=0 fail=0 bad=0; loaded 3202885682 byt
 SA file size: 24322521749 bytes; state: good=1 eof=0 fail=0 bad=0
 Loading SA ... done! state: good=1 eof=0 fail=0 bad=0; loaded 24322521749 bytes
 Loading SAindex ... done: 1565873619 bytes
-Finished loading the genome: Mon Jul 25 16:52:31 2016
+Finished loading the genome: Mon Aug 15 18:16:57 2016
 
 Processing splice junctions database sjdbN=254370,   sjdbOverhang=100 
 To accomodate alignIntronMax=200000 redefined winBinNbits=16
 To accomodate alignIntronMax=200000 and alignMatesGapMax=200000, redefined winFlankNbins=4 and winAnchorDistNbins=8
 Created thread # 1
 Created thread # 2
+Created thread # 3
 Starting to map file # 0
 mate 1:   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
 mate 2:   /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz
-Created thread # 3
 Created thread # 4
 Created thread # 5
 Created thread # 6
@@ -508,9 +510,9 @@ Completed: thread #3
 Completed: thread #4
 Completed: thread #5
 Completed: thread #6
+Completed: thread #8
 Completed: thread #7
 Completed: thread #9
-Completed: thread #8
 Completed: thread #10
 Completed: thread #0
 Completed: thread #11
@@ -526,18 +528,18 @@ Joined thread # 8
 Joined thread # 9
 Joined thread # 10
 Joined thread # 11
-Jul 25 16:52:36   Loaded database junctions from the generated genome /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA/sjdbList.out.tab: 254370 total junctions
+Aug 15 18:17:02   Loaded database junctions from the generated genome /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_hg19gencodeV24lift37_S1_RNA/sjdbList.out.tab: 254370 total junctions
 
-Jul 25 16:52:36   Loaded database junctions from the 1st pass file: RNA_test._STARpass1//SJ.out.tab: 254907 total junctions
+Aug 15 18:17:02   Loaded database junctions from the 1st pass file: RNA_test._STARpass1//SJ.out.tab: 254907 total junctions
 
 WARNING: long repeat for junction # 193210 : chr15 89398753 89398809; left shift = 14; right shift = 255
-Jul 25 16:52:36   Finished preparing junctions
-Jul 25 16:52:36 ..... inserting junctions into the genome indices
-Jul 25 16:52:37   Finished SA search: number of new junctions=2, old junctions=254370
-Jul 25 16:52:37   Finished sorting SA indicesL nInd=800
-Jul 25 16:53:59   Finished inserting junction indices
-Jul 25 16:54:03   Finished SAi
-Jul 25 16:54:03 ..... finished inserting junctions into genome
+Aug 15 18:17:03   Finished preparing junctions
+Aug 15 18:17:03 ..... inserting junctions into the genome indices
+Aug 15 18:17:04   Finished SA search: number of new junctions=2, old junctions=254370
+Aug 15 18:17:04   Finished sorting SA indicesL nInd=800
+Aug 15 18:18:21   Finished inserting junction indices
+Aug 15 18:18:25   Finished SAi
+Aug 15 18:18:25 ..... finished inserting junctions into genome
 
    Input read files for mate 1, from input string /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
 -rw-rw-r-- 1 q804348 pipeline 932043 Jul 18 10:44 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz
@@ -598,12 +600,12 @@ Thread #1 end of input stream, nextChar=-1
 Completed: thread #2
 Completed: thread #3
 Completed: thread #4
-Completed: thread #5
 Completed: thread #6
-Completed: thread #7
-Completed: thread #8
+Completed: thread #5
 Completed: thread #9
 Completed: thread #10
+Completed: thread #8
+Completed: thread #7
 Completed: thread #0
 Completed: thread #11
 Completed: thread #1

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 STARSEQR="../starseqr.py"
-cmd="python $STARSEQR -1 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz -2 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz -m 1 -p RNA_test -vvv -j 1 -s 1 -d 1000000 --ann_source refgene"
+cmd="python $STARSEQR -1 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_1.fastq.gz -2 /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/test/RNA_2.fastq.gz -m 1 -p RNA_test -vv -j 1 -s 1 -d 1000000 -w 12 --ann_source refgene"
 echo $cmd
 eval $cmd
 
