@@ -1,4 +1,4 @@
-from svtools.vcf.variant import Variant
+from svtools_star.vcf.variant import Variant
 import re
 
 class BedpeToVcfConverter(object):
@@ -61,7 +61,7 @@ class BedpeToVcfConverter(object):
 
         b1 = self.adjust_by_tag(bedpe, adjust_tag1, bedpe.o1, bedpe.s1)
         primary_bedpe_list = [
-                bedpe.c1, 
+                bedpe.c1,
                 b1,
                 bedpe.orig_name1,
                 bedpe.orig_ref1,
@@ -75,7 +75,7 @@ class BedpeToVcfConverter(object):
 
         if bedpe.svtype == 'BND':
             b2 = self.adjust_by_tag(bedpe, adjust_tag2, bedpe.o2, bedpe.s2)
-            
+
             secondary_bedpe_list = [
                     bedpe.c2,
                     b2,

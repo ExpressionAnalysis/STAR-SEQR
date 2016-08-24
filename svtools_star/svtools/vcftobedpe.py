@@ -2,10 +2,10 @@ import argparse
 import sys
 import time
 
-import svtools.vcf.file
-import svtools.vcf.variant
-import svtools.utils as su
-from svtools.vcftobedpeconverter import VcfToBedpeConverter
+import svtools_star.vcf.file
+import svtools_star.vcf.variant
+import svtools_star.utils as su
+from svtools_star.vcftobedpeconverter import VcfToBedpeConverter
 
 def vcfToBedpe(vcf_file, bedpe_out):
     converter = VcfToBedpeConverter()
@@ -25,7 +25,7 @@ def vcfToBedpe(vcf_file, bedpe_out):
                     line = '##fileDate=' + time.strftime('%Y%m%d') + '\n'
                 header.append(line)
                 continue
-            elif line[0] == '#' and line[1] != '#':    
+            elif line[0] == '#' and line[1] != '#':
                 sample_list = line.rstrip().split('\t')[9:]
                 header.append(line)
                 continue
@@ -36,7 +36,7 @@ def vcfToBedpe(vcf_file, bedpe_out):
                 if "SVTYPE" in [info.id for info in vcf.info_list]:
                    vcf.add_info_after("SVTYPE", "POS", 1, 'Integer', 'Position of the variant described in this record')
                 header=vcf.get_header()
-                bedpe_out.write(header[:header.rfind('\n')] + '\n')                
+                bedpe_out.write(header[:header.rfind('\n')] + '\n')
                 final_header_line = ['#CHROM_A',
                         'START_A',
                         'END_A',
@@ -80,13 +80,13 @@ def vcfToBedpe(vcf_file, bedpe_out):
                     del bnds[unique_name]
                 else:
                     sec_bnds.update({unique_name:var})
-            else: 
+            else:
                 bnds.update({unique_name:var})
                 continue
     intersected_keys = bnds.viewkeys() & sec_bnds.viewkeys()
     for key in intersected_keys:
         bedpe_out.write(str(converter.convert(bnds[key], sec_bnds[key])) + '\n')
-        del bnds[key] 
+        del bnds[key]
         del sec_bnds[key]
     if bnds is not None:
         for bnd in bnds:
@@ -96,7 +96,7 @@ def vcfToBedpe(vcf_file, bedpe_out):
         for bnd in sec_bnds:
             sys.stderr.write('Warning: missing primary multiline variant at ID:' + bnd + '\n')
             bedpe_out.write(str(converter.convert(None, sec_bnds[bnd])) + '\n')
-            
+
     # close the files
     bedpe_out.close()
     return
