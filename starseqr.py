@@ -320,9 +320,8 @@ def main():
             jxn_summary['subset'] = jxn_summary.apply(lambda x: subset_bed_func(x['name'], bed_path), axis=1)
             jxn_summary = jxn_summary[jxn_summary['subset'] >= 1]
         jxn_filt = jxn_summary[(jxn_summary["left_counts"] >= args.jxn_reads)].sort_values("left_counts", ascending=False)
-
+        jxn_filt = jxn_filt.head(5000)
         if len(jxn_filt.index) >= 1:
-            # ensembl = pyensembl.EnsemblRelease(release=75)
             # jxn_filt['geneinfo'] = jxn_filt.apply(lambda x: get_genes(x['name'], ensembl), axis=1)
             global gtree
             if args.ann_source == "refgene":
