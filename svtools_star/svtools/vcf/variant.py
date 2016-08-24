@@ -1,4 +1,4 @@
-from svtools.vcf.genotype import Genotype
+from svtools_star.svtools.vcf.genotype import Genotype
 import sys
 
 class Variant(object):

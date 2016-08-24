@@ -2,10 +2,10 @@ import argparse
 import sys
 import time
 
-import svtools_star.vcf.file
-import svtools_star.vcf.variant
-import svtools_star.utils as su
-from svtools_star.vcftobedpeconverter import VcfToBedpeConverter
+import svtools_star.svtools.vcf.file
+import svtools_star.svtools.vcf.variant
+import svtools_star.svtools.utils as su
+from svtools_star.svtools.vcftobedpeconverter import VcfToBedpeConverter
 
 def vcfToBedpe(vcf_file, bedpe_out):
     converter = VcfToBedpeConverter()

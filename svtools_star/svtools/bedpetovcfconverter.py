@@ -1,4 +1,4 @@
-from svtools_star.vcf.variant import Variant
+from svtools_star.svtools.vcf.variant import Variant
 import re
 
 class BedpeToVcfConverter(object):

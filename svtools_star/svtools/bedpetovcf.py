@@ -1,8 +1,8 @@
 import argparse, sys
-from svtools_star.bedpe import Bedpe
-from svtools_star.vcf.file import Vcf
-from svtools_star.bedpetovcfconverter import BedpeToVcfConverter
-import svtools_star.utils as su
+from svtools_star.svtools.bedpe import Bedpe
+from svtools_star.svtools.vcf.file import Vcf
+from svtools_star.svtools.bedpetovcfconverter import BedpeToVcfConverter
+import svtools_star.svtools.utils as su
 
 
 # primary function

@@ -1,4 +1,4 @@
-from svtools_star.bedpe import Bedpe
+from svtools_star.svtools.bedpe import Bedpe
 import re
 
 class VcfToBedpeConverter(object):
