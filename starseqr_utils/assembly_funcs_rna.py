@@ -197,7 +197,7 @@ def get_reads_from_bam(bam_file, jxn, tx, gtree, args):
     return results
 
 
-def subset_bam_by_reads(bam, out_bam, read_ids, cfg):
+def subset_bam_by_reads(bam, out_bam, read_ids):
     logger.debug("Subset bam with supporting reads to " + out_bam)
     names = "names=" + read_ids
     index = "index=1"
@@ -351,11 +351,11 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
     return list(islice(records, 0, 1))
 
 
-def do_spades(cfg, assemdir, pfastq, jxnfastq, errlog):
+def do_spades(assemdir, pfastq, jxnfastq, errlog):
     logger.debug("*Running SPADES")
     spades_cmd = ['spades.py', "--12", pfastq, "-s", jxnfastq,
                   "-o", assemdir, "--careful", "--phred-offset", 33,
-                  "-t", cfg['spades_threads'], "-m", cfg['spades_mem_gb'],
+                  "-t", "1", "-m", "5",
                   "-cov-cutoff", "off"]
     spades_args = map(str, spades_cmd)
     logger.debug("*SPADES Command: " + " ".join(spades_args))
@@ -379,7 +379,7 @@ def do_spades(cfg, assemdir, pfastq, jxnfastq, errlog):
         sys.exit(1)
 
 
-def run_support_fxn(jxn, tx, in_bam, cfg, args, *opts):
+def run_support_fxn(jxn, tx, in_bam, args, *opts):
     ''' Run command to run assembly for a single breakpoint '''
     logger.info("Getting read support for " + jxn)
     start = time.time()
@@ -415,7 +415,7 @@ def run_support_fxn(jxn, tx, in_bam, cfg, args, *opts):
     # subset supporting reads to bam
     support_bam = jxn_dir + "supporting.bam"
     logger.debug("*Subsetting reads from bam")
-    subset_bam_by_reads(in_bam, support_bam, read_ids, cfg)
+    subset_bam_by_reads(in_bam, support_bam, read_ids)
     pysam.index(support_bam)
     # convert to fastq and run velvet
     pairfq = jxn_dir + 'paired.fastq'
@@ -430,7 +430,7 @@ def run_support_fxn(jxn, tx, in_bam, cfg, args, *opts):
         results['velvet'] = vseq
     if args.spades:
         splog = open(jxn_dir + "spades_log.txt", "w")
-        spades_seq = do_spades(cfg, jxn_dir + "spades", pairfq, junctionfq, splog)
+        spades_seq = do_spades(jxn_dir + "spades", pairfq, junctionfq, splog)
         splog.close()
         if spades_seq:
             sname, sseq = spades_seq[0]
@@ -445,7 +445,7 @@ def init_worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def run_support_parallel(df, in_bam, cfg, args):
+def run_support_parallel(df, in_bam, args):
     '''Run assembly in parallel'''
     logger.debug("Getting Read Support")
     make_new_dir("support")
@@ -466,7 +466,7 @@ def run_support_parallel(df, in_bam, cfg, args):
     pool = mp.Pool(int(args.workers), init_worker)
     try:
         for i in (df.index.values):
-            seq = pool.apply_async(run_support_fxn, args=[df.loc[i,'name'], df.loc[i,'txinfo'], in_bam, cfg, args])
+            seq = pool.apply_async(run_support_fxn, args=[df.loc[i,'name'], df.loc[i,'txinfo'], in_bam, args])
             results.append(seq)
         pool.close()
     except KeyboardInterrupt as e:

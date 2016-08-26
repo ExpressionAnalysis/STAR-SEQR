@@ -19,18 +19,18 @@ def check_file_exists(path):
         sys.exit(1)
 
 
-def run_star(cfg, fq1, fq2, args):
+def run_star(fq1, fq2, args):
     '''
     Run STAR alignment for RNA or DNA with different sensitivity parameters.
     '''
     logger.info("Starting STAR Alignment")
     if not os.path.isfile(args.prefix + ".Chimeric.out.junction"):
         if args.nucleic_type == "DNA":
-            if not os.path.isdir(cfg['star_index_dna']):
-                logger.error("Error: STAR index was not found at " + cfg['star_index_dna'] + " Please update the config file.", exc_info=True)
+            if not os.path.isdir(args.star_index):
+                logger.error("Error: STAR index was not found at " + args.star_index + " Please update the path.", exc_info=True)
                 sys.exit(1)
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
-                         '--runThreadN', args.threads, '--genomeDir', cfg['star_index_dna'],
+                         '--runThreadN', args.threads, '--genomeDir', args.star_index,
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
                          '--alignIntronMax', 1, '--alignMatesGapMax', 0, '--sjdbOverhang', 0,
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', 0]
@@ -49,15 +49,15 @@ def run_star(cfg, fq1, fq2, args):
             # Need to convert all to string
             STAR_args = map(str, STAR_args)
         elif args.nucleic_type == "RNA":
-            if not os.path.isdir(cfg['star_index_rna']):
-                logger.error("Error: STAR index was not found at " + cfg['star_index_rna'] + " Please update the config file.", exc_info=True)
+            if not os.path.isdir(args.star_index):
+                logger.error("Error: STAR index was not found at " + args.star_index + " Please update the path.", exc_info=True)
                 sys.exit(1)
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
-                         '--runThreadN', str(args.threads), '--genomeDir', cfg['star_index_rna'],
+                         '--runThreadN', str(args.threads), '--genomeDir', args.star_index,
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
                          '--alignIntronMax', 200000, '--alignMatesGapMax', 200000,
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', -1,
-                         '--alignSJDBoverhangMin', 10, 'outFilterMultimapScoreRange', 1 ]
+                         '--alignSJDBoverhangMin', 10, 'outFilterMultimapScoreRange', 1]
             # choose sensitivity mode
             if (args.mode == 0):
                 sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
@@ -121,10 +121,10 @@ def bam_2_nsort_sam(in_bam, out_sam):
     os.remove(bam_sort + ".bam")
 
 
-def run_biobambam2_rmdup(in_bam, out_bam, cfg):
-    mark_samdups_cmd = ['bammarkduplicates2', "=".join(["I", in_bam]), "=".join(["O", out_bam]), "=".join(["markthreads",
-                        cfg['biobambam_threads']]), "=".join(["M", "Dup_metrics.txt"]), "=".join(["level", "1"]),
-                        "=".join(["verbose", "0"])]
+def run_biobambam2_rmdup(in_bam, out_bam):
+    mark_samdups_cmd = ['bammarkduplicates2', "=".join(["I", in_bam]), "=".join(["O", out_bam]),
+                        "=".join(["markthreads", "4"]), "=".join(["M", "Dup_metrics.txt"]),
+                        "=".join(["level", "1"]), "=".join(["verbose", "0"])]
     rmdup_args = map(str, mark_samdups_cmd)
     logger.info("MarkDups Command: " + " ".join(rmdup_args))
     try:
@@ -197,10 +197,10 @@ def fix_chimeric_flags(in_sam, out_sam):
                 print(*rList, sep="\t", file=fixSAM)
 
 
-def markdups(in_sam, out_bam, cfg):
+def markdups(in_sam, out_bam):
     logger.info("Marking duplicate reads")
     sam_2_coord_bam(in_sam, "primary.bam")
-    run_biobambam2_rmdup("primary.bam", "mrkdup_tmp.bam", cfg)
+    run_biobambam2_rmdup("primary.bam", "mrkdup_tmp.bam")
     check_file_exists("mrkdup_tmp.bam")
     os.remove("primary.bam")
     os.remove("primary.bam.bai")

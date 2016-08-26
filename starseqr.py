@@ -6,7 +6,6 @@ import sys
 import time
 import re
 import string
-from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
@@ -30,73 +29,48 @@ def parse_args():
     parser = ArgumentParser(
         description="STAR-SEQR Parameters:", epilog=usage)
     parser.add_argument('-1', '--fastq1', type=str, required=True,
-                        help='fastq 1',
-                        metavar="fastq 1")
+                        help='fastq 1')
     parser.add_argument('-2', '--fastq2', type=str, required=False,
-                        help='fastq 2',
-                        metavar="fastq 2")
+                        help='fastq 2')
     parser.add_argument('-p', '--prefix', type=str, required=True,
-                        help='prefix to name files',
-                        metavar="prefix")
+                        help='prefix to name files')
     parser.add_argument('-d', '--dist', type=int, required=False,
-                        default=500,
-                        help='minimum distance to call junctions',
-                        metavar="distance_threshold")
+                        default=100000,
+                        help='minimum distance to call junctions')
     parser.add_argument('-j', '--jxn_reads', type=int, required=False,
                         default=2,
-                        help='minimum number of junction reads to keep junctions.',
-                        metavar="junction_depth")
+                        help='minimum number of junction reads to keep junctions.')
     parser.add_argument('-s', '--span_reads', type=int, required=False,
                         default=2,
-                        help='minimum number of spanning discordant read pairs to call junctions.',
-                        metavar="spanning_depth")
+                        help='minimum number of spanning discordant read pairs to call junctions.')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
-                        choices=["RNA", "DNA"],
-                        metavar="nucleic acid type")
+                        choices=["RNA", "DNA"])
     parser.add_argument('-m', '--mode', type=int, required=False,
                         default=0,
-                        help='Sensitivity Mode. 0=Default, 1=Extra-Sensitive',
-                        metavar="STAR Parameters to invoke to make more sensitive.")
+                        help='Sensitivity Mode. 0=Default, 1=Extra-Sensitive')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=12,
-                        help='Number of threads to use for STAR',
-                        metavar="Threads")
+                        help='Number of threads to use for STAR')
     parser.add_argument('--bidir', '--bidir', action='store_true',
                         help='require bidirectional breakpoints for detection')
     parser.add_argument('-b', '--bed_file', type=str, required=False,
-                        help='Bed file to subset analysis',
-                        metavar="Bed file, 3 col minimal")
-    parser.add_argument('-c', '--config_file', type=str, required=False,
-                        help='Config file of parameters and paths',
-                        metavar="Config file, defaults to " + find_resource("starseqr_config.ini"),
-                        default=find_resource("starseqr_config.ini"))
+                        help='Bed file to subset analysis')
+    parser.add_argument('-i', '--star_index', type=str, required=False,
+                        help='path to STAR index folder')
     parser.add_argument('-w', '--workers', type=int, required=False,
-                        default=10,
-                        help='number of workers',
-                        metavar="number of workers")
+                        default=12,
+                        help='number of workers')
     parser.add_argument('--spades', '--spades', action='store_true',
                         help='do spades assembly')
     parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
                         default="refgene",
                         help='annotation source',
-                        choices=["refgene", "ensgene"],
-                        metavar='name of annotaton')
+                        choices=["refgene", "ensgene"])
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
     return parser.parse_args()
-
-
-def parse_config(config_file):
-    logger = logging.getLogger("STAR-SEQR")
-    if (os.stat(os.path.realpath(config_file)).st_size == 0):
-        logger.critical("Exiting. Cannot find file: " + os.path.realpath(config_file))
-        sys.exit(1)
-    cfgparser = SafeConfigParser()
-    cfgparser.read(config_file)
-    # print(json.dumps(cfgparser._sections['PARAMS'], sort_keys=True, indent=4))
-    return cfgparser._sections['PARAMS']
 
 
 def find_resource(filename):
@@ -216,7 +190,7 @@ def get_distance(jxn):
     return dist_between
 
 
-def get_pairs_func(jxn):
+def get_pairs_func(jxn, rawdf):
     '''
     Get paired end read data that supports each jxn from the junction file.
     discordant paired reads are only represented once.
@@ -228,32 +202,35 @@ def get_pairs_func(jxn):
     This is slow!!! -- consider cython or numba
     '''
     start = time.time()
+    print(jxn)
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    pos1 = int(pos1)
+    pos2 = int(pos2)
+    repright = int(repright)
     if str1 == "+":
-        pos1left = int(pos1) - 100000
-        pos1right = int(pos1) + int(repright) - 1
+        pos1left = pos1 - 100000
+        pos1right = pos1 + repright - 1
     elif str1 == "-":
-        pos1left = int(pos1) - int(repright) - 1
-        pos1right = int(pos1) + 100000
+        pos1left = pos1 - repright - 1
+        pos1right = pos1 + 100000
     if str2 == "+":
-        pos2left = int(pos2) - int(repright) - 1
-        pos2right = int(pos2) + 100000
+        pos2left = pos2 - repright - 1
+        pos2right = pos2 + 100000
     elif str2 == "-":
-        pos2left = int(pos2) - 100000
-        pos2right = int(pos2) + int(repright) - 1
-
+        pos2left = pos2 - 100000
+        pos2right = pos2 + repright - 1
     forward = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom1) & (rawdf['chrom2'] == chrom2) &
-                    (rawdf['pos1'] > pos1left) & (rawdf['pos1'] < pos1right) &.06
+                    (rawdf['pos1'] > pos1left) & (rawdf['pos1'] < pos1right) &
                     (rawdf['pos2'] > pos2left) & (rawdf['pos2'] < pos2right)]
     reverse = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom2) & (rawdf['chrom2'] == chrom1) &
                     (rawdf['pos1'] > pos2left) & (rawdf['pos1'] < pos2right) &
                     (rawdf['pos2'] > pos1left) & (rawdf['pos2'] < pos1right)]
-    # for_reads = ','.join(forward['readid'].tolist())
-    # rev_reads = ','.join(reverse['readid'].tolist())
+    for_reads = ','.join(forward['readid'].tolist())
+    rev_reads = ','.join(reverse['readid'].tolist())
     print("Span support took  %g seconds" % (time.time() - start))
-    return len(forward.index) # + len(reverse.index)
+    return (for_reads, rev_reads)
 
 
 def main():
@@ -271,7 +248,7 @@ def main():
     console.setFormatter(formatter)
     logger.addHandler(console)
     # parse config
-    cfgpaths = parse_config(args.config_file)
+    # cfgpaths = parse_config(args.config_file)
 
     # start analysis
     logger.info("***************STAR-SEQR******************")
@@ -289,7 +266,7 @@ def main():
     os.chdir(args.prefix + "_STAR-SEQR")
     star.check_file_exists(fq1_path)
     star.check_file_exists(fq2_path)
-    star.run_star(cfgpaths, fq1_path, fq2_path, args)
+    star.run_star(fq1_path, fq2_path, args)
     # start output files
     stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
     breakpoints_fh = open(args.prefix + "_STAR-SEQR_breakpoints.txt", 'w')
@@ -301,7 +278,6 @@ def main():
     print(*breakpoint_cols, sep='\t', file=breakpoints_fh)
 
     # import all jxns
-    global rawdf
     rawdf = import_jxns_pandas(args.prefix + ".Chimeric.out.junction")
     jxns = rawdf[rawdf['jxntype'] >= 0].reset_index()  # junctions can be either 0, 1, 2
     if args.nucleic_type == "RNA":
@@ -320,7 +296,7 @@ def main():
             jxn_summary['subset'] = jxn_summary.apply(lambda x: subset_bed_func(x['name'], bed_path), axis=1)
             jxn_summary = jxn_summary[jxn_summary['subset'] >= 1]
         jxn_filt = jxn_summary[(jxn_summary["left_counts"] >= args.jxn_reads)].sort_values("left_counts", ascending=False)
-        jxn_filt = jxn_filt.head(5000)
+        # jxn_filt = jxn_filt.head(5000)
         if len(jxn_filt.index) >= 1:
             # jxn_filt['geneinfo'] = jxn_filt.apply(lambda x: get_genes(x['name'], ensembl), axis=1)
             global gtree
@@ -346,9 +322,9 @@ def main():
             # Process candidates to see if they pass when duplicates are considered.
             if len(jxn_filt2.index) >= 1:
                 # mark duplicates
-                star.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths)
+                star.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam")
                 # get support from unique reads
-                assemdict = assem_rna.run_support_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
+                assemdict = assem_rna.run_support_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", args)
                 logger.info("Finished aggregating support.")
                 assemdf = pd.DataFrame.from_records(assemdict, index='name')
                 assemdf.to_csv(path_or_buf="STAR-SEQR_candidates_assembled.txt", header=True, sep="\t", mode='w', index=True)
@@ -433,9 +409,9 @@ def main():
             # Process candidates to see if they pass when duplicates are considered.
             if len(jxn_filt2.index) >= 1:
                 # mark duplicates
-                star.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths)
+                star.markdups(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam")
                 # assemble unique reads
-                assemdict = assem_dna.run_support_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", cfgpaths, args)
+                assemdict = assem_dna.run_support_parallel(jxn_filt2, args.prefix + ".Chimeric.out.mrkdup.bam", args)
                 logger.info("Finished parallel assembly.")
                 assemdf = pd.DataFrame.from_records(assemdict, index='name')
                 # Merge Stats for use
@@ -461,13 +437,17 @@ def main():
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['spades']), axis=1).apply(lambda x: ",".join(x))
                 else:
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
-                # Get Annotation
+                #Annotation
+                global gtree
                 if args.ann_source == "refgene":
                     refgene = find_resource("refGene.txt.gz")
-                    finaldf['ann'] = ann.get_gene_info(refgene, finaldf, "refgene")
+                    kg = gzip.open(refgene)
+                    gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
                 elif args.ann_source == "ensgene":
                     ensgene = find_resource("ensGene.txt.gz")
-                    finaldf['ann'] = ann.get_gene_info(ensgene, finaldf, "ensgene")
+                    kg = gzip.open(ensgene)
+                    gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+                finaldf['ann'] = ann.get_gene_info(finaldf, gtree)
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
                 finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
