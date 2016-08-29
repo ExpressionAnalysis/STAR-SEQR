@@ -465,6 +465,11 @@ def run_support_parallel(df, in_bam, args):
         kg_open = gzip.open if reftable.endswith('.gz') else open
         kg = kg_open(reftable)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+    elif args.ann_source == "gencode":
+        reftable = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
+        kg_open = gzip.open if reftable.endswith('.gz') else open
+        kg = kg_open(reftable)
+        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
     pool = mp.Pool(int(args.workers), init_worker)
     try:

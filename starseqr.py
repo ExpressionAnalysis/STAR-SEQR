@@ -67,9 +67,9 @@ def parse_args():
     parser.add_argument('--internal_gene_dups', action='store_true',
                         help='allow RNA internal gene duplications to be considered')
     parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
-                        default="refgene",
+                        default="gencode",
                         help='annotation source',
-                        choices=["refgene", "ensgene"])
+                        choices=["refgene", "ensgene","gencode"])
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
     return parser.parse_args()
@@ -317,6 +317,11 @@ def main():
                 ensgene = find_resource("ensGene.txt.gz")
                 kg = gzip.open(ensgene)
                 gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+            elif args.ann_source == "gencode":
+                reftable = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
+                kg_open = gzip.open if reftable.endswith('.gz') else open
+                kg = kg_open(reftable)
+                gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
             # Get Annotation info for each junction
             jxn_filt['left_symbol'], jxn_filt['left_transcript'], jxn_filt['left_strand'] = zip(*jxn_filt.apply(lambda x: ann.get_jxnside_anno(x['name'], gtree, 1), axis=1))
@@ -368,10 +373,6 @@ def main():
                 # TODO: get novel or existiing fusion info from Fusco.
                 # TODO: probabilistic module to assign quality score
 
-                # remove this once a qual is assigned.
-                finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
-                                  ((finaldf["jxn_first_unique"] >= args.jxn_reads) |
-                                  (finaldf["jxn_second_unique"] >= args.jxn_reads))]
                 # Generate Primers using assembled contigs
                 if args.spades:
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['spades']), axis=1).apply(lambda x: ",".join(x))
@@ -379,6 +380,16 @@ def main():
                     finaldf['primers'] = finaldf.apply(lambda x: primer3.runp3(x['name'], x['velvet']), axis=1).apply(lambda x: ",".join(x))
                 # Get Annotation
                 finaldf['ann'] = finaldf['left_symbol'] + "--" + finaldf['right_symbol']
+
+                # all candidates
+                finaldf.to_csv(path_or_buf="candidate_info.txt", header=False, sep="\t",
+                               columns=breakpoint_cols, mode='w', index=False)
+
+                # remove this once a qual is assigned.
+                finaldf = finaldf[(finaldf["spans_disc_unique"] *  5 +
+                                   finaldf["jxn_first_unique"] * 2 +
+                                   finaldf["jxn_second_unique"] * 2) >= 6]
+
                 # Write output
                 finaldf.sort_values(['jxn_first_unique', "spans_disc_unique"], ascending=[False, False], inplace=True)
                 finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
@@ -469,6 +480,10 @@ def main():
                     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
                 elif args.ann_source == "ensgene":
                     ensgene = find_resource("ensGene.txt.gz")
+                    kg = gzip.open(ensgene)
+                    gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+                elif args.ann_source == "gencode":
+                    ensgene = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
                     kg = gzip.open(ensgene)
                     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
                 finaldf['ann'] = ann.get_gene_info(finaldf, gtree)
