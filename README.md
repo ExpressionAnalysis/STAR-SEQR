@@ -2,7 +2,7 @@
 Breakpoint and Fusion Detection.
 
 
-#Installation:
+#Installation
 * Tools that need to be on path
   * biobambam2
   * STAR
@@ -34,9 +34,9 @@ Breakpoint and Fusion Detection.
 
 ### Run STAR-SEQR as follows:
 * RNA
-  * starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 0 -p RNA_test -n RNA -j 2 -s 1 -w 12 -i path/STAR_INDEX --ann_source refgene
+  * starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 0 -p RNA_test -n RNA -j 2 -s 1 -w 12 -i path/STAR_INDEX --ann_source gencode
 * DNA
-  * starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 0 -p DNA_test -n DNA -j 2 -s 1 -w 12 -i path/STAR_INDEX_DNA --ann_source refgene
+  * starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 0 -p DNA_test -n DNA -j 2 -s 1 -w 12 -i path/STAR_INDEX_DNA --ann_source gencode
 
 
 
