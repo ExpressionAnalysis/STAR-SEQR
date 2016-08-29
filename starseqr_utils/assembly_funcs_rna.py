@@ -283,6 +283,8 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
             junctionfqfh.write("+" + "\n")
             junctionfqfh.write(''.join(
                 map(chr, [x + 33 for x in read.query_alignment_qualities])) + "\n")
+    pairfqfh.close()
+    junctionfqfh.close()
     os.remove(bam_sort + ".bam")
 
 
@@ -299,6 +301,7 @@ def fasta_iter(fasta_name):
         seq = "".join(s.strip() for s in faiter.next())
         # print(seq)
         yield header, seq
+    fh.close()
 
 
 def do_velvet(assemdir, fastq, kmer, errlog, *args):
@@ -436,7 +439,7 @@ def run_support_fxn(jxn, tx, in_bam, args, *opts):
             sname, sseq = spades_seq[0]
             results['spades'] = sseq
     results['name'] = jxn
-    logger.info("Support took  %g seconds" % (time.time()-start))
+    logger.info(jxn + " support took  %g seconds" % (time.time()-start))
     return results
 
 
@@ -474,13 +477,17 @@ def run_support_parallel(df, in_bam, args):
         pool.terminate()
         raise e
     except Exception as e:
+        logger.error("Exception: " + str(e))
         pool.terminate()
         raise e
     finally:
         pool.join()
     list_of_dicts = []
+    logger.info("got here3")
     for res in results:
+        logger.info("got here4")
         jxn_ld = res.get()
         list_of_dicts.append(jxn_ld)
+        logger.info("got here5")
     logger.debug("Finished Assembly")
     return list_of_dicts
