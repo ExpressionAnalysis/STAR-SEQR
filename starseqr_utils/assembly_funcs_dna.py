@@ -6,7 +6,6 @@ import sys
 import re
 import string
 import time
-import gzip
 import errno
 import logging
 import subprocess as sp
@@ -14,12 +13,8 @@ from itertools import groupby, islice
 import pysam  # requires 0.9.0 or newer
 import multiprocessing as mp
 import signal
-from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import starseqr_utils
-import annotate_sv as ann
 
-__author__ = "Jeff Jasper"
-__email__ = "jasper1918@gmail.com"
 
 logger = logging.getLogger("STAR-SEQR")
 

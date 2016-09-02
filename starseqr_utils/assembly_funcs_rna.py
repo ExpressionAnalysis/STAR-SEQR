@@ -18,8 +18,6 @@ from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import starseqr_utils
 import annotate_sv as ann
 
-__author__ = "Jeff Jasper"
-__email__ = "jasper1918@gmail.com"
 
 logger = logging.getLogger("STAR-SEQR")
 
@@ -197,7 +195,7 @@ def get_reads_from_bam(bam_file, jxn, tx, gtree, args):
     return results
 
 
-def subset_bam_by_reads(bam, out_bam, read_ids):
+def subset_bam_by_reads(bam, out_bam, read_ids, jxn):
     logger.debug("Subset bam with supporting reads to " + out_bam)
     names = "names=" + read_ids
     index = "index=1"
@@ -211,13 +209,16 @@ def subset_bam_by_reads(bam, out_bam, read_ids):
                                tmpfile], stdin=f, stdout=bamf, stderr=sp.PIPE)
         bamf.close()
         if retcode != 0:
-            logger.error("bamfilternames failed!")
-            sys.exit(1)
+            # !!! Don't do a sys.exit here.. you will hang and lose error info
+            logger.error("bamfilternames failed on:" + jxn)
+            # for line in retcode.stderr:
+            #     logger.error(line)
+            # os._exit(1)
     except OSError, o:
-        logger.error("Exception: " + str(o))
         logger.error("bamfilternames Failed", exc_info=True)
+        logger.error("Exception: " + str(o))
         bamf.close()
-        sys.exit(1)
+        os._exit(1)
 
 
 def bam_2_nsort_bam(in_bam):
@@ -418,7 +419,7 @@ def run_support_fxn(jxn, tx, in_bam, args, *opts):
     # subset supporting reads to bam
     support_bam = jxn_dir + "supporting.bam"
     logger.debug("*Subsetting reads from bam")
-    subset_bam_by_reads(in_bam, support_bam, read_ids)
+    subset_bam_by_reads(in_bam, support_bam, read_ids, jxn)
     pysam.index(support_bam)
     # convert to fastq and run velvet
     pairfq = jxn_dir + 'paired.fastq'
@@ -477,6 +478,11 @@ def run_support_parallel(df, in_bam, args):
             seq = pool.apply_async(run_support_fxn, args=[df.loc[i,'name'], df.loc[i,'txinfo'], in_bam, args])
             results.append(seq)
         pool.close()
+        pool.join()
+        list_of_dicts = []
+        for res in results:
+            jxn_ld = res.get()
+            list_of_dicts.append(jxn_ld)
     except KeyboardInterrupt as e:
         logger.error("Error: Keyboard interrupt")
         pool.terminate()
@@ -485,14 +491,8 @@ def run_support_parallel(df, in_bam, args):
         logger.error("Exception: " + str(e))
         pool.terminate()
         raise e
-    finally:
-        pool.join()
-    list_of_dicts = []
-    logger.info("got here3")
-    for res in results:
-        logger.info("got here4")
-        jxn_ld = res.get()
-        list_of_dicts.append(jxn_ld)
-        logger.info("got here5")
+    # finally:
+    #     pool.join()
+
     logger.debug("Finished Assembly")
     return list_of_dicts

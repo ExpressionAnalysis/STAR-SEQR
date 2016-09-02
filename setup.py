@@ -14,15 +14,15 @@ def read(fname):
 
 setup(
     name='STAR-SEQR',
-    version='0.0.1',
+    version='0.0.2',
     description='',
     long_description=read('README.md'),
     license='APACHE',
     author='Jeff Jasper',
     author_email='jasper1918@gmail.com',
-    url='https://github.com/jasper1918/STAR-SEQR',
+    url='https://github.com/ExpressionAnalysis/STAR-SEQR',
     packages=find_packages(),
-    install_requires=['cython', 'pandas>=0.18.0', 'pysam==0.9.0', 'primer3-py', 'intervaltree_bio'],
+    install_requires=['pandas>=0.18.0', 'pysam==0.9.0', 'primer3-py', 'intervaltree_bio'],
     package_data={"starseqr_utils": ["resources/*"]},
     scripts=['starseqr.py'],
     zip_safe=False,

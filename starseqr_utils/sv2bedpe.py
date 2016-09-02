@@ -6,7 +6,6 @@ import time
 import pandas as pd
 import string
 import logging
-import subprocess as sp
 import svtools_star.svtools.bedpetovcf as sv  # temporary until svtools is fixed
 
 logger = logging.getLogger("STAR-SEQR")

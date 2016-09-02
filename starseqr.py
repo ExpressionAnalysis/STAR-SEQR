@@ -20,10 +20,6 @@ import starseqr_utils.run_primer3 as primer3
 import logging
 
 
-__author__ = "Jeff Jasper"
-__email__ = "jasper1918@gmail.com"
-
-
 def parse_args():
     usage = " "
     parser = ArgumentParser(
@@ -49,7 +45,8 @@ def parse_args():
                         choices=["RNA", "DNA"])
     parser.add_argument('-m', '--mode', type=int, required=False,
                         default=0,
-                        help='Sensitivity Mode. 0=Default, 1=Extra-Sensitive')
+                        choices=[0, 1, 2],
+                        help='STAR alignment sensitivity Mode. 0=Default, 1=More-Sensitive, 2=Extra-Sensitive')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=12,
                         help='Number of threads to use for STAR')
