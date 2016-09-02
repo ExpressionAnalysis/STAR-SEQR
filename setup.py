@@ -17,7 +17,7 @@ setup(
     version='0.0.2',
     description='',
     long_description=read('README.md'),
-    license='APACHE',
+    license='Custom',
     author='Jeff Jasper',
     author_email='jasper1918@gmail.com',
     url='https://github.com/ExpressionAnalysis/STAR-SEQR',
