@@ -10,11 +10,11 @@ logger = logging.getLogger("STAR-SEQR")
 
 
 def runp3(seq_id, sequence):
-    logger.info('Designing Primers for ' + seq_id)
-    start = time.time()
+    # logger.info('Designing Primers for ' + seq_id)
+    # start = time.time()
     # check input
     if len(str(sequence)) < 75:
-        logger.debug("Sequence is too short to design primers")
+        # logger.debug("Sequence is too short to design primers")
         return ()
     # default values
     mydres = {
@@ -58,22 +58,22 @@ def runp3(seq_id, sequence):
     try:
         p3output = primer3.bindings.designPrimers(mydres, mypres)
         if (p3output['PRIMER_PAIR_NUM_RETURNED'] < 1):
-            logger.debug("No Primers found for " + seq_id)
+            # logger.debug("No Primers found for " + seq_id)
             return ()
         else:
             p3res = parsep3(p3output)
     except (OSError):
         logger.error("Primer Design Failed", exc_info=True)
         sys.exit(1)
-    end = time.time()
-    elapsed = end - start
-    logger.debug("Primer Design took  %g seconds" % (elapsed))
-    logger.debug("Finished Primer Design")
+    # end = time.time()
+    # elapsed = end - start
+    # logger.debug("Primer Design took  %g seconds" % (elapsed))
+    # logger.debug("Finished Primer Design")
     return p3res
 
 
 def parsep3(p3output):
-    logger.debug('Parsing Primer3 Results')
+    # logger.debug('Parsing Primer3 Results')
     Lprimer = str(p3output['PRIMER_LEFT_0_SEQUENCE'])
     # Ltm = round(p3output['PRIMER_LEFT_0_TM'])
     Ltuple = p3output['PRIMER_LEFT_0']

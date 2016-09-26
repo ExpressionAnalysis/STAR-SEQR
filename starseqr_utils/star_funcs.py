@@ -6,6 +6,7 @@ import sys
 import logging
 import subprocess as sp
 import pysam  # requires 0.9.0 or newer
+import time
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -36,13 +37,11 @@ def run_star(fq1, fq2, args):
             if (args.mode == 0):
                 sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
-                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 0,
-                               '--chimFilter', 'None']  # , "--twopassMode", "None"]
+                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 0]
             elif (args.mode == 1):
                 sens_params = ['--chimSegmentMin', 7, '--chimJunctionOverhangMin', 7,
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
-                               '--chimScoreSeparation', 5, '--chimSegmentReadGapMax', 0,
-                               '--chimFilter', 'None']
+                               '--chimScoreSeparation', 5, '--chimSegmentReadGapMax', 0]
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = map(str, STAR_args)
@@ -106,28 +105,29 @@ def run_star(fq1, fq2, args):
     logger.info("STAR Alignment Finished!")
 
 
-def sam_2_coord_bam(in_sam, out_bam):
+def sam_2_coord_bam(in_sam, out_bam, nthreads):
+    # TODO: Update this to use newer pysam and threading.
     if (out_bam[-4:] == ".bam"):
         bam_prefix = out_bam[:-4]
     else:
         bam_prefix = out_bam
     bam_unsort = bam_prefix + ".unsorted.bam"
-    pysam.view("-Sbu", "-o%s" % bam_unsort, in_sam)
-    pysam.sort(bam_unsort, "-o", bam_prefix + ".bam")
+    pysam.view("-Sbu", "-@", str(nthreads), "-o", bam_unsort, in_sam)
+    pysam.sort(bam_unsort, "-@", str(nthreads), "-o", bam_prefix + ".bam")
     pysam.index("%s.bam" % bam_prefix)
     os.remove(bam_unsort)
 
 
-def bam_2_nsort_sam(in_bam, out_sam):
+def bam_2_nsort_sam(in_bam, out_sam, nthreads):
     bam_sort = in_bam[:-4] + ".nsorted"
-    pysam.sort("-n", in_bam, "-o", bam_sort + ".bam")
-    pysam.view("-h", "-o%s" % out_sam, (bam_sort + ".bam"))
+    pysam.sort("-n", "-@", str(nthreads),  in_bam, "-o", bam_sort + ".bam")
+    pysam.view("-h", "-@", str(nthreads), "-o" , out_sam, bam_sort + ".bam")
     os.remove(bam_sort + ".bam")
 
 
-def run_biobambam2_rmdup(in_bam, out_bam):
+def run_biobambam2_rmdup(in_bam, out_bam, nthreads):
     mark_samdups_cmd = ['bammarkduplicates2', "=".join(["I", in_bam]), "=".join(["O", out_bam]),
-                        "=".join(["markthreads", "4"]), "=".join(["M", "Dup_metrics.txt"]),
+                        "=".join(["markthreads", str(nthreads)]), "=".join(["M", "Dup_metrics.txt"]),
                         "=".join(["level", "1"]), "=".join(["verbose", "0"])]
     rmdup_args = map(str, mark_samdups_cmd)
     logger.info("MarkDups Command: " + " ".join(rmdup_args))
@@ -203,18 +203,27 @@ def fix_chimeric_flags(in_sam, out_sam):
     data.close()
 
 
-def markdups(in_sam, out_bam):
-    logger.info("Marking duplicate reads")
-    sam_2_coord_bam(in_sam, "primary.bam")
-    run_biobambam2_rmdup("primary.bam", "mrkdup_tmp.bam")
-    check_file_exists("mrkdup_tmp.bam")
-    os.remove("primary.bam")
-    os.remove("primary.bam.bai")
-    bam_2_nsort_sam("mrkdup_tmp.bam", "mrkdup_tmp.sam")
-    os.remove("mrkdup_tmp.bam")
-    fix_chimeric_flags("mrkdup_tmp.sam", "final_tmp.sam")
-    os.remove("mrkdup_tmp.sam")
-    sam_2_coord_bam("final_tmp.sam", out_bam)
-    os.remove("final_tmp.sam")
+# def markdups(in_sam, out_bam, args):
+#     logger.info("Converting junctions.sam to BAM file")
+#     sam_2_coord_bam(in_sam, "primary.bam", args.threads)
+#     run_biobambam2_rmdup("primary.bam", "mrkdup_tmp.bam", args.threads)
+#     check_file_exists("mrkdup_tmp.bam")
+#     os.remove("primary.bam")
+#     os.remove("primary.bam.bai")
+#     logger.info("Name sorting the BAM")
+#     bam_2_nsort_sam("mrkdup_tmp.bam", "mrkdup_tmp.sam", args.threads)
+#     os.remove("mrkdup_tmp.bam")
+#     logger.info("Marking the duplicate chimeric fragments")
+#     fix_chimeric_flags("mrkdup_tmp.sam", "final_tmp.sam")
+#     os.remove("mrkdup_tmp.sam")
+#     logger.info("Converting fix SAM to BAM")
+#     sam_2_coord_bam("final_tmp.sam", out_bam, args.threads)
+#     os.remove("final_tmp.sam")
+#     check_file_exists(out_bam)
+#     logger.info("Finished marking duplicate reads")
+
+def convert(in_sam, out_bam, args):
+    logger.info("Converting junctions.sam to BAM file")
+    sam_2_coord_bam(in_sam, out_bam, args.threads)
     check_file_exists(out_bam)
-    logger.info("Finished marking duplicate reads")
+    logger.info("Finished converting SAM to BAM")

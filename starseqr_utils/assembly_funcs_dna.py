@@ -14,6 +14,8 @@ import pysam  # requires 0.9.0 or newer
 import multiprocessing as mp
 import signal
 import starseqr_utils
+import collections
+import numpy as np
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -35,13 +37,12 @@ def find_resource(filename):
     return fullname
 
 
-def find_discspan(jxn, bam):
+def find_discspan(jxn, bam, sup_reads):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    pairDict = {}
-    pairDict[('disc', 'all')] = {}
-    pairDict[('disc', 'unique')] = {}
+    pairDict = collections.defaultdict(lambda : collections.defaultdict(dict))
+    pairDict[('disc', 'all')][1] = {}
+    pairDict[('disc', 'all')][2] = {}
     # consider 129,65(F,F)  97,145(F,R) 113,177(R,R)
-    # Can these ever be proper paired? What if short indel?
     # need the minus 1 to be exact.
     if str1 == "+":
         pos1left = int(pos1) - 100000
@@ -57,41 +58,37 @@ def find_discspan(jxn, bam):
         pos2right = int(pos2) + 100000
     # print(pos1left, pos1right, pos2left, pos2right)
     for read in bam:
-        if (read.next_reference_name == chrom2 and
-                read.reference_name == chrom1 and
-                not read.flag & 256):
-            if (int(read.reference_start) > pos1left and
-                    int(read.reference_start) < pos1right and
-                    int(read.next_reference_start) > pos2left and
-                    int(read.next_reference_start) < pos2right):
-                if int(read.get_tag('AS')) > 1:  # filter on local alignment score
-                    # print(read.reference_start, read.next_reference_start,
-                    #  read.query_name, read.flag, read.mate_is_reverse)
+        if read.query_name in sup_reads:
+            if (read.next_reference_name == chrom2 and
+                    read.reference_name == chrom1 and
+                    not read.flag & 256):
+                orient = 1 if (read.flag & 64) else 2
+                if (int(read.reference_start) > pos1left and
+                        int(read.reference_start) < pos1right and
+                        int(read.next_reference_start) > pos2left and
+                        int(read.next_reference_start) < pos2right):
                     if read.is_paired:
-                        pairDict[('disc', 'all')][read.query_name] = read.flag
-                    if not read.is_duplicate and read.is_paired:
-                        pairDict[('disc', 'unique')][read.query_name] = read.flag
+                        pairDict[('disc', 'all')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.min(read.query_alignment_qualities)))
     return pairDict
 
 
-def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright):
+def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright, sup_reads):
     '''
     flags: 321 and 385 are orient1. 337 and 401 are orient2.
     '''
-    # chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    jxnDict = {}
-    jxnDict[('all', 'for', 'first')] = {}
-    jxnDict[('all', 'for', 'second')] = {}
-    jxnDict[('all', 'rev', 'first')] = {}
-    jxnDict[('all', 'rev', 'second')] = {}
-    jxnDict[('unique', 'for', 'first')] = {}
-    jxnDict[('unique', 'for', 'second')] = {}
-    jxnDict[('unique', 'rev', 'first')] = {}
-    jxnDict[('unique', 'rev', 'second')] = {}
+    jxnDict = collections.defaultdict(lambda : collections.defaultdict(dict))
+    jxnDict[('for', 'first')][1] = {}
+    jxnDict[('for', 'first')][2] = {}
+    jxnDict[('for', 'second')][1] = {}
+    jxnDict[('for', 'second')][2] = {}
+    jxnDict[('rev', 'first')][1] = {}
+    jxnDict[('rev', 'first')][2] = {}
+    jxnDict[('rev', 'second')][1] = {}
+    jxnDict[('rev', 'second')][2] = {}
 
     if str1 == "+":
         pos1left = int(pos1) - 10000
-        pos1right = int(pos1) + int(repright) - 1  # -1 ?
+        pos1right = int(pos1) + int(repright) - 1
     if str2 == "-":
         pos2left = int(pos2) - 10000
         pos2right = int(pos2) + int(repright) - 1
@@ -101,48 +98,34 @@ def find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, reprigh
     if str2 == "+":
         pos2left = int(pos2) - int(repright) - 1
         pos2right = int(pos2) + 10000
-    # print(pos1left, pos1right, pos2left, pos2right)
 
     for read in bam:
-        if (read.next_reference_name == chrom2 and
-                read.reference_name == chrom1 and
-                read.flag & 256):
-            # print(read.reference_start, read.next_reference_start,
-            #      read.query_name, read.flag, read.mate_is_reverse)
-            if (int(read.reference_start) > pos1left and
-                    int(read.reference_start) < pos1right or
-                    int(read.next_reference_start) > pos2left and
-                    int(read.next_reference_start) < pos2right):
-                # print(read.query_name, read.flag, read.reference_name,
-                #      read.reference_start, read.next_reference_name, read.next_reference_start)
-                # todo: check that read falls on same gene as breakpoint.
-                if int(read.get_tag('AS')) > 1:
-                    if read.is_paired:
-                        if read.flag & 16:
-                            if read.flag & 64:
-                                jxnDict[('all', 'rev', 'first')][read.query_name] = read.flag
+        # print(read.query_name)
+        if read.query_name in sup_reads: # uses predinfed read ids only. locks us to deduped if specified.
+            if (read.next_reference_name == chrom2 and
+                    read.reference_name == chrom1 and
+                    read.flag & 256):
+                orient = 1 if (read.flag & 64) else 2
+                if (int(read.reference_start) > pos1left and
+                        int(read.reference_start) < pos1right or
+                        int(read.next_reference_start) > pos2left and
+                        int(read.next_reference_start) < pos2right):
+                    if int(read.get_tag('AS')) > 1:
+                        if read.is_paired:
+                            if read.flag & 16:
+                                if read.flag & 64:
+                                    jxnDict[('rev', 'first')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.min(read.query_alignment_qualities)))
+                                else:
+                                    jxnDict[('rev', 'second')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.min(read.query_alignment_qualities)))
                             else:
-                                jxnDict[('all', 'rev', 'second')][read.query_name] = read.flag
-                        else:
-                            if read.flag & 64:
-                                jxnDict[('all', 'for', 'first')][read.query_name] = read.flag
-                            else:
-                                jxnDict[('all', 'for', 'second')][read.query_name] = read.flag
-                    if not read.is_duplicate and read.is_paired:
-                        if read.flag & 16:
-                            if read.flag & 64:
-                                jxnDict[('unique', 'rev', 'first')][read.query_name] = read.flag
-                            else:
-                                jxnDict[('unique', 'rev', 'second')][read.query_name] = read.flag
-                        else:
-                            if read.flag & 64:
-                                jxnDict[('unique', 'for', 'first')][read.query_name] = read.flag
-                            else:
-                                jxnDict[('unique', 'for', 'second')][read.query_name] = read.flag
+                                if read.flag & 64:
+                                    jxnDict[('for', 'first')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.min(read.query_alignment_qualities)))
+                                else:
+                                    jxnDict[('for', 'second')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.min(read.query_alignment_qualities)))
     return jxnDict
 
 
-def get_reads_from_bam(bam_file, jxn, args):
+def get_reads_from_bam(bam_file, jxn, sup_reads, args):
     '''
     Fetch reads from each direction of jxn and get an accounting of each if unique or duplicate.
     '''
@@ -156,41 +139,39 @@ def get_reads_from_bam(bam_file, jxn, args):
         logger.error("Index file could not be found for: " + bam_file)
         sys.exit()
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    # account for genome start
-    if int(pos1) - 1000 > 0:
-        dist1 = int(pos1)
-    else:
-        dist1 = 0
-    if int(pos2) - 1000 > 0:
-        dist2 = int(pos2)
-    else:
-        dist2 = 0
-    # account for genome boundaries
-    # ++Todo: Need to get bam header to look for ends. write fxn for this. also remove circular chrom
+     # account for genome boundaries
+    len1 = (item for item in bamObject.header['SQ'] if item["SN"] == chrom1).next()['LN']
+    len2 = (item for item in bamObject.header['SQ'] if item["SN"] == chrom2).next()['LN']
+    dist1_less = max(i for i in [int(pos1)-100000, 0] if i >= 0)
+    dist1_plus = min(i for i in [int(pos1)+100000, len1] if i >= 0)
+    dist2_less = max(i for i in [int(pos2)-100000, 0] if i >= 0)
+    dist2_plus = min(i for i in [int(pos2)+100000, len2] if i >= 0)
     logger.debug("Extracting paired spanning reads for " + jxn)
     # spans
-    bam = bamObject.fetch(chrom1, int(pos1) - int(dist1), int(pos1) + dist1)
-    spanD = find_discspan(jxn, bam)
+    # print(str(chrom1)+":"+str(dist1_less)+"-"+str(dist1_plus))
+    bam = bamObject.fetch(chrom1, dist1_less, dist1_plus, until_eof=True)
+    spanD = find_discspan(jxn, bam, sup_reads)
     results['spans'] = spanD
     # left junctions
     logger.debug("Extracting junction reads originating from the first breakpoint for " + jxn)
-    bam = bamObject.fetch(chrom1, int(pos1) - int(dist1), int(pos1) + dist1)
-    jxnD_for = find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright)
+    bam = bamObject.fetch(chrom1, dist1_less, dist1_plus, until_eof=True)
+    jxnD_for = find_junctions(bam, chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright, sup_reads)
     results['jxnleft'] = jxnD_for
     # right junctions
     logger.debug("Extracting junction reads originating from the second breakpoint for " + jxn)
     flipstr = string.maketrans("-+", "+-")
     nstr1 = str1.translate(flipstr)
     nstr2 = str2.translate(flipstr)
-    bam = bamObject.fetch(chrom2, int(pos2) - int(dist2), int(pos2) + dist2)
-    jxnD_rev = find_junctions(bam, chrom2, pos2, nstr2, chrom1, pos1, nstr1, repleft, repright)
+    # print(str(chrom2)+":"+str(dist2_less)+"-"+str(dist2_plus))
+    bam = bamObject.fetch(chrom2, dist2_less, dist2_plus, until_eof=True)
+    jxnD_rev = find_junctions(bam, chrom2, pos2, nstr2, chrom1, pos1, nstr1, repleft, repright, sup_reads)
     results['jxnright'] = jxnD_rev
     bamObject.close()
     logger.debug("Finished extracting supporting read information for " + jxn)
     return results
 
 
-def subset_bam_by_reads(bam, out_bam, read_ids):
+def subset_bam_by_reads(bam, out_bam, read_ids, jxn):
     logger.debug("Subset bam with supporting reads to " + out_bam)
     names = "names=" + read_ids
     index = "index=1"
@@ -204,13 +185,13 @@ def subset_bam_by_reads(bam, out_bam, read_ids):
                                tmpfile], stdin=f, stdout=bamf, stderr=sp.PIPE)
         bamf.close()
         if retcode != 0:
-            logger.error("bamfilternames failed!")
-            sys.exit(1)
-    except OSError, o:
-        logger.error("Exception: " + str(o))
+            # !!! Don't do a sys.exit here.. you will hang and lose error info
+            logger.error("bamfilternames failed on:" + jxn)
+    except Exception as e:
         logger.error("bamfilternames Failed", exc_info=True)
+        logger.error("Exception: " + str(e))
         bamf.close()
-        sys.exit(1)
+        os._exit(1)
 
 
 def bam_2_nsort_bam(in_bam):
@@ -244,8 +225,16 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
         sys.exit(1)
     pairfqfh = open(pairfq, 'w')
     junctionfqfh = open(junctionfq, 'w')
-    bam_sort = in_bam[:-4] + ".nsorted"
-    pysam.sort("-n", in_bam, "-o", bam_sort + ".bam")
+    try:
+        bam_sort = in_bam[:-4] + ".nsorted"
+        pysam.sort("-n", in_bam, "-o", bam_sort + ".bam")
+        if not os.path.exists(bam_sort + ".bam"):
+            logger.error("name sorted BAM file could not be found: " + bam_sort + ".bam")
+            sys.exit(1)
+    except (OSError) as o:
+        logger.error("Exception: " + str(o))
+        logger.error("pysam Failed!", exc_info=True)
+        sys.exit(1)
     bamObject = pysam.Samfile(bam_sort + ".bam", 'rb')
     for read in bamObject.fetch(until_eof=True):
         if not read.flag & 256:
@@ -276,6 +265,8 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
             junctionfqfh.write("+" + "\n")
             junctionfqfh.write(''.join(
                 map(chr, [x + 33 for x in read.query_alignment_qualities])) + "\n")
+    pairfqfh.close()
+    junctionfqfh.close()
     os.remove(bam_sort + ".bam")
 
 
@@ -361,7 +352,6 @@ def do_spades(assemdir, pfastq, jxnfastq, errlog):
             errlog.write(stderr)
         if p.returncode != 0:
             logger.error("Error: spades failed")
-            # sys.exit(1)
         else:
             if (os.stat(os.path.realpath(assemdir + "/scaffolds.fasta")).st_size != 0):
                 records2 = fasta_iter(assemdir + "/scaffolds.fasta")
@@ -372,44 +362,44 @@ def do_spades(assemdir, pfastq, jxnfastq, errlog):
         sys.exit(1)
 
 
-def run_support_fxn(jxn, in_bam, args, *opts):
+def run_support_fxn(jxn, sup_reads, in_bam, args, *opts):
     ''' Run command to run assembly for a single breakpoint '''
-    logger.info("Getting read support for " + jxn)
+    # logger.info("Getting read support for " + jxn)
     start = time.time()
-    results = {}
+    results = collections.defaultdict(list)
     clean_jxn = str(jxn).replace(":", "_")
     clean_jxn = str(clean_jxn).replace("+", "pos")
     clean_jxn = str(clean_jxn).replace("-", "neg")
     jxn_dir = "support" + "/" + clean_jxn + "/"
     make_new_dir(jxn_dir)
     # get supporting reads
-    extracted = get_reads_from_bam(in_bam, jxn, args)
+    extracted = get_reads_from_bam(in_bam, jxn, sup_reads, args)
     logger.debug("Found and extracted reads successfully")
     for entry in extracted:
         for entry2 in extracted[entry]:
-            # print(entry + '_' + '_'.join(entry2), len(extracted[entry][entry2].keys()))
-            results[entry + '_' + '_'.join(entry2)] = len(extracted[entry][entry2].keys())
-    # unique
-    read_ids = jxn_dir + "supporting_reads_unique.txt"
-    with open(read_ids, "w") as f:
-        for entry in extracted:
-            for entry2 in extracted[entry]:
-                if "unique" in entry2:
-                    for uniq_reads in extracted[entry][entry2]:
-                        f.write(uniq_reads + "\n")
-    f.close
+            for entry3 in extracted[entry][entry2]:
+                dname = entry + '_' + '_'.join(entry2)
+                results[dname + "_reads"] = list(set(extracted[entry][entry2][1].keys()) | set(extracted[entry][entry2][2].keys()))
+                results[dname] = len(results[dname + "_reads"])
+                for k, v in extracted[entry][entry2][entry3].iteritems():
+                    # metric values: read flag ,AS, nM, length, qualities
+                    results[dname + '_AS' + str(entry3)].append(v[1])
+                    results[dname + '_mismatches' + str(entry3)].append(v[2])
+                    results[dname + '_seqlen' + str(entry3)].append(v[3])
+                    results[dname + '_minBQ' + str(entry3)].append(v[4])
     # all_reads
     read_ids_all = jxn_dir + "supporting_reads_all.txt"
     with open(read_ids_all, "w") as f2:
         for entry in extracted:
             for entry2 in extracted[entry]:
-                for all_reads in extracted[entry][entry2]:
-                    f2.write(all_reads + "\n")
+                for entry3 in extracted[entry][entry2]:
+                    for all_reads in extracted[entry][entry2][entry3]:
+                        f2.write(all_reads + "\n")
     f2.close
     # subset supporting reads to bam
     support_bam = jxn_dir + "supporting.bam"
     logger.debug("*Subsetting reads from bam")
-    subset_bam_by_reads(in_bam, support_bam, read_ids)
+    subset_bam_by_reads(in_bam, support_bam, read_ids_all, jxn)
     pysam.index(support_bam)
     # convert to fastq and run velvet
     pairfq = jxn_dir + 'paired.fastq'
@@ -421,18 +411,18 @@ def run_support_fxn(jxn, in_bam, args, *opts):
     errlog.close()
     if velvet_all:
         vname, vseq = velvet_all[0]
-        results['velvet'] = vseq
-    if args.spades:
+        results['assembly'] = vseq
+    elif args.spades:
         splog = open(jxn_dir + "spades_log.txt", "w")
         spades_seq = do_spades(jxn_dir + "spades", pairfq, junctionfq, splog)
         splog.close()
         if spades_seq:
             sname, sseq = spades_seq[0]
-            results['spades'] = sseq
+            results['assembly'] = sseq
+    else:
+        results['assembly'] = ''
     results['name'] = jxn
-    end = time.time()
-    elapsed = end - start
-    logger.info("Support took  %g seconds" % (elapsed))
+    logger.info(jxn + " support took  %g seconds" % (time.time()-start))
     return results
 
 
@@ -446,12 +436,11 @@ def run_support_parallel(df, in_bam, args):
     logger.debug("Getting Read Support")
     make_new_dir("support")
     results = []
-    pool = mp.Pool(int(args.workers), init_worker)
+    pool = mp.Pool(int(args.threads), init_worker)
     try:
-        for jxn in df['name']:
-            seq = pool.apply_async(run_support_fxn, args=[jxn, in_bam, args])
+        for i in (df.index.values):
+            seq = pool.apply_async(run_support_fxn, args=[df.loc[i,'name'], df.loc[i,'supporting_reads'].split(","),  in_bam, args])
             results.append(seq)
-            # results[jxn] = jxnres
         pool.close()
     except KeyboardInterrupt as e:
         logger.error("Error: Keyboard interrupt")
@@ -466,7 +455,5 @@ def run_support_parallel(df, in_bam, args):
     for res in results:
         jxn_ld = res.get()
         list_of_dicts.append(jxn_ld)
-        # for x in jxn_ld:
-        #     print(x,jxn_ld[x])
     logger.debug("Finished Assembly")
     return list_of_dicts

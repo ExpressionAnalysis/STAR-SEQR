@@ -15,6 +15,35 @@ logger = logging.getLogger("STAR-SEQR")
 # http://hgdownload.cse.ucsc.edu/goldenpath/hg38/database/knownGene.txt.gz
 # can also use ucsc or ensg
 
+def get_jxnside_genes(jxn, gtree):
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    resL = gtree[chrom1].search(int(pos1))
+    resR = gtree[chrom2].search(int(pos2))
+    genesL = set()
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            Lsymbol = list(resL)[idx].data['name2']
+            genesL.add(Lsymbol)
+            # Lstrand = list(resL)[0].data['strand']  # Just use the first gene for now.
+    else:
+        genesL.add("NA")
+    # From the right
+    genesR = set()
+    if len(resR) > 0:
+        for idx, val in enumerate(resR):
+            Rsymbol = list(resR)[idx].data['name2']
+            genesR.add(Rsymbol)
+            # Rstrand = list(resL)[0].data['strand'] # Just use the first gene for now.
+    else:
+        genesR.add("NA")
+    common = genesL & genesR
+    if len(common)>=1:
+        iscommon = 1
+    else:
+        iscommon = 0
+    return (genesL, genesR, iscommon)
+
+
 def get_jxn_info_func(jxn, gtree):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     resL = gtree[chrom1].search(int(pos1))
@@ -55,6 +84,7 @@ def get_pos_genes(chrom1, pos1, gtree):
 def get_gene_info(svtable, gtree):
     logger.info('Annotating each breakpoint')
     start = time.time()
+    svtable['name'] = svtable['name'].astype(str)
     for index, row in svtable.iterrows():
         chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', row['name'])
         resL = gtree[chrom1].search(int(pos1))

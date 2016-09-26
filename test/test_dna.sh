@@ -1,7 +1,7 @@
 #!/bin/bash
 
 STARSEQR="../starseqr.py"
-cmd="python ../starseqr.py -1 DNA_1.fastq.gz -2 DNA_2.fastq.gz -m 0 -p DNA_test -n DNA -vv -j 2 -s 2 -d 1000000 -w 12 -i /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_HUMAN_S2 --ann_source gencode"
+cmd="python ../starseqr.py -1 DNA_1.fastq.gz -2 DNA_2.fastq.gz -m 0 -p DNA_test -n DNA -j 2 -s 2 -d 1000000 -t 12 -i /mounts/isilon/data/indexes/DNA/h_sapiens/hg19.fa.derived/eaGene4/STAR_SEQR_HUMAN_S2 --ann_source gencode -vv"
 echo $cmd
 eval $cmd
 

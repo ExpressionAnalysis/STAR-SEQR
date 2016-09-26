@@ -19,7 +19,7 @@ def write_header(args, fh, file_type):
     bedpe_head = '\t'.join(['#CHROM_A', 'START_A', 'END_A', 'CHROM_B', 'START_B', 'END_B', 'ID', 'QUAL', 'STRAND_A', 'STRAND_B',
                             'TYPE', 'FILTER', 'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix])
     header = ['##fileformat=VCFv4.2', '##fileDate=' + today,
-              '##source=STAR-SV', '##reference=' + 'hg19',
+              '##source=STAR-SEQR', '##reference=' + 'hg19',
               '##FILTER=<ID=PASS,Description="All filters passed">',
               '##FILTER=<ID=FAIL,Description="Site failed to reach confidence">',
               '##INFO=<ID=ANN,Number=.,Type=String,Description="Functional annotations: \'Symbol\'">',
@@ -44,17 +44,7 @@ def write_header(args, fh, file_type):
               '##FORMAT=<ID=SP,Number=1,Type=String,Description="Number of paired discordant spanning reads">',
               '##FORMAT=<ID=JXL,Number=1,Type=String,Description="Number of reads coming from the left">',
               '##FORMAT=<ID=JXR,Number=1,Type=String,Description="Number of reads coming from the right">',
-              '##FORMAT=<ID=SPU,Number=1,Type=String,Description="Number of unique paired discordant spanning reads">',
-              '##FORMAT=<ID=JXLU,Number=1,Type=String,Description="Number of unique reads coming from the left">',
-              '##FORMAT=<ID=JXRU,Number=1,Type=String,Description="Number of unique reads coming from the right">',
               '##FORMAT=<ID=GQ,Number=1,Type=String,Description="Genotype Quality">',
-              '##FORMAT=<ID=AF,Number=1,Type=Float,Description="Allele Frequency">',
-              '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Total Depth at position">',
-              '##FORMAT=<ID=AD,Number=2,Type=Integer,Description="Allele depths of ref and alt alleles in that order">',
-              '##FORMAT=<ID=FSAD,Number=2,Type=Integer,Description="Allele depths on forward strands of ref and alt alleles in that order">',
-              '##FORMAT=<ID=SB,Number=1,Type=Float,Description="Strand bias">',
-              '##FORMAT=<ID=BQ,Number=1,Type=Float,Description="Average Base Quality of ALT">',
-              '##FORMAT=<ID=PV,Number=1,Type=Float,Description="Adjusted p-value">',
               '##variants_justified=left',
               '##STAR-SV_CMD=' + vpcmd]
     if file_type == "bedpe":
@@ -85,7 +75,7 @@ def get_svtype_func(str1, str2, c1, c2):
 def get_bnd_alt_func(c1, c2, s1, s2, str1, str2, which_bnd):
     if which_bnd == 'A':
         if str(str1) == "+" and str(str2) == "+":
-            alt = "N" + "[" + str(c2) + ":" + str(s2) + "]"
+            alt = "N" + "]" + str(c2) + ":" + str(s2) + "]"
         elif str(str1) == "-" and str(str2) == "-":
             alt = "[" + str(c2) + ":" + str(s2) + "[" + "N"
         elif str(str1) == "+" and str(str2) == "-":
@@ -94,16 +84,14 @@ def get_bnd_alt_func(c1, c2, s1, s2, str1, str2, which_bnd):
             alt = "]" + str(c2) + ":" + str(s2) + "]" + "N"
     elif which_bnd == 'B':
         if str(str1) == "+" and str(str2) == "+":
-            alt = "N" + "[" + str(c1) + ":" + str(s1) + "]"
+            alt = "N" + "]" + str(c1) + ":" + str(s1) + "]"
         elif str(str1) == "-" and str(str2) == "-":
             alt = "[" + str(c1) + ":" + str(s1) + "[" + "N"
         elif str(str1) == "+" and str(str2) == "-":
-            alt = "N" + "[" + str(c1) + ":" + str(s1) + "["
-        elif str(str1) == "-" and str(str2) == "+":
             alt = "]" + str(c1) + ":" + str(s1) + "]" + "N"
+        elif str(str1) == "-" and str(str2) == "+":
+            alt = "N" + "[" + str(c1) + ":" + str(s1) + "["
     return alt
-
-# "SEQLEN=" + df['velvet'].str.len().astype(int).astype(str)
 
 
 def get_bedpestuff_func(df_in, svtype):
@@ -120,21 +108,21 @@ def get_bedpestuff_func(df_in, svtype):
                 "POS=" + df['s1'].astype(str) + ';' + \
                 "END=" + df['s2'].astype(str) + ';' + \
                 "ANN=" + df['ann'] + ';' + \
-                "CIPOS=" + "0," + df['a1'] + ';' + \
+                "CIPOS=" + df['a2'] + ',' + df['a1'] + ';' + \
                 "HOMLEN=" + df['a1'] + ';' + \
                 "MATEID=" + df['NAME_B'] + ';' + \
-                "EVENT=" + df['id'].astype(str) + ';' + \
-                "SEQLEN=" + df['velvet'].str.len().astype(str)
+                "EVENT=" + df['id'].astype(str)
+                # "SEQLEN=" + df['velvet'].str.len().astype(str)
             df['INFO_B'] = "SVTYPE=" + df['svtype'] + ';' + \
                 "POS=" + df['s1'].astype(str) + ';' + \
                 "END=" + df['s2'].astype(str) + ';' + \
                 "ANN=" + df['ann'] + ';' + \
-                "CIPOS=" + "0," + df['a2'] + ';' + \
-                "HOMLEN=" + df['a1'] + ';' + \
+                "CIPOS=" + df['a1'] + ',' + df['a2'] + ';' + \
+                "HOMLEN=" + df['a2'] + ';' + \
                 "MATEID=" + df['NAME_A'] + ';' + \
                 "EVENT=" + df['id'].astype(str) + ';' + \
-                "SECONDARY" + ';' + \
-                "SEQLEN=" + df['velvet'].str.len().astype(str)
+                "SECONDARY"
+                # "SEQLEN=" + df['velvet'].str.len().astype(str)
     else:
         df = df_in[df_in['svtype'] != "BND"]
         if len(df.index) > 0:
@@ -149,34 +137,32 @@ def get_bedpestuff_func(df_in, svtype):
                 "END=" + df['s2'].astype(str) + ';' + \
                 "ANN=" + df['ann'] + ';' + \
                 "CIPOS=" + df['a1'] + "," + df['a2'] + ';' + \
-                "HOMLEN=" + df['a1'] + ';' + \
-                "SVLEN=" + df['dist'].astype(str) + ';' + \
-                "SEQLEN=" + df['velvet'].str.len().astype(str)
+                "HOMLEN=" + df['a2'] + ';' + \
+                "SVLEN=" + df['dist'].astype(str)
             df['INFO_B'] = "."
     return df
 
 
-def write_bedpe(bkpt_path, out_bedpe, args):
+def write_bedpe(df, out_bedpe, args):
+    '''the bedpe should be 0 based, incoming values are 0 based.'''
     bedpe_fh = open(out_bedpe, 'w')
     write_header(args, bedpe_fh, "bedpe")
-    try:
-        df = pd.read_csv(bkpt_path, sep="\t", header=0)
-    except ValueError, e:
-        logger.info("ValueError: " + str(e))
-        return
+    df = df.reset_index(drop=True)
     df = df.reset_index()
     df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
     # STAR has second object flipped
     flipstr = string.maketrans("-+", "+-")
     df['st2'] = df['st2'].str.translate(flipstr)
-
+    # use 0-based positions from breakpoint cols
+    df['c1'], df['s1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
+    df['c2'], df['s2'] = zip(*df['breakpoint_right'].str.split(':').tolist())
+    df['s1'] = df['s1'].astype(int)
+    df['s2'] = df['s2'].astype(int)
     # Common stuff to BNDs and others
-    df['e1'] = df['s1']
-    df['e2'] = df['s2']
-    df['s1'] = df['s1'].astype(int) - 1  # Convert start to 0-based coordinates
-    df['s2'] = df['s2'].astype(int) - 1
+    df['e1'] = df['s1'] + 1 # these are 1-based endings.
+    df['e2'] = df['s2'] + 1
     df['id'] = df['index'].astype(int) + 1
-    df['qual'] = df['jxn_first_unique'] + df['jxn_second_unique']  # Eventually get a handle on a scoring metric besides number of reads
+    df['qual'] = df['jxn_first'] + df['jxn_second']  # Eventually get a handle on a scoring metric besides number of reads
     df['svtype'] = df.apply(lambda x: get_svtype_func(x['st1'], x['st2'], x['c1'], x['c2']), axis=1)
     df['filter'] = "PASS"
 
@@ -186,13 +172,12 @@ def write_bedpe(bkpt_path, out_bedpe, args):
     df_nonbnd = get_bedpestuff_func(df, "nonBND")
     df2 = pd.concat([df_bnd, df_nonbnd], ignore_index=True).sort_values(['c1', 's1'], ascending=[True, True])   #
 
-    df2['FORMAT'] = "GT:SP:JXL:JXR:SPU:JXLU:JXRU"
-    df2[args.prefix] = "./." + ":" + df2['spans_disc_all'].astype(str) + ":" + df2['jxn_first_all'].astype(str) + ":" + df2['jxn_second_all'].astype(
-        str) + ":" + df2['spans_disc_unique'].astype(str) + ":" + df2['jxn_first_unique'].astype(str) + ":" + df2['jxn_second_unique'].astype(str)
+    df2['FORMAT'] = "GT:SP:JXL:JXR"
+    df2[args.prefix] = "./." + ":" + df2['spans_disc'].astype(str) + ":" + df2['jxn_first'].astype(str) + ":" + df2['jxn_second'].astype(str)
     outcols = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'id', 'qual', 'st1', 'st2', 'svtype', 'filter',
                'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix]
     df2.to_csv(path_or_buf=bedpe_fh, header=False, sep='\t', columns=outcols, mode='a', index=False)
-    logger.info("bedpe creation was succesful!")
+    logger.info("bedpe creation was successful!")
 
 
 def write_vcf(in_bed, out_vcf):
@@ -217,11 +202,11 @@ def write_vcf(in_bed, out_vcf):
         logger.error("Exception: " + str(o))
         logger.error("sv Failed", exc_info=True)
         sys.exit(1)
-    logger.info("VCF creation was succesful!")
+    logger.info("VCF creation was successful!")
 
 
-def process(bkpt_path, args):
+def process(bkpt_df, args):
     bedpe_path = args.prefix + '_STAR-SEQR_breakpoints.bedpe'
     vcf_path = args.prefix + '_STAR-SEQR_breakpoints.vcf'
-    write_bedpe(bkpt_path, bedpe_path, args)
+    write_bedpe(bkpt_df, bedpe_path, args)
     write_vcf(bedpe_path, vcf_path)
