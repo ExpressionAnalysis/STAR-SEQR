@@ -147,36 +147,37 @@ def write_bedpe(df, out_bedpe, args):
     '''the bedpe should be 0 based, incoming values are 0 based.'''
     bedpe_fh = open(out_bedpe, 'w')
     write_header(args, bedpe_fh, "bedpe")
-    df = df.reset_index(drop=True)
-    df = df.reset_index()
-    df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
-    # STAR has second object flipped
-    flipstr = string.maketrans("-+", "+-")
-    df['st2'] = df['st2'].str.translate(flipstr)
-    # use 0-based positions from breakpoint cols
-    df['c1'], df['s1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
-    df['c2'], df['s2'] = zip(*df['breakpoint_right'].str.split(':').tolist())
-    df['s1'] = df['s1'].astype(int)
-    df['s2'] = df['s2'].astype(int)
-    # Common stuff to BNDs and others
-    df['e1'] = df['s1'] + 1 # these are 1-based endings.
-    df['e2'] = df['s2'] + 1
-    df['id'] = df['index'].astype(int) + 1
-    df['qual'] = df['jxn_first'] + df['jxn_second']  # Eventually get a handle on a scoring metric besides number of reads
-    df['svtype'] = df.apply(lambda x: get_svtype_func(x['st1'], x['st2'], x['c1'], x['c2']), axis=1)
-    df['filter'] = "PASS"
+    if len(df.index) >= 1:
+        df = df.reset_index(drop=True)
+        df = df.reset_index()
+        df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
+        # STAR has second object flipped
+        flipstr = string.maketrans("-+", "+-")
+        df['st2'] = df['st2'].str.translate(flipstr)
+        # use 0-based positions from breakpoint cols
+        df['c1'], df['s1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
+        df['c2'], df['s2'] = zip(*df['breakpoint_right'].str.split(':').tolist())
+        df['s1'] = df['s1'].astype(int)
+        df['s2'] = df['s2'].astype(int)
+        # Common stuff to BNDs and others
+        df['e1'] = df['s1'] + 1 # these are 1-based endings.
+        df['e2'] = df['s2'] + 1
+        df['id'] = df['index'].astype(int) + 1
+        df['qual'] = df['jxn_first'] + df['jxn_second']  # Eventually get a handle on a scoring metric besides number of reads
+        df['svtype'] = df.apply(lambda x: get_svtype_func(x['st1'], x['st2'], x['c1'], x['c2']), axis=1)
+        df['filter'] = "PASS"
 
-    # Get unique to BNDs and others then merge
-    pd.options.mode.chained_assignment = None  # default='warn'
-    df_bnd = get_bedpestuff_func(df, "BND")
-    df_nonbnd = get_bedpestuff_func(df, "nonBND")
-    df2 = pd.concat([df_bnd, df_nonbnd], ignore_index=True).sort_values(['c1', 's1'], ascending=[True, True])   #
+        # Get unique to BNDs and others then merge
+        pd.options.mode.chained_assignment = None  # default='warn'
+        df_bnd = get_bedpestuff_func(df, "BND")
+        df_nonbnd = get_bedpestuff_func(df, "nonBND")
+        df2 = pd.concat([df_bnd, df_nonbnd], ignore_index=True).sort_values(['c1', 's1'], ascending=[True, True])   #
 
-    df2['FORMAT'] = "GT:SP:JXL:JXR"
-    df2[args.prefix] = "./." + ":" + df2['spans_disc'].astype(str) + ":" + df2['jxn_first'].astype(str) + ":" + df2['jxn_second'].astype(str)
-    outcols = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'id', 'qual', 'st1', 'st2', 'svtype', 'filter',
-               'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix]
-    df2.to_csv(path_or_buf=bedpe_fh, header=False, sep='\t', columns=outcols, mode='a', index=False)
+        df2['FORMAT'] = "GT:SP:JXL:JXR"
+        df2[args.prefix] = "./." + ":" + df2['spans_disc'].astype(str) + ":" + df2['jxn_first'].astype(str) + ":" + df2['jxn_second'].astype(str)
+        outcols = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'id', 'qual', 'st1', 'st2', 'svtype', 'filter',
+                   'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix]
+        df2.to_csv(path_or_buf=bedpe_fh, header=False, sep='\t', columns=outcols, mode='a', index=False)
     logger.info("bedpe creation was successful!")
 
 

@@ -7,6 +7,7 @@ import re
 import string
 import time
 import gzip
+import io
 import errno
 import logging
 import subprocess as sp
@@ -15,10 +16,10 @@ import pysam  # requires 0.9.0 or newer
 import multiprocessing as mp
 import signal
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
-import starseqr_utils
-import annotate_sv as ann
 import collections
 import numpy as np
+import starseqr_utils
+import annotate_sv as ann
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -209,15 +210,13 @@ def bam_2_nsort_bam(in_bam):
     pysam.sort("-n", in_bam, "-o", bam_sort + ".bam")
 
 
-# DNA base complements
-COMPLEMENT = {'A': 'T',
-              'T': 'A',
-              'C': 'G',
-              'G': 'C',
-              'N': 'N'}
-
-
 def reverse_complement(sequence):
+    # DNA base complements
+    COMPLEMENT = {'A': 'T',
+                  'T': 'A',
+                  'C': 'G',
+                  'G': 'C',
+                  'N': 'N'}
     return ''.join(COMPLEMENT[x] for x in sequence[::-1])
 
 
@@ -450,22 +449,19 @@ def run_support_parallel(df, in_bam, args):
     logger.debug("Getting Read Support")
     make_new_dir("support")
     results = []
+    # annotation to be used
     global gtree
-    # get interval tree for annot
     if args.ann_source == "refgene":
-        reftable = find_resource("refGene.txt.gz")
-        kg_open = gzip.open if reftable.endswith('.gz') else open
-        kg = kg_open(reftable)
+        refgene = find_resource("refGene.txt.gz")
+        kg = io.BufferedReader(gzip.open(refgene))
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
     elif args.ann_source == "ensgene":
-        reftable = find_resource("ensGene.txt.gz")
-        kg_open = gzip.open if reftable.endswith('.gz') else open
-        kg = kg_open(reftable)
+        ensgene = find_resource("ensGene.txt.gz")
+        kg = io.BufferedReader(gzip.open(ensgene))
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     elif args.ann_source == "gencode":
-        reftable = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
-        kg_open = gzip.open if reftable.endswith('.gz') else open
-        kg = kg_open(reftable)
+        gencode = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
+        kg = io.BufferedReader(gzip.open(gencode))
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
     pool = mp.Pool(int(args.threads), init_worker)

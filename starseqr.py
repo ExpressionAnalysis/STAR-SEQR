@@ -10,17 +10,19 @@ from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import gzip
-import starseqr_utils
-import starseqr_utils.star_funcs as star
-import starseqr_utils.assembly_funcs_dna as assem_dna
-import starseqr_utils.assembly_funcs_rna as assem_rna
-import starseqr_utils.annotate_sv as ann
-import starseqr_utils.sv2bedpe as sv2bedpe
-import starseqr_utils.run_primer3 as primer3
+import io
 import logging
 import numpy as np
 import multiprocessing as mp
 import signal
+import starseqr_utils
+import starseqr_utils.star_funcs as star
+# import starseqr_utils.assembly_funcs_dna as assem_dna
+import starseqr_utils.assembly_funcs_rna as assem_rna
+import starseqr_utils.annotate_sv as ann
+import starseqr_utils.sv2bedpe as sv2bedpe
+import starseqr_utils.run_primer3 as primer3
+
 
 
 def parse_args():
@@ -69,6 +71,8 @@ def parse_args():
                         help='allow RNA fusions to contain at least one breakpoint from Mitochondria')
     parser.add_argument('--keep_novel', action='store_true',
                         help='allow gene fusions to pass that have no gene annotation')
+    parser.add_argument('--keep_unscaffolded', action='store_true',
+                        help='allow gene fusions to pass that are found on unscaffolded contigs')
     parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
                         default="gencode",
                         help='annotation source',
@@ -76,6 +80,12 @@ def parse_args():
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
     return parser.parse_args()
+
+
+def check_file_exists(path):
+    if (os.stat(os.path.realpath(path)).st_size == 0):
+        logger.error("Exiting. Cannot find file: " + os.path.realpath(path))
+        sys.exit(1)
 
 
 def find_resource(filename):
@@ -395,13 +405,15 @@ def main():
     fq1_path = os.path.realpath(args.fastq1)
     fq2_path = os.path.realpath(args.fastq2)
     if args.bed_file:
+        check_file_exists(bed_file)
         bed_path = os.path.realpath(args.bed_file)
+
     # make sample folder
     if not os.path.exists(args.prefix + "_STAR-SEQR"):
         os.makedirs(args.prefix + "_STAR-SEQR")
     os.chdir(args.prefix + "_STAR-SEQR")
-    star.check_file_exists(fq1_path)
-    star.check_file_exists(fq2_path)
+    check_file_exists(fq1_path)
+    check_file_exists(fq2_path)
     star.run_star(fq1_path, fq2_path, args)
 
     # import all jxns
@@ -409,20 +421,24 @@ def main():
     rawdf = import_jxns_pandas(args.prefix + ".Chimeric.out.junction", args)
     jxns = rawdf[rawdf['jxntype'] >= 0].reset_index() # junctions can be either 0, 1, 2
 
+    if len(jxns.index) == 0:
+        logger.info("No junctions found in the input file")
+        sv2bedpe.process(jxns, args)
+        sys.exit(0)
+
     # Prepare Annotation
     global gtree
     if args.ann_source == "refgene":
         refgene = find_resource("refGene.txt.gz")
-        kg = gzip.open(refgene)
+        kg = io.BufferedReader(gzip.open(refgene))
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
     elif args.ann_source == "ensgene":
         ensgene = find_resource("ensGene.txt.gz")
-        kg = gzip.open(ensgene)
+        kg = io.BufferedReader(gzip.open(ensgene))
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     elif args.ann_source == "gencode":
-        reftable = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
-        kg_open = gzip.open if reftable.endswith('.gz') else open
-        kg = kg_open(reftable)
+        gencode = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
+        kg = io.BufferedReader(gzip.open(gencode))
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
     if args.nucleic_type == "RNA":
@@ -448,17 +464,20 @@ def main():
         jxn_summary = parallel_count_jxns(jxns, args)
 
         # write stats
-        # jxn_summary.to_csv(path_or_buf="STAR-SEQR_total.txt", header=True, sep="\t", mode='w',
-        #                      index=False)
         stats_res['Total_Breakpoints'] = len(jxn_summary.index)
         logger.info('Total Breakpoints:' + str(stats_res['Total_Breakpoints']))
 
-        if len(jxn_summary.index) >= 1:
-            logger.info('Getting pair info')
-            jxn_filt = pandas_parallel(jxn_summary, apply_pairs_func, args.threads)
-            logger.info('Filtering junctions')
-            # hard filter on minimal junction and span reads
-            jxn_filt = jxn_filt[(jxn_filt["spans"] *  3 + jxn_filt["jxn_counts"] * 3)  >= 6]
+        # Get discordant pairs
+        logger.info('Getting pair info')
+        jxn_filt = pandas_parallel(jxn_summary, apply_pairs_func, args.threads)
+
+        # hard filter on minimal junction and span reads
+        logger.info('Filtering junctions')
+        jxn_filt = jxn_filt[(jxn_filt["spans"] *  3 + jxn_filt["jxn_counts"] * 3)  >= 6]
+
+        if len(jxn_filt.index) >= 1:
+            # Get dist
+            jxn_filt['dist'] = jxn_filt.apply(lambda x: get_distance(x['name']), axis=1)
 
             # Get Annotation info for each junction
             jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'] = zip(*jxn_filt.apply(lambda x: ann.get_jxnside_anno(x['name'], gtree, 1), axis=1))
@@ -476,93 +495,87 @@ def main():
             # remove internal gene dups unless otherwise requested
             if not args.keep_gene_dups:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[jxn_filt['left_symbol'] != jxn_filt['right_symbol']]  # TODO: this should rather do a set overlap of alltranscripts found.
+                jxn_filt = jxn_filt[jxn_filt['left_symbol'] != jxn_filt['right_symbol']]  # todo: this should rather do a set overlap of alltranscripts found.
                 logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove novel genes unless otherwise requested
             if not args.keep_novel:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[(jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA")]  # TODO: this should rather do a set overlap of alltranscripts found.
+                jxn_filt = jxn_filt[(jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA")]  # todo: this should rather do a set overlap of alltranscripts found.
                 logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove mitochondria unless otherwise requested
             if not args.keep_mito:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|M")]  # TODO: this should rather do a set overlap of alltranscripts found.
+                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|M")]  # todo: this should rather do a set overlap of alltranscripts found.
                 logger.info("Number of candidates removed due to Mitochondria filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove non-canonical contigs unless otherwise requested
-            if not args.keep_mito:
+            if not args.keep_unscaffolded:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap")]  # TODO: this should rather do a set overlap of alltranscripts found.
+                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap")]  # todo: this should rather do a set overlap of alltranscripts found.
                 logger.info("Number of candidates removed due to non-canonical contigs filter: " + str(before_remove - len(jxn_filt.index)))
-
-            # get reference distance between breakpoints
-            jxn_filt['dist'] = jxn_filt.apply(lambda x: get_distance(x['name']), axis=1)
 
             #combine all supporting reads together.
             jxn_filt['supporting_reads'] = jxn_filt['spanreads']  + ',' + jxn_filt['jxn_reads']
 
-
-            # jxn_filt.to_csv(path_or_buf="STAR-SEQR_candidates.txt", header=True, sep="\t", mode='w',
-            #                  index=False)
             stats_res['Candidate_Breakpoints'] = len(jxn_filt.index)
             logger.info('Candidate Breakpoints:' + str(stats_res['Candidate_Breakpoints']))
 
-            # Process candidates
-            if len(jxn_filt.index) >= 1:
-                # identify duplicate reads and mark the chimeric fragment
-                star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
-                # Gather unique read support
-                assemdict = assem_rna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
-                logger.info("Finished aggregating support.")
-                assemdf = pd.DataFrame.from_records(assemdict, index='name')
-                # assemdf.to_csv(path_or_buf="STAR-SEQR_candidates_assembled.txt", header=True, sep="\t", mode='w', index=True)
-                # Merge read support with previous stats
-                finaldf = pd.merge(jxn_filt, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
-                                   right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
-                # collapse read info for brevity but keep here in case useful later on
-                finaldf['jxn_first'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"] + \
-                                       finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
-                finaldf['jxn_second'] = finaldf["jxnleft_for_second"] + finaldf["jxnleft_rev_second"] + \
-                                        finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
-                finaldf['spans_disc'] = finaldf['spans_disc_all']
-                # TODO: confirm breakpoint with bwa or bowtie or age?
-                # TODO: get novel or existiing fusion info from Fusco.
-                # TODO: probabilistic module to assign quality score
+        # Process candidates
+        if len(jxn_filt.index) >= 1:
+            # identify duplicate reads and mark the chimeric fragment
+            star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            # Gather unique read support
+            assemdict = assem_rna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            logger.info("Finished aggregating support.")
+            assemdf = pd.DataFrame.from_records(assemdict, index='name')
+            # Merge read support with previous stats
+            finaldf = pd.merge(jxn_filt, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
+                               right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
+            # collapse read info for brevity but keep here in case useful later on
+            finaldf['jxn_first'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"] + \
+                                   finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
+            finaldf['jxn_second'] = finaldf["jxnleft_for_second"] + finaldf["jxnleft_rev_second"] + \
+                                    finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
+            finaldf['spans_disc'] = finaldf['spans_disc_all']
+            # todo: confirm breakpoint with bwa or bowtie or age?
+            # todo: get novel or existiing fusion info from Fusco.
+            # todo: probabilistic module to assign quality score
 
-                # Generate Primers using assembled contigs
-                finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
+            # Generate Primers using assembled contigs
+            logger.info("Generating primers from assembled contigs")
+            finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
-                # Get Annotation
-                finaldf['ann'] = finaldf['left_symbol'] + "--" + finaldf['right_symbol']
+            # Get Annotation
+            finaldf['ann'] = finaldf['left_symbol'] + "--" + finaldf['right_symbol']
 
-                # Get breakpoint locations
-                finaldf['breakpoint_left'], finaldf['breakpoint_right']  = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
+            # Get breakpoint locations
+            finaldf['breakpoint_left'], finaldf['breakpoint_right']  = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
 
-                # all candidates
-                finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
+            # all candidates
+            finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
 
-                # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
-                finaldf = finaldf[(finaldf["spans_disc_all"] *  4 + finaldf["jxn_first"] * 2 + finaldf["jxn_second"] * 2)  >= 6]
+            # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
+            finaldf = finaldf[(finaldf["spans_disc_all"] *  4 + finaldf["jxn_first"] * 2 + finaldf["jxn_second"] * 2)  >= 6]
 
-                # Write output
-                finaldf.sort_values(['jxn_first', "spans_disc_all"], ascending=[False, False], inplace=True)
-                finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
-                               columns=breakpoint_cols, mode='w', index=False)
-                breakpoints_fh.close()
+            # Write output
+            finaldf.sort_values(['jxn_first', "spans_disc_all"], ascending=[False, False], inplace=True)
+            finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
+                           columns=breakpoint_cols, mode='w', index=False)
+            breakpoints_fh.close()
 
-                # Make bedpe and VCF
-                sv2bedpe.process(finaldf, args)
+            # Make bedpe and VCF
+            sv2bedpe.process(finaldf, args)
 
-                # Log Stats
-                stats_res['Passing_Breakpoints'] = len(finaldf.index)
-                logger.info('Passing Breakpoints:' + str(stats_res['Passing_Breakpoints']))
+            # Log Stats
+            stats_res['Passing_Breakpoints'] = len(finaldf.index)
+            logger.info('Passing Breakpoints:' + str(stats_res['Passing_Breakpoints']))
 
-            else:
-                logger.info("No candidate junctions identified.")
-        else:
-            logger.info("No junctions found.")
+        if len(jxn_filt.index) == 0:
+            logger.info("No junctions found after filtering")
+            sv2bedpe.process(jxn_filt, args)
+            sys.exit(0)
 
     elif args.nucleic_type == "DNA":
         # start output files
@@ -609,14 +622,17 @@ def main():
                             (jxn_summary["jxnright"] >= args.jxn_reads)].sort_values("jxnleft", ascending=False)
         logger.info('Junctions passing junction read filter:' + str(len(jxn_filt.index)))
 
-        # Annotate genes
-        jxn_filt['genesleft'], jxn_filt['genesright'], jxn_filt['common'] = zip(*jxn_filt.apply(lambda x: ann.get_jxnside_genes(x['name'], gtree), axis=1))
 
-        # Get gene info and remove internal gene dups
-        if not args.keep_gene_dups:
-            before_remove = len(jxn_filt.index)
-            jxn_filt = jxn_filt[jxn_filt['common'] == 0]
-            logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
+        if len(jxn_filt.index) >= 1:
+             # Annotate genes
+            jxn_filt['genesleft'], jxn_filt['genesright'], jxn_filt['common'] = zip(*jxn_filt.apply(lambda x: ann.get_jxnside_genes(x['name'], gtree), axis=1))
+
+            # Get gene info and remove internal gene dups
+            if not args.keep_gene_dups:
+                before_remove = len(jxn_filt.index)
+                jxn_filt = jxn_filt[jxn_filt['common'] == 0]
+                logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
+
 
         if len(jxn_filt.index) >= 1:
             # Get paired discordant spanning reads supporting junctions and filter
@@ -636,65 +652,66 @@ def main():
             stats_res['Candidate_Breakpoints'] = len(jxn_filt.index)
             logger.info('Candidate Breakpoints:' + str(stats_res['Candidate_Breakpoints']))
 
-            if len(jxn_filt.index) >= 1:
-                # skip the big functions for now
-                finaldf = jxn_filt
-                finaldf['jxn_first'] = finaldf['jxnleft']
-                finaldf['jxn_second'] = finaldf['jxnright']
-                finaldf['spans_disc'] = finaldf['spans']
+        if len(jxn_filt.index) >= 1:
+            # skip the big functions for now
+            finaldf = jxn_filt
+            finaldf['jxn_first'] = finaldf['jxnleft']
+            finaldf['jxn_second'] = finaldf['jxnright']
+            finaldf['spans_disc'] = finaldf['spans']
 
-                # mark duplicates
-                star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            # mark duplicates
+            star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
 
-                # # Get read support from BAM
-                # assemdict = assem_dna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
-                # assemdf = pd.DataFrame.from_records(assemdict, index='name')
+            # # Get read support from BAM
+            # assemdict = assem_dna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            # assemdf = pd.DataFrame.from_records(assemdict, index='name')
 
-                # # Merge Stats for use
-                # finaldf = pd.merge(jxn_filt, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
-                #                    right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
-                # finaldf['jxn_first'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"] + \
-                #     finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
-                # finaldf['jxn_second'] = finaldf["jxnleft_for_second"] + finaldf["jxnleft_rev_second"] + \
-                #     finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
-                # finaldf['spans_disc'] = finaldf['spans_disc_all']
+            # # Merge Stats for use
+            # finaldf = pd.merge(jxn_filt, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
+            #                    right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
+            # finaldf['jxn_first'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"] + \
+            #     finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
+            # finaldf['jxn_second'] = finaldf["jxnleft_for_second"] + finaldf["jxnleft_rev_second"] + \
+            #     finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
+            # finaldf['spans_disc'] = finaldf['spans_disc_all']
 
-                # TODO: confirm breakpoint
-                # TODO: probabilist module to assign quality score
+            # todo: confirm breakpoint
+            # todo: probabilist module to assign quality score
 
-                # Generate Primers
-                # finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
+            # Generate Primers
+            # finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
-                # Get Annotation
-                finaldf['ann'] = ann.get_gene_info(finaldf, gtree)
+            # Get Annotation
+            finaldf['ann'] = ann.get_gene_info(finaldf, gtree)
 
-                # Get Breakpoint type
-                finaldf['svtype'] = finaldf.apply(lambda x: get_svtype_func(x['name']), axis=1)
+            # Get Breakpoint type
+            finaldf['svtype'] = finaldf.apply(lambda x: get_svtype_func(x['name']), axis=1)
 
-                # Get breakpoint locations
-                finaldf['breakpoint_left'], finaldf['breakpoint_right']  = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
+            # Get breakpoint locations
+            finaldf['breakpoint_left'], finaldf['breakpoint_right']  = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
 
-                finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
-                # finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
-                #                   (finaldf["jxn_first_unique"] >= args.jxn_reads) &
-                #                   (finaldf["jxn_second_unique"] >= args.jxn_reads)]
+            finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
+            # finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
+            #                   (finaldf["jxn_first_unique"] >= args.jxn_reads) &
+            #                   (finaldf["jxn_second_unique"] >= args.jxn_reads)]
 
-                # Write output
-                finaldf.sort_values(['jxnleft', "spans"], ascending=[False, False], inplace=True)
-                finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
-                               columns=breakpoint_cols, mode='w', index=False)
-                breakpoints_fh.close()
+            # Write output
+            finaldf.sort_values(['jxnleft', "spans"], ascending=[False, False], inplace=True)
+            finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
+                           columns=breakpoint_cols, mode='w', index=False)
+            breakpoints_fh.close()
 
-                # Make bedpe and VCF
-                sv2bedpe.process(finaldf, args)
+            # Make bedpe and VCF
+            sv2bedpe.process(finaldf, args)
 
-                # Log Stats
-                stats_res['Passing_Breakpoints'] = len(finaldf.index)
-                logger.info('Passing Breakpoints:' + str(stats_res['Passing_Breakpoints']))
-            else:
-                logger.info("No candidate junctions identified.")
+            # Log Stats
+            stats_res['Passing_Breakpoints'] = len(finaldf.index)
+            logger.info('Passing Breakpoints:' + str(stats_res['Passing_Breakpoints']))
         else:
-            logger.info("No junctions found.")
+            logger.info("No candidate junctions identified.")
+            # Make bedpe and VCF, write headers only
+            sv2bedpe.process(jxn_filt, args)
+
 
     # Write stats to file
     for key, value in stats_res.items():
