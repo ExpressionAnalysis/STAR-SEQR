@@ -34,9 +34,16 @@ Breakpoint and Fusion Detection.
 
 ### Run STAR-SEQR as follows:
 * RNA
-  * starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 0 -p RNA_test -n RNA -t 12 -i path/STAR_INDEX --ann_source gencode -vv
+  * Align and Call:
+    * starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 0 -p RNA_test -n RNA -t 12 -i path/STAR_INDEX --ann_source gencode -vv
+  * Call Only:
+    * starseqr.py -ss RNA.Chimeric.out.sam -sj RNA.Chimeric.out.junction -p RNA_test -n RNA -t 12 -i path/STAR_INDEX --ann_source gencode -vv
+
 * DNA
-  * starseqr.py -1 DNA_1.fastq.gz -2 DNA_2.fastq.gz -m 0 -p DNA_test -n DNA -j 2 -s 1 -t 12 -i path/STAR_INDEX_DNA --ann_source gencode -vv
+  * Align and Call:
+    * starseqr.py -1 DNA_1.fastq.gz -2 DNA_2.fastq.gz -m 0 -p DNA_test -n DNA -j 2 -s 1 -t 12 -i path/STAR_INDEX_DNA --ann_source gencode -vv
+  * Call Only:
+    * starseqr.py DNA.Chimeric.out.sam -sj DNA.Chimeric.out.junction  -p DNA_test -n DNA -j 2 -s 1 -t 12 -i path/STAR_INDEX_DNA --ann_source gencode -vv
 
 
 
