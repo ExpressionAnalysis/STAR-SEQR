@@ -6,7 +6,6 @@ import sys
 import logging
 import subprocess as sp
 import pysam  # requires 0.9.0 or newer
-import time
 
 
 logger = logging.getLogger("STAR-SEQR")

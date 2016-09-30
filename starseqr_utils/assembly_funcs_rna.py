@@ -18,7 +18,6 @@ import signal
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import collections
 import numpy as np
-import starseqr_utils
 import annotate_sv as ann
 
 
@@ -35,7 +34,7 @@ def make_new_dir(newdir):
 
 
 def find_resource(filename):
-    packagedir = starseqr_utils.__path__[0]
+    packagedir = os.path.dirname(os.path.realpath(__file__))
     dirname = os.path.join(packagedir, 'resources')
     fullname = os.path.abspath(os.path.join(dirname, filename))
     return fullname

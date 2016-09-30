@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import re
+import errno
 import string
 from argparse import ArgumentParser
 import pandas as pd
@@ -16,23 +17,30 @@ import numpy as np
 import multiprocessing as mp
 import signal
 import starseqr_utils
-import starseqr_utils.star_funcs as star
-# import starseqr_utils.assembly_funcs_dna as assem_dna
-import starseqr_utils.assembly_funcs_rna as assem_rna
-import starseqr_utils.annotate_sv as ann
-import starseqr_utils.sv2bedpe as sv2bedpe
-import starseqr_utils.run_primer3 as primer3
-
 
 
 def parse_args():
     usage = " "
-    parser = ArgumentParser(
-        description="STAR-SEQR Parameters:", epilog=usage)
-    parser.add_argument('-1', '--fastq1', type=str, required=True,
+    parser = ArgumentParser(description="STAR-SEQR Parameters:", epilog=usage)
+    # create STAR alignment
+    group1 = parser.add_argument_group('Do Alignment', '')
+    group1.add_argument('-1', '--fastq1', type=str, required=False,
                         help='fastq 1')
-    parser.add_argument('-2', '--fastq2', type=str, required=False,
+    group1.add_argument('-2', '--fastq2', type=str, required=False,
                         help='fastq 2')
+    group1.add_argument('-i', '--star_index', type=str, required=False,
+                        help='path to STAR index folder')
+    group1.add_argument('-m', '--mode', type=int, required=False,
+                        default=0,
+                        choices=[0, 1],
+                        help='STAR alignment sensitivity Mode. 0=Default, 1=More-Sensitive')
+    # existing STAR alignment
+    group2 = parser.add_argument_group('Use Existing Alignment', '')
+    group2.add_argument('-sj', '--star_jxns', type=str, required=False,
+                        help='chimeric junctions file produce by STAR')
+    group2.add_argument('-ss', '--star_sam', type=str, required=False,
+                        help='chimeric sam file produced by STAR')
+    # shared args
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
     parser.add_argument('-d', '--dist', type=int, required=False,
@@ -48,21 +56,17 @@ def parse_args():
                         default="RNA",
                         help='nucleic acid type',
                         choices=["RNA", "DNA"])
-    parser.add_argument('-m', '--mode', type=int, required=False,
-                        default=0,
-                        choices=[0, 1, 2],
-                        help='STAR alignment sensitivity Mode. 0=Default, 1=More-Sensitive, 2=Extra-Sensitive')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=12,
                         help='Number of threads to use for STAR')
-    parser.add_argument('--bidir', '--bidir', action='store_true',
-                        help='require bidirectional breakpoints for detection')
+    parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
+                        default="gencode",
+                        help='annotation source',
+                        choices=["refgene", "ensgene", "gencode"])
     parser.add_argument('-b', '--bed_file', type=str, required=False,
                         help='Bed file to subset analysis')
-    parser.add_argument('-i', '--star_index', type=str, required=False,
-                        help='path to STAR index folder')
     parser.add_argument('--spades', '--spades', action='store_true',
-                        help='do spades assembly')
+                        help='do spades assembly instead of velvet')
     parser.add_argument('--keep_dups', action='store_true',
                         help='keep read duplicates')
     parser.add_argument('--keep_gene_dups', action='store_true',
@@ -73,19 +77,37 @@ def parse_args():
                         help='allow gene fusions to pass that have no gene annotation')
     parser.add_argument('--keep_unscaffolded', action='store_true',
                         help='allow gene fusions to pass that are found on unscaffolded contigs')
-    parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
-                        default="gencode",
-                        help='annotation source',
-                        choices=["refgene", "ensgene", "gencode"])
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # check that the correct args have been specified
+    align = [args.fastq1, args.fastq2, args.star_index]
+    call = [args.star_jxns, args.star_sam]
+    if any(align) and any(call):
+        print("Error: Please choose either fastqs or STAR existing files as input!")
+        sys.exit(1)
+    if any(align) and None in align:
+        print("Error: Fastq1, Fastq2, and the STAR index must be specified if doing alignment")
+        sys.exit(1)
+    if any(call) and None in call:
+        print("Error: The STAR .junctions and .sam file must be specified if using existing alignment")
+        sys.exit(1)
+    return args
 
 
 def check_file_exists(path):
     if (os.stat(os.path.realpath(path)).st_size == 0):
         logger.error("Exiting. Cannot find file: " + os.path.realpath(path))
         sys.exit(1)
+
+def force_symlink(file1, file2):
+    try:
+        os.symlink(file1, file2)
+    except OSError, e:
+        if e.errno == errno.EEXIST:
+            os.remove(file2)
+            os.symlink(file1, file2)
 
 
 def find_resource(filename):
@@ -271,7 +293,7 @@ def apply_pairs_func(df):
 
 
 def apply_primers_func(df):
-    df['primers'] = df.apply(lambda x: primer3.runp3(x['name'], x['assembly']), axis=1).apply(lambda x: ",".join(x))
+    df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.runp3(x['name'], x['assembly']), axis=1).apply(lambda x: ",".join(x))
     return df['primers']
 
 
@@ -312,7 +334,7 @@ def get_pairs_func(jxn):
 
 
 def apply_jxn_strand(df):
-    _, _, df['test_strand'] = zip(*df.apply(lambda x: ann.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+    _, _, df['test_strand'] = zip(*df.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
     return df
 
 
@@ -401,20 +423,33 @@ def main():
     logger.info("CMD = " + str(' '.join(sys.argv)))
     logger.info('Starting to work on sample: ' + args.prefix)
 
-    # check files exist
-    fq1_path = os.path.realpath(args.fastq1)
-    fq2_path = os.path.realpath(args.fastq2)
+    # check files exist and get abs paths
     if args.bed_file:
         check_file_exists(bed_file)
         bed_path = os.path.realpath(args.bed_file)
+    if args.fastq1:
+        fq1_path = os.path.realpath(args.fastq1)
+        fq2_path = os.path.realpath(args.fastq2)
+        check_file_exists(fq1_path)
+        check_file_exists(fq2_path)
+    if args.star_jxns:
+        starjxns_path = os.path.realpath(args.star_jxns)
+        starsam_path = os.path.realpath(args.star_sam)
+        check_file_exists(starjxns_path)
+        check_file_exists(starsam_path)
 
     # make sample folder
     if not os.path.exists(args.prefix + "_STAR-SEQR"):
         os.makedirs(args.prefix + "_STAR-SEQR")
     os.chdir(args.prefix + "_STAR-SEQR")
-    check_file_exists(fq1_path)
-    check_file_exists(fq2_path)
-    star.run_star(fq1_path, fq2_path, args)
+
+    # Do alignment if fastqs
+    if args.fastq1:
+        starseqr_utils.star_funcs.run_star(fq1_path, fq2_path, args)
+    # symlink existing files into folder if provided
+    elif args.star_jxns:
+        force_symlink(starjxns_path, args.prefix + ".Chimeric.out.junction")
+        force_symlink(starsam_path, args.prefix + ".Chimeric.out.sam")
 
     # import all jxns
     global rawdf
@@ -423,7 +458,7 @@ def main():
 
     if len(jxns.index) == 0:
         logger.info("No junctions found in the input file")
-        sv2bedpe.process(jxns, args)
+        starseqr_utils.sv2bedpe.process(jxns, args)
         sys.exit(0)
 
     # Prepare Annotation
@@ -480,10 +515,10 @@ def main():
             jxn_filt['dist'] = jxn_filt.apply(lambda x: get_distance(x['name']), axis=1)
 
             # Get Annotation info for each junction
-            jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'] = zip(*jxn_filt.apply(lambda x: ann.get_jxnside_anno(x['name'], gtree, 1), axis=1))
-            jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand']= zip(*jxn_filt.apply(lambda x: ann.get_jxnside_anno(x['name'], gtree, 2), axis=1))
+            jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+            jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand']= zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
             # get all genes associated to look for overlap for each read later..
-            jxn_filt['txinfo'] = jxn_filt.apply(lambda x: ann.get_jxn_info_func(x['name'], gtree), axis=1)
+            jxn_filt['txinfo'] = jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxn_info_func(x['name'], gtree), axis=1)
 
             # subset to ROI using bed file if it exists
             if args.bed_file:
@@ -507,13 +542,13 @@ def main():
             # remove mitochondria unless otherwise requested
             if not args.keep_mito:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|M")]  # todo: this should rather do a set overlap of alltranscripts found.
+                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|M")]
                 logger.info("Number of candidates removed due to Mitochondria filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove non-canonical contigs unless otherwise requested
             if not args.keep_unscaffolded:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap")]  # todo: this should rather do a set overlap of alltranscripts found.
+                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap")]
                 logger.info("Number of candidates removed due to non-canonical contigs filter: " + str(before_remove - len(jxn_filt.index)))
 
             #combine all supporting reads together.
@@ -525,9 +560,9 @@ def main():
         # Process candidates
         if len(jxn_filt.index) >= 1:
             # identify duplicate reads and mark the chimeric fragment
-            star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            starseqr_utils.star_funcs.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
             # Gather unique read support
-            assemdict = assem_rna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            assemdict = starseqr_utils.assembly_funcs_rna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
             logger.info("Finished aggregating support.")
             assemdf = pd.DataFrame.from_records(assemdict, index='name')
             # Merge read support with previous stats
@@ -566,7 +601,7 @@ def main():
             breakpoints_fh.close()
 
             # Make bedpe and VCF
-            sv2bedpe.process(finaldf, args)
+            starseqr_utils.sv2bedpe.process(finaldf, args)
 
             # Log Stats
             stats_res['Passing_Breakpoints'] = len(finaldf.index)
@@ -574,7 +609,7 @@ def main():
 
         if len(jxn_filt.index) == 0:
             logger.info("No junctions found after filtering")
-            sv2bedpe.process(jxn_filt, args)
+            starseqr_utils.sv2bedpe.process(jxn_filt, args)
             sys.exit(0)
 
     elif args.nucleic_type == "DNA":
@@ -625,7 +660,7 @@ def main():
 
         if len(jxn_filt.index) >= 1:
              # Annotate genes
-            jxn_filt['genesleft'], jxn_filt['genesright'], jxn_filt['common'] = zip(*jxn_filt.apply(lambda x: ann.get_jxnside_genes(x['name'], gtree), axis=1))
+            jxn_filt['genesleft'], jxn_filt['genesright'], jxn_filt['common'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_genes(x['name'], gtree), axis=1))
 
             # Get gene info and remove internal gene dups
             if not args.keep_gene_dups:
@@ -660,7 +695,7 @@ def main():
             finaldf['spans_disc'] = finaldf['spans']
 
             # mark duplicates
-            star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            starseqr_utils.star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
 
             # # Get read support from BAM
             # assemdict = assem_dna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
@@ -682,7 +717,7 @@ def main():
             # finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
             # Get Annotation
-            finaldf['ann'] = ann.get_gene_info(finaldf, gtree)
+            finaldf['ann'] = starseqr_utils.annotate_sv.get_gene_info(finaldf, gtree)
 
             # Get Breakpoint type
             finaldf['svtype'] = finaldf.apply(lambda x: get_svtype_func(x['name']), axis=1)
@@ -702,7 +737,7 @@ def main():
             breakpoints_fh.close()
 
             # Make bedpe and VCF
-            sv2bedpe.process(finaldf, args)
+            starseqr_utils.sv2bedpe.process(finaldf, args)
 
             # Log Stats
             stats_res['Passing_Breakpoints'] = len(finaldf.index)
@@ -710,7 +745,7 @@ def main():
         else:
             logger.info("No candidate junctions identified.")
             # Make bedpe and VCF, write headers only
-            sv2bedpe.process(jxn_filt, args)
+            starseqr_utils.sv2bedpe.process(jxn_filt, args)
 
 
     # Write stats to file
