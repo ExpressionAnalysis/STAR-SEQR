@@ -300,37 +300,37 @@ def apply_primers_func(df):
 def get_pairs_func(jxn):
     '''
     Get paired end read data that supports each jxn from the junction file.
-    discordant paired reads are only represented once.
     These have a -1 for jxntype.
-    Need to grab both sides of jxn. Each is unique in the .junction file
+    Need to grab both sides of jxn. Each is unique in the .junction file.
+    Querying the file can be tedious with the flipping of the junctions.
     '''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     pos1 = int(pos1)
     pos2 = int(pos2)
-    repright = int(repright)
+    maxhom = max(int(repright), int(repleft))
     if str1 == "+":
         pos1left = pos1 - 100000
-        pos1right = pos1 + repright - 1
+        pos1right = pos1 + maxhom + 1
     elif str1 == "-":
-        pos1left = pos1 - repright - 1
+        pos1left = pos1 - maxhom - 1
         pos1right = pos1 + 100000
     if str2 == "+":
-        pos2left = pos2 - repright - 1
+        pos2left = pos2 - maxhom - 1
         pos2right = pos2 + 100000
     elif str2 == "-":
         pos2left = pos2 - 100000
-        pos2right = pos2 + repright - 1
+        pos2right = pos2 + maxhom + 1
     forward = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom1) & (rawdf['chrom2'] == chrom2) &
-                    (rawdf['pos1'] > pos1left) & (rawdf['pos1'] < pos1right) &
-                    (rawdf['pos2'] > pos2left) & (rawdf['pos2'] < pos2right)]
+                    (rawdf['pos1'] >= pos1left) & (rawdf['pos1'] <= pos1right) &
+                    (rawdf['pos2'] >= pos2left) & (rawdf['pos2'] <= pos2right)]
     reverse = rawdf[(rawdf['jxntype'] == -1) &
                     (rawdf['chrom1'] == chrom2) & (rawdf['chrom2'] == chrom1) &
-                    (rawdf['pos1'] > pos2left) & (rawdf['pos1'] < pos2right) &
-                    (rawdf['pos2'] > pos1left) & (rawdf['pos2'] < pos1right)]
-    pairs = len(forward['readid'].index) + len(reverse['readid'].index)
+                    (rawdf['pos1'] >= pos2left) & (rawdf['pos1'] <= pos2right) &
+                    (rawdf['pos2'] >= pos1left) & (rawdf['pos2'] <= pos1right)]
+    npairs = len(forward['readid'].index) + len(reverse['readid'].index)
     reads = ','.join(forward['readid'].tolist()) + ',' +  ','.join(reverse['readid'].tolist())
-    return (pairs, reads)
+    return (npairs, reads)
 
 
 def apply_jxn_strand(df):
@@ -384,7 +384,7 @@ def get_svtype_func(jxn):
 def get_sv_locations(jxn):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     pos1 = int(pos1) - int(repright)
-    pos2 = int(pos2)
+    pos2 = int(pos2) # + repleft?
     if str(str1) == "+" and str(str2) == "+":
         pos1 -= 1
         pos2 += 1
@@ -560,9 +560,9 @@ def main():
         # Process candidates
         if len(jxn_filt.index) >= 1:
             # identify duplicate reads and mark the chimeric fragment
-            starseqr_utils.star_funcs.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            starseqr_utils.star_funcs.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.bam", args)
             # Gather unique read support
-            assemdict = starseqr_utils.assembly_funcs_rna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            assemdict = starseqr_utils.support_funcs_rna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.bam", args)
             logger.info("Finished aggregating support.")
             assemdf = pd.DataFrame.from_records(assemdict, index='name')
             # Merge read support with previous stats
@@ -575,7 +575,7 @@ def main():
                                     finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
             finaldf['spans_disc'] = finaldf['spans_disc_all']
             # todo: confirm breakpoint with bwa or bowtie or age?
-            # todo: get novel or existiing fusion info from Fusco.
+            # todo: get novel or existing fusion info from Fusco.
             # todo: probabilistic module to assign quality score
 
             # Generate Primers using assembled contigs
@@ -695,10 +695,10 @@ def main():
             finaldf['spans_disc'] = finaldf['spans']
 
             # mark duplicates
-            starseqr_utils.star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            starseqr_utils.star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.bam", args)
 
             # # Get read support from BAM
-            # assemdict = assem_dna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.mrkdup.bam", args)
+            # assemdict = assem_dna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.bam", args)
             # assemdf = pd.DataFrame.from_records(assemdict, index='name')
 
             # # Merge Stats for use
