@@ -5,6 +5,8 @@ import re
 import time
 import logging
 from collections import defaultdict
+import string
+from operator import itemgetter
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -65,8 +67,8 @@ def get_jxn_info_func(jxn, gtree):
             # Rstrand = list(resL)[0].data['strand'] # Just use the first gene for now.
     else:
         genesR.add("NA")
-    union = list(genesL.union(genesR)) # takes union of genes
-    return union
+    # union = list(genesL.union(genesR)) # takes union of genes
+    return (list(genesL), list(genesR))
 
 
 def get_pos_genes(chrom1, pos1, gtree):
@@ -121,6 +123,7 @@ def get_gene_info(svtable, gtree):
 
 def find_exon(interval, pos, side):
     '''Input is a single interval... list(resL)[0]'''
+    # TODO: right side2 is not working.
     try:
         ends = map(int, filter(None, interval.data['exonEnds'].split(",")))
         starts = map(int, filter(None, interval.data['exonStarts'].split(",")))
@@ -149,19 +152,20 @@ def find_exon(interval, pos, side):
 def get_jxnside_anno(jxn, gtree, side):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     if side==2:
-        chrom1=chrom2
-        pos1=pos2
-        str1=str2
-        repleft=repright
+        chrom1 = chrom2
+        pos1 = pos2
+        flipstr = string.maketrans("-+", "+-")
+        str1 = str2.translate(flipstr)
+        repleft = repright
     # validate this
     if str1=="+" and side==1:
         pos1 = int(pos1) - 1
     elif str1=="-" and side==1:
-        pos1 = int(pos1) + 1
+        pos1 = int(pos1)
     elif str1=="+" and side==2:
-        pos1 = int(pos1) + 1
-    elif str1=="-" and side==2:
         pos1 = int(pos1) - 1
+    elif str1=="-" and side==2:
+        pos1 = int(pos1)
     resL = gtree[chrom1].search(int(pos1))
     # From the left
     ann = defaultdict(list)
@@ -174,6 +178,7 @@ def get_jxnside_anno(jxn, gtree, side):
             ann['exon'].append(exon)
             ann['dist'].append(dist)
             ann['frame'].append(frame)
+            ann['cdslen'].append(int(list(resL)[idx].data['cdsEnd']) - int(list(resL)[idx].data['cdsStart']))
     else:
         ann['symbol'].append("NA")
         ann['transcript'].append("NA")
@@ -181,5 +186,13 @@ def get_jxnside_anno(jxn, gtree, side):
         ann['exon'].append("NA")
         ann['dist'].append("NA")
         ann['frame'].append("NA")
-    ann_string = ','.join([str(a) + ":" + b + ":" + c +":" + str(d) + ":" + str(e) + ":" + str(f) for a,b,c,d,e,f in zip(ann['symbol'],ann['transcript'], ann['strand'], ann['exon'], ann['dist'], ann['frame'])])
-    return(ann['symbol'][0], ann_string, ann['strand'][0])  # just the first values for some fields
+        ann['cdslen'].append("NA")
+
+    # sort results by dist to exon boundary
+    ds = {}
+    for k in ann.keys():
+        _, ds[k] = (list(t) for t in zip(*sorted(zip(ann['dist'], ann[k]), key=itemgetter(0))))
+
+    ann_string = ','.join([str(a) + ":" + b + ":" + c +":" + str(d) + ":" + str(e) + ":" + str(f) + ':' + str(g) for a,b,c,d,e,f,g in zip(ds['symbol'],ds['transcript'], ds['strand'], ds['exon'], ds['dist'], ds['frame'], ds['cdslen'])])
+
+    return(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0])  # just the first values for some fields
