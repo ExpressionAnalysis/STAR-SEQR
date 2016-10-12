@@ -8,7 +8,7 @@ eval $cmd
 test_TP=$(fgrep -wf truth_rna RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt | wc -l)
 test_FP=$(fgrep -vwf truth_rna RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt | wc -l)
 test_FP=$((test_FP-1))
-cmd2="cut -f14 RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt > tmp_rna"
+cmd2="cut -f15 RNA_test_STAR-SEQR/RNA_test_STAR-SEQR_breakpoints.txt > tmp_rna"
 eval $cmd2
 test_FN=$(fgrep -vwf tmp_rna truth_rna | wc -l)
 

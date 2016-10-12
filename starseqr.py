@@ -77,6 +77,8 @@ def parse_args():
                         help='allow gene fusions to pass that have no gene annotation')
     parser.add_argument('--keep_unscaffolded', action='store_true',
                         help='allow gene fusions to pass that are found on unscaffolded contigs')
+    parser.add_argument('--keep_noncoding', action='store_true',
+                        help='allow gene fusions to pass that have at least one member as non-coding')
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
     args = parser.parse_args()
@@ -512,8 +514,8 @@ def main():
         # start output files
         stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
         breakpoints_fh = open(args.prefix + "_STAR-SEQR_breakpoints.txt", 'w')
-        breakpoint_cols = ["ann", "breakpoint_left", "breakpoint_right", "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot", "dist", "span_first", "jxn_left", "jxn_right", "assembly", "primers", "name"]
-        breakpoint_header = ["NAME", "BRKPT_LEFT", "BRKPT_RIGHT", "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT", "ASSEMBLY", "PRIMERS", "ID"]
+        breakpoint_cols = ["ann", "breakpoint_left", "breakpoint_right", "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot", "splice_type", "dist", "span_first", "jxn_left", "jxn_right", "assembly", "primers", "name"]
+        breakpoint_header = ["NAME", "BRKPT_LEFT", "BRKPT_RIGHT", "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT", "SPLICE_TYPE", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT", "ASSEMBLY", "PRIMERS", "ID"]
         print(*breakpoint_header, sep='\t', file=breakpoints_fh)
 
         # stats dict
@@ -551,6 +553,12 @@ def main():
 
             jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
             jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
+            # determine if junction follows canonical splicing at exon junction
+            jxn_filt['left_canonical'] = jxn_filt['left_annot'].str.split(':',expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0'  else 'NON-CANONICAL_SPLICING')
+            jxn_filt['right_canonical'] = jxn_filt['right_annot'].str.split(':',expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0'  else 'NON-CANONICAL_SPLICING')
+            jxn_filt['splice_type'] = np.where((jxn_filt['left_canonical'] == 'CANONICAL_SPLICING') &
+                                               (jxn_filt['right_canonical'] == 'CANONICAL_SPLICING') ,
+                                                'CANONICAL_SPLICING', 'NON-CANONICAL_SPLICING')
             # get all genes associated to look for overlap for each read later..
             jxn_filt['left_all'], jxn_filt['right_all'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxn_info_func(x['name'], gtree), axis=1))
             jxn_filt['txunion'] = [list(set(a).union(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
@@ -575,6 +583,8 @@ def main():
             if not args.keep_novel:
                 before_remove = len(jxn_filt.index)
                 jxn_filt = jxn_filt[(jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA")]
+                jxn_filt = jxn_filt[(jxn_filt['left_annot'].str.split(':',expand=True)[3] != "NA") &
+                                    (jxn_filt['right_annot'].str.split(':',expand=True)[3] != "NA")]
                 logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove mitochondria unless otherwise requested
@@ -588,6 +598,14 @@ def main():
                 before_remove = len(jxn_filt.index)
                 jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap")]
                 logger.info("Number of candidates removed due to non-canonical contigs filter: " + str(before_remove - len(jxn_filt.index)))
+
+            # remove non-coding
+            if not args.keep_noncoding:
+                before_remove = len(jxn_filt.index)
+                jxn_filt = jxn_filt[(jxn_filt['left_cdslen'] != 0) & (jxn_filt['right_cdslen'] != 0)]
+                logger.info("Number of candidates removed due to non-coding filter: " + str(before_remove - len(jxn_filt.index)))
+
+
 
             #combine all supporting reads together.
             jxn_filt['supporting_reads'] = jxn_filt['spanreads']  + ',' + jxn_filt['jxn_reads']
