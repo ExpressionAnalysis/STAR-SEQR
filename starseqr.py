@@ -695,6 +695,9 @@ def main():
         logger.info("Aggregating junctions")
         jxn_summary = parallel_count_jxns(jxns, args)
 
+        # get distance
+        jxn_summary['dist'] = jxn_summary.apply(lambda x: get_distance(x['name']), axis=1)
+
         # subset to bed if specified
         if args.bed_file:
             start_bed = time.time()
@@ -710,7 +713,6 @@ def main():
 
         # Filter on distance
         logger.info('Filtering junctions based on distance')
-        jxn_summary['dist'] = jxn_summary.apply(lambda x: get_distance(x['name']), axis=1)
         jxn_summary = jxn_summary[(jxn_summary['dist'] >= args.dist) |
                                   (pd.isnull(jxn_summary['dist']))]
         logger.info('Junctions passing distance filter:' + str(len(jxn_summary.index)))

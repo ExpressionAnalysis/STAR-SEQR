@@ -12,11 +12,10 @@ import errno
 import logging
 import subprocess as sp
 from itertools import groupby, islice
-import pysam  # requires 0.9.0 or newer
+import pysam  # requires 0.9.1 or newer
 import multiprocessing as mp
 import signal
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
-import json
 import collections
 import numpy as np
 import annotate_sv as ann
@@ -43,13 +42,13 @@ def find_resource(filename):
 
 def find_discspan(jxn, bam, side, tx, s_reads, gtree):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    if side==2:
+    if side == 2:
         chrom1, chrom2 = chrom2, chrom1
         pos1, pos2 = pos2, pos1
         flipstr = string.maketrans("-+", "+-")
         str1, str2 = str2.translate(flipstr), str1.translate(flipstr)
         repleft, repright = repright, repleft
-    pairDict = collections.defaultdict(lambda : collections.defaultdict(dict))
+    pairDict = collections.defaultdict(lambda: collections.defaultdict(dict))
     pairDict[('for', 'first')][1] = {}
     pairDict[('for', 'first')][2] = {}
     pairDict[('for', 'second')][1] = {}
@@ -74,7 +73,7 @@ def find_discspan(jxn, bam, side, tx, s_reads, gtree):
         pos2right = int(pos2) + 100000
 
     for read in bam:
-        if read.query_name in s_reads: # use this later in the func to get total support
+        if read.query_name in s_reads:  # use this later in the func to get total support
             if (read.next_reference_name == chrom2 and
                     read.reference_name == chrom1 and
                     not read.flag & 256):
@@ -87,16 +86,32 @@ def find_discspan(jxn, bam, side, tx, s_reads, gtree):
                     orient = 1 if (read.flag & 64) else 2
                     if set(tx).intersection(set(read_tx)) and set(tx).intersection(set(read_tx2)):
                         if read.is_paired:
-                            if read.flag & 16: # reverse strand
-                                if read.flag & 64: # first in pair
-                                    pairDict[('rev', 'first')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                            if read.flag & 16:  # reverse strand
+                                if read.flag & 64:  # first in pair
+                                    pairDict[('rev', 'first')][orient][read.query_name] = (read.flag,
+                                                                                           read.get_tag('AS'),
+                                                                                           read.get_tag('nM'),
+                                                                                           read.query_alignment_length,
+                                                                                           int(np.mean(read.query_alignment_qualities)))
                                 else:
-                                    pairDict[('rev', 'second')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                                    pairDict[('rev', 'second')][orient][read.query_name] = (read.flag,
+                                                                                            read.get_tag('AS'),
+                                                                                            read.get_tag('nM'),
+                                                                                            read.query_alignment_length,
+                                                                                            int(np.mean(read.query_alignment_qualities)))
                             else:
                                 if read.flag & 64:
-                                    pairDict[('for', 'first')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                                    pairDict[('for', 'first')][orient][read.query_name] = (read.flag,
+                                                                                           read.get_tag('AS'),
+                                                                                           read.get_tag('nM'),
+                                                                                           read.query_alignment_length,
+                                                                                           int(np.mean(read.query_alignment_qualities)))
                                 else:
-                                    pairDict[('for', 'second')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                                    pairDict[('for', 'second')][orient][read.query_name] = (read.flag,
+                                                                                            read.get_tag('AS'),
+                                                                                            read.get_tag('nM'),
+                                                                                            read.query_alignment_length,
+                                                                                            int(np.mean(read.query_alignment_qualities)))
     return pairDict
 
 
@@ -106,14 +121,14 @@ def find_junctions(jxn, bam, side, tx, j_reads, gtree):
     '''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
 
-    if side==2:
+    if side == 2:
         chrom1, chrom2 = chrom2, chrom1
         pos1, pos2 = pos2, pos1
         flipstr = string.maketrans("-+", "+-")
         str1, str2 = str2.translate(flipstr), str1.translate(flipstr)
         repleft, repright = repright, repleft
 
-    jxnDict = collections.defaultdict(lambda : collections.defaultdict(dict))
+    jxnDict = collections.defaultdict(lambda: collections.defaultdict(dict))
     jxnDict[('for', 'first')][1] = {}
     jxnDict[('for', 'first')][2] = {}
     jxnDict[('for', 'second')][1] = {}
@@ -138,8 +153,8 @@ def find_junctions(jxn, bam, side, tx, j_reads, gtree):
         pos2right = int(pos2) + 100000
 
     for read in bam:
-        if read.query_name in j_reads: # use later in the func to get total read support
-            if (not read.flag & 256):   #  read.next_reference_name == chrom2 and read.reference_name == chrom1 and
+        if read.query_name in j_reads:  # use later in the func to get total read support
+            if (not read.flag & 256):   # read.next_reference_name == chrom2 and read.reference_name == chrom1 and
                 if (int(read.reference_start) > pos1left and
                         int(read.reference_start) < pos1right or
                         int(read.next_reference_start) > pos2left and
@@ -149,16 +164,32 @@ def find_junctions(jxn, bam, side, tx, j_reads, gtree):
                     orient = 1 if (read.flag & 64) else 2
                     if set(tx).intersection(set(read_tx)) and set(tx).intersection(set(read_tx2)):
                         if read.is_paired:
-                            if read.flag & 16: # reverse strand
-                                if read.flag & 64: # first in pair
-                                    jxnDict[('rev', 'first')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                            if read.flag & 16:  # reverse strand
+                                if read.flag & 64:  # first in pair
+                                    jxnDict[('rev', 'first')][orient][read.query_name] = (read.flag,
+                                                                                          read.get_tag('AS'),
+                                                                                          read.get_tag('nM'),
+                                                                                          read.query_alignment_length,
+                                                                                          int(np.mean(read.query_alignment_qualities)))
                                 else:
-                                    jxnDict[('rev', 'second')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                                    jxnDict[('rev', 'second')][orient][read.query_name] = (read.flag,
+                                                                                           read.get_tag('AS'),
+                                                                                           read.get_tag('nM'),
+                                                                                           read.query_alignment_length,
+                                                                                           int(np.mean(read.query_alignment_qualities)))
                             else:
                                 if read.flag & 64:
-                                    jxnDict[('for', 'first')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                                    jxnDict[('for', 'first')][orient][read.query_name] = (read.flag,
+                                                                                          read.get_tag('AS'),
+                                                                                          read.get_tag('nM'),
+                                                                                          read.query_alignment_length,
+                                                                                          int(np.mean(read.query_alignment_qualities)))
                                 else:
-                                    jxnDict[('for', 'second')][orient][read.query_name] = (read.flag, read.get_tag('AS'), read.get_tag('nM'), read.query_alignment_length, int(np.mean(read.query_alignment_qualities)))
+                                    jxnDict[('for', 'second')][orient][read.query_name] = (read.flag,
+                                                                                           read.get_tag('AS'),
+                                                                                           read.get_tag('nM'),
+                                                                                           read.query_alignment_length,
+                                                                                           int(np.mean(read.query_alignment_qualities)))
     return jxnDict
 
 
@@ -179,10 +210,10 @@ def get_reads_from_bam(bam_file, jxn, tx, s_reads, j_reads, gtree, args):
     # account for genome boundaries
     len1 = (item for item in bamObject.header['SQ'] if item["SN"] == chrom1).next()['LN']
     len2 = (item for item in bamObject.header['SQ'] if item["SN"] == chrom2).next()['LN']
-    dist1_less = max(i for i in [int(pos1)-100000, 0] if i >= 0)
-    dist1_plus = min(i for i in [int(pos1)+100000, len1] if i >= 0)
-    dist2_less = max(i for i in [int(pos2)-100000, 0] if i >= 0)
-    dist2_plus = min(i for i in [int(pos2)+100000, len2] if i >= 0)
+    dist1_less = max(i for i in [int(pos1) - 100000, 0] if i >= 0)
+    dist1_plus = min(i for i in [int(pos1) + 100000, len1] if i >= 0)
+    dist2_less = max(i for i in [int(pos2) - 100000, 0] if i >= 0)
+    dist2_plus = min(i for i in [int(pos2) + 100000, len2] if i >= 0)
     # spans left
     logger.debug("Extracting paired spanning reads for " + jxn)
     bam = bamObject.fetch(chrom1, dist1_less, dist1_plus)
@@ -464,7 +495,7 @@ def run_support_fxn(jxn, tx, s_reads, j_reads, in_bam, args, *opts):
     else:
         results['assembly'] = ''
     results['name'] = jxn
-    logger.info(jxn + " support took  %g seconds" % (time.time()-start))
+    logger.info(jxn + " support took  %g seconds" % (time.time() - start))
     return results
 
 
@@ -496,7 +527,7 @@ def run_support_parallel(df, in_bam, args):
     pool = mp.Pool(int(args.threads), init_worker)
     try:
         for i in (df.index.values):
-            args2pass = [df.loc[i,'name'], df.loc[i,'txunion'], df.loc[i,'spanreads'].split(","), df.loc[i,'jxn_reads'].split(","), in_bam, args]
+            args2pass = [df.loc[i, 'name'], df.loc[i, 'txunion'], df.loc[i, 'spanreads'].split(","), df.loc[i, 'jxn_reads'].split(","), in_bam, args]
             seq = pool.apply_async(run_support_fxn, args=args2pass)
             results.append(seq)
         pool.close()
