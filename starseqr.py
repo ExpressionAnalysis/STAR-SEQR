@@ -99,6 +99,7 @@ def parse_args():
 
 
 def check_file_exists(path):
+    logger = logging.getLogger("STAR-SEQR")
     if (os.stat(os.path.realpath(path)).st_size == 0):
         logger.error("Exiting. Cannot find file: " + os.path.realpath(path))
         sys.exit(1)
@@ -114,7 +115,7 @@ def force_symlink(file1, file2):
 
 
 def which(program):
-    import os
+
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
     fpath, fname = os.path.split(program)
@@ -154,8 +155,10 @@ def set_log_level_from_verbose(ch, args):
 def import_jxns_pandas(jxnFile, args):
     logger = logging.getLogger("STAR-SEQR")
     logger.info('Importing junctions')
-    df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=False,  engine='c')
-    df.columns = ['chrom1', 'pos1', 'str1', 'chrom2', 'pos2', 'str2', 'jxntype', 'jxnleft', 'jxnright', 'readid', 'base1', 'cigar1', 'base2', 'cigar2']
+    df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=False, engine='c')
+    df.columns = ['chrom1', 'pos1', 'str1', 'chrom2', 'pos2', 'str2',
+                  'jxntype', 'jxnleft', 'jxnright', 'readid',
+                  'base1', 'cigar1', 'base2', 'cigar2']
     df['readid'] = df['readid'].astype(str)
     df['pos1'] = df['pos1'].astype(int)
     df['pos2'] = df['pos2'].astype(int)
@@ -172,6 +175,7 @@ def import_jxns_pandas(jxnFile, args):
 def pandas_parallel(df, func, nthreads):
     logger = logging.getLogger("STAR-SEQR")
     start = time.time()
+
     def init_worker():
         signal.signal(signal.SIGINT, signal.SIG_IGN)
     try:
@@ -189,7 +193,7 @@ def pandas_parallel(df, func, nthreads):
         logger.error("Exception: " + str(e))
         pool.terminate()
         raise e
-    logger.info("Time to run pandas_parallel on " + str(func.__name__) + " took %g seconds" %  (time.time() - start))
+    logger.info("Time to run pandas_parallel on " + str(func.__name__) + " took %g seconds" % (time.time() - start))
     return df
 
 
@@ -218,8 +222,8 @@ def choose_order(chrL1, posL1, chrL2, posL2):
 
 def apply_normalize_jxns(df):
     df['name'] = df.apply(lambda x: normalize_jxns(x['chrom1'], x['chrom2'], x['pos1'], x['pos2'],
-                                                           x['str1'], x['str2'], x['jxnleft'], x['jxnright'],
-                                                           x['order']), axis=1)
+                                                   x['str1'], x['str2'], x['jxnleft'], x['jxnright'],
+                                                   x['order']), axis=1)
     return df
 
 
@@ -267,7 +271,7 @@ def parallel_count_jxns(df, args):
 
     grouped_df = df.groupby(['name', 'order'], as_index=True)
     # new_df = parallel_groupby(grouped_df, apply_count_vals, args.threads)
-    new_df = grouped_df.agg({'readid': {'reads': lambda col: ','.join(col), 'counts' :'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
+    new_df = grouped_df.agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
     if args.nucleic_type == "DNA":
         new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright']
     elif args.nucleic_type == "RNA":
@@ -277,7 +281,7 @@ def parallel_count_jxns(df, args):
 
 def apply_count_vals(df):
     # print(df.head(10))
-    new_df = df.groupby(['name', 'order'], as_index=True).agg({'readid': {'reads': lambda col: ','.join(col), 'counts' :'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
+    new_df = df.groupby(['name', 'order'], as_index=True).agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
     return new_df
 
 
@@ -349,7 +353,7 @@ def get_pairs_func(jxn):
                     (rawdf['pos1'] >= pos2left) & (rawdf['pos1'] <= pos2right) &
                     (rawdf['pos2'] >= pos1left) & (rawdf['pos2'] <= pos1right)]
     npairs = len(forward['readid'].index) + len(reverse['readid'].index)
-    reads = ','.join(forward['readid'].tolist()) + ',' +  ','.join(reverse['readid'].tolist())
+    reads = ','.join(forward['readid'].tolist()) + ',' + ','.join(reverse['readid'].tolist())
     return (npairs, reads)
 
 
@@ -459,8 +463,8 @@ def main():
 
     # check files exist and get abs paths
     if args.bed_file:
-        check_file_exists(bed_file)
         bed_path = os.path.realpath(args.bed_file)
+        check_file_exists(bed_path)
     if args.fastq1:
         fq1_path = os.path.realpath(args.fastq1)
         fq2_path = os.path.realpath(args.fastq2)
@@ -488,7 +492,7 @@ def main():
     # import all jxns
     global rawdf
     rawdf = import_jxns_pandas(args.prefix + ".Chimeric.out.junction", args)
-    jxns = rawdf[rawdf['jxntype'] >= 0].reset_index() # junctions can be either 0, 1, 2
+    jxns = rawdf[rawdf['jxntype'] >= 0].reset_index()  # junctions can be either 0, 1, 2
 
     if len(jxns.index) == 0:
         logger.info("No junctions found in the input file")
@@ -514,14 +518,20 @@ def main():
         # start output files
         stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
         breakpoints_fh = open(args.prefix + "_STAR-SEQR_breakpoints.txt", 'w')
-        breakpoint_cols = ["ann", "breakpoint_left", "breakpoint_right", "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot", "splice_type", "dist", "span_first", "jxn_left", "jxn_right", "assembly", "primers", "name"]
-        breakpoint_header = ["NAME", "BRKPT_LEFT", "BRKPT_RIGHT", "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT", "SPLICE_TYPE", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT", "ASSEMBLY", "PRIMERS", "ID"]
+        breakpoint_cols = ["ann", "breakpoint_left", "breakpoint_right",
+                           "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
+                           "splice_type", "dist", "span_first", "jxn_left", "jxn_right",
+                           "assembly", "primers", "name"]
+        breakpoint_header = ["NAME", "BRKPT_LEFT", "BRKPT_RIGHT",
+                             "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
+                             "SPLICE_TYPE", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
+                             "ASSEMBLY", "PRIMERS", "ID"]
         print(*breakpoint_header, sep='\t', file=breakpoints_fh)
 
         # stats dict
         stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
 
-         # Order, Normalize and Aggregate
+        # Order, Normalize and Aggregate
         logger.info("Ordering junctions")
         jxns['order'] = 1
         logger.info('Normalizing junctions')
@@ -542,29 +552,28 @@ def main():
 
         # hard filter on minimal junction and span reads, require at least two reads...
         logger.info('Filtering junctions')
-        jxn_filt = jxn_filt[(jxn_filt["spans"]  + jxn_filt["jxn_counts"] )  >= 2]
+        jxn_filt = jxn_filt[(jxn_filt["spans"] + jxn_filt["jxn_counts"]) >= 2]
 
         if len(jxn_filt.index) >= 1:
             # Get dist
             jxn_filt['dist'] = jxn_filt.apply(lambda x: get_distance(x['name']), axis=1)
 
             # Get Annotation info for each junction
-            jxn_filt['ann_format']= "Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length"
+            jxn_filt['ann_format'] = "Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length"
 
             jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
             jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
             # determine if junction follows canonical splicing at exon junction
-            jxn_filt['left_canonical'] = jxn_filt['left_annot'].str.split(':',expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0'  else 'NON-CANONICAL_SPLICING')
-            jxn_filt['right_canonical'] = jxn_filt['right_annot'].str.split(':',expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0'  else 'NON-CANONICAL_SPLICING')
+            jxn_filt['left_canonical'] = jxn_filt['left_annot'].str.split(':', expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
+            jxn_filt['right_canonical'] = jxn_filt['right_annot'].str.split(':', expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
             jxn_filt['splice_type'] = np.where((jxn_filt['left_canonical'] == 'CANONICAL_SPLICING') &
-                                               (jxn_filt['right_canonical'] == 'CANONICAL_SPLICING') ,
+                                               (jxn_filt['right_canonical'] == 'CANONICAL_SPLICING'),
                                                 'CANONICAL_SPLICING', 'NON-CANONICAL_SPLICING')
             # get all genes associated to look for overlap for each read later..
             jxn_filt['left_all'], jxn_filt['right_all'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxn_info_func(x['name'], gtree), axis=1))
             jxn_filt['txunion'] = [list(set(a).union(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['txintersection'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['ann'] = jxn_filt['left_symbol'] + "--" + jxn_filt['right_symbol']
-
 
             # subset to ROI using bed file if it exists
             if args.bed_file:
@@ -576,15 +585,15 @@ def main():
             # remove internal gene dups unless otherwise requested, also removes overlapping genes
             if not args.keep_gene_dups:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[jxn_filt['txintersection'].astype(str).str.len() < 3] # [] counts as two
+                jxn_filt = jxn_filt[jxn_filt['txintersection'].astype(str).str.len() < 3]  # [] counts as two
                 logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove novel genes unless otherwise requested
             if not args.keep_novel:
                 before_remove = len(jxn_filt.index)
                 jxn_filt = jxn_filt[(jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA")]
-                jxn_filt = jxn_filt[(jxn_filt['left_annot'].str.split(':',expand=True)[3] != "NA") &
-                                    (jxn_filt['right_annot'].str.split(':',expand=True)[3] != "NA")]
+                jxn_filt = jxn_filt[(jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") &
+                                    (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA")]
                 logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove mitochondria unless otherwise requested
@@ -605,10 +614,8 @@ def main():
                 jxn_filt = jxn_filt[(jxn_filt['left_cdslen'] != 0) & (jxn_filt['right_cdslen'] != 0)]
                 logger.info("Number of candidates removed due to non-coding filter: " + str(before_remove - len(jxn_filt.index)))
 
-
-
-            #combine all supporting reads together.
-            jxn_filt['supporting_reads'] = jxn_filt['spanreads']  + ',' + jxn_filt['jxn_reads']
+            # combine all supporting reads together.
+            jxn_filt['supporting_reads'] = jxn_filt['jxn_reads'] + ',' + jxn_filt['spanreads']
 
             stats_res['Candidate_Breakpoints'] = len(jxn_filt.index)
             logger.info('Candidate Breakpoints:' + str(stats_res['Candidate_Breakpoints']))
@@ -624,18 +631,19 @@ def main():
             # Merge read support with previous stats
             finaldf = pd.merge(jxn_filt, assemdf, how='inner', left_on="name", right_on="name", left_index=False,
                                right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
+            pd.set_option('display.max_columns', 500)
             # print(finaldf.head())
             # collapse read info for brevity but keep here in case useful later on
             finaldf['jxn_left'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"]
-            finaldf['jxn_right'] =  finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
+            finaldf['jxn_right'] = finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
             finaldf['jxn_first'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"] + \
                                    finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
             finaldf['jxn_second'] = finaldf["jxnleft_for_second"] + finaldf["jxnleft_rev_second"] + \
                                     finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
             finaldf['span_first'] = finaldf["spanleft_for_first"] + finaldf["spanleft_rev_first"] + \
-                                   finaldf["spanright_for_first"] + finaldf["spanright_rev_first"]
+                                    finaldf["spanright_for_first"] + finaldf["spanright_rev_first"]
             finaldf['span_second'] = finaldf["spanleft_for_second"] + finaldf["spanleft_rev_second"] + \
-                                    finaldf["spanright_for_second"] + finaldf["spanright_rev_second"]
+                                     finaldf["spanright_for_second"] + finaldf["spanright_rev_second"]
             finaldf['spans_disc'] = finaldf['span_first']
 
             # todo: confirm breakpoint with bwa or bowtie or age?
@@ -647,16 +655,16 @@ def main():
             finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
             # Get breakpoint locations
-            finaldf['breakpoint_left'], finaldf['breakpoint_right']  = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
+            finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
 
             # all candidates
             finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
 
             # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
-            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2  >= 5) |
-                              ((finaldf["jxn_left"] >=1)  &  (finaldf['jxn_right'] >=1)) |
-                              ((finaldf["jxn_left"] >=1)  &  (finaldf['span_first'] >=1)) |
-                              ((finaldf["jxn_right"] >=1)  &  (finaldf['span_first'] >=1)))]
+            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2 >= 5) |
+                              ((finaldf["jxn_left"] >= 1) & (finaldf['jxn_right'] >= 1)) |
+                              ((finaldf["jxn_left"] >= 1) & (finaldf['span_first'] >= 1)) |
+                              ((finaldf["jxn_right"] >= 1) & (finaldf['span_first'] >= 1)))]
 
             # Write output
             finaldf.sort_values(['jxn_first', "span_first"], ascending=[False, False], inplace=True)
@@ -705,7 +713,7 @@ def main():
             targets_tree = bed_to_tree(bed_path)
             jxn_summary['subset'] = jxn_summary.apply(lambda x: subset_bed_func(x['name'], targets_tree), axis=1)
             jxn_summary = jxn_summary[jxn_summary['subset'] >= 1]
-            logger.info("Time to subset junction from bed took %g seconds" %  (time.time() - start_bed))
+            logger.info("Time to subset junction from bed took %g seconds" % (time.time() - start_bed))
 
         # print stats
         stats_res['Total_Breakpoints'] = len(jxn_summary.index)
@@ -720,12 +728,12 @@ def main():
         # Filter on junctions
         logger.info('Filtering junctions based on number of junction reads')
         jxn_filt = jxn_summary[(jxn_summary["jxnleft"] >= args.jxn_reads) &
-                            (jxn_summary["jxnright"] >= args.jxn_reads)].sort_values("jxnleft", ascending=False)
+                               (jxn_summary["jxnright"] >= args.jxn_reads)].sort_values("jxnleft", ascending=False)
         logger.info('Junctions passing junction read filter:' + str(len(jxn_filt.index)))
 
 
         if len(jxn_filt.index) >= 1:
-             # Annotate genes
+            # Annotate genes
             jxn_filt['genesleft'], jxn_filt['genesright'], jxn_filt['common'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_genes(x['name'], gtree), axis=1))
 
             # Get gene info and remove internal gene dups
@@ -733,7 +741,6 @@ def main():
                 before_remove = len(jxn_filt.index)
                 jxn_filt = jxn_filt[jxn_filt['common'] == 0]
                 logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
-
 
         if len(jxn_filt.index) >= 1:
             # Get paired discordant spanning reads supporting junctions and filter
@@ -743,7 +750,7 @@ def main():
             jxn_filt = jxn_filt[(jxn_filt['spans'] >= args.span_reads)]
 
             #combine all supporting reads together.
-            jxn_filt['supporting_reads'] = jxn_filt['spanreads']  + ',' + jxn_filt['jxnreadsleft']   + ',' + jxn_filt['jxnreadsright']
+            jxn_filt['supporting_reads'] = jxn_filt['spanreads'] + ',' + jxn_filt['jxnreadsleft'] + ',' + jxn_filt['jxnreadsright']
 
             # Write candidates to file
             # jxn_filt.to_csv(path_or_buf="STAR-SEQR_candidates.txt", header=True, sep="\t", mode='w',
