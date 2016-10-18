@@ -7,18 +7,16 @@ import re
 import string
 import time
 import gzip
-import io
 import errno
 import logging
 import subprocess as sp
 from itertools import groupby, islice
-import pysam  # requires 0.9.1 or newer
+import pysam  # requires 0.9.0
 import multiprocessing as mp
 import signal
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import collections
 import numpy as np
-import annotate_sv as ann
 
 
 logger = logging.getLogger('STAR-SEQR')
@@ -38,6 +36,18 @@ def find_resource(filename):
     dirname = os.path.join(packagedir, 'resources')
     fullname = os.path.abspath(os.path.join(dirname, filename))
     return fullname
+
+
+def get_pos_genes(chrom1, pos1, gtree):
+    resL = gtree[chrom1].search(int(pos1))
+    genesL = set()
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            Lsymbol = list(resL)[idx].data['name2']
+            genesL.add(Lsymbol)
+    else:
+        genesL.add("NA")
+    return list(genesL)
 
 
 def find_support_reads(jxn, bam, side, tx, sub_reads, gtree):
@@ -109,8 +119,8 @@ def find_support_reads(jxn, bam, side, tx, sub_reads, gtree):
             myorient = 'first' if (read.flag & 64) else 'second'
             is_subset = 'SUB' if read.query_name in sub_reads else 'ALL'
             if is_subset == 'SUB':
-                read_tx = ann.get_pos_genes(read.reference_name, read.reference_start, gtree)
-                read_tx2 = ann.get_pos_genes(read.next_reference_name, read.next_reference_start, gtree)
+                read_tx = get_pos_genes(read.reference_name, read.reference_start, gtree)
+                read_tx2 = get_pos_genes(read.next_reference_name, read.next_reference_start, gtree)
                 if set(tx).intersection(set(read_tx)) and set(tx).intersection(set(read_tx2)):
                     retDict[mytype][(mystrand, myorient)][read.query_name] = (is_subset,
                                                                               read.get_tag('AS'),
@@ -438,17 +448,17 @@ def run_support_parallel(df, in_bam, args):
     results = []
     # annotation to be used
     global gtree
-    if args.ann_source == 'refgene':
-        refgene = find_resource('refGene.txt.gz')
-        kg = io.BufferedReader(gzip.open(refgene))
+    if args.ann_source == "refgene":
+        refgene = find_resource("refGene.txt.gz")
+        kg = gzip.open(refgene)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
-    elif args.ann_source == 'ensgene':
-        ensgene = find_resource('ensGene.txt.gz')
-        kg = io.BufferedReader(gzip.open(ensgene))
+    elif args.ann_source == "ensgene":
+        ensgene = find_resource("ensGene.txt.gz")
+        kg = gzip.open(ensgene)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
-    elif args.ann_source == 'gencode':
-        gencode = find_resource('wgEncodeGencodeBasicV24lift37.txt.gz')
-        kg = io.BufferedReader(gzip.open(gencode))
+    elif args.ann_source == "gencode":
+        gencode = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
+        kg = gzip.open(gencode)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
     pool = mp.Pool(int(args.threads), init_worker)

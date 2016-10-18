@@ -11,11 +11,11 @@ from argparse import ArgumentParser
 import pandas as pd
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import gzip
-import io
 import logging
 import numpy as np
 import multiprocessing as mp
 import signal
+import pysam
 import starseqr_utils
 
 
@@ -43,6 +43,8 @@ def parse_args():
     # shared args
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
+    parser.add_argument('-r', '--fasta', type=str, required=True,
+                        help='indexed fata')
     parser.add_argument('-d', '--dist', type=int, required=False,
                         default=100000,
                         help='minimum distance to call junctions')
@@ -316,11 +318,6 @@ def apply_pairs_func(df):
     return df
 
 
-def apply_primers_func(df):
-    df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.runp3(x['name'], x['assembly']), axis=1).apply(lambda x: ",".join(x))
-    return df['primers']
-
-
 def get_pairs_func(jxn):
     '''
     Get paired end read data that supports each jxn from the junction file.
@@ -358,7 +355,7 @@ def get_pairs_func(jxn):
 
 
 def apply_jxn_strand(df):
-    _, _, df['test_strand'], _ = zip(*df.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+    _, _, df['test_strand'], _, _ = zip(*df.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
     return df
 
 
@@ -386,6 +383,37 @@ def flip_jxn(jxn, gs1):
         newid = jxn
         flip = 0
     return (newid, flip)
+
+
+def rc(dna):
+    ''' reverse complement '''
+    complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
+    return dna.translate(complements)[::-1]
+
+
+def get_sequence(fa, exon_list, strand, decorate=''):
+    seq = []
+    if len(exon_list) >= 1:
+        for ex_order, chrom, start, end in exon_list:  # exon list still ordered in forward
+            if fa.references:
+                seq.append(fa.fetch(chrom, start, end))
+        seq_str = decorate.join(seq)
+        if strand == '-':
+            seq_str = rc(seq_str)
+        return seq_str
+    else:
+        return "NA"
+
+
+def apply_get_sequence(df):
+    df['left_seq'] = df.apply(lambda x: get_sequence(fa_object, x['left_exons'], x['left_strand']), axis=1)
+    df['right_seq'] = df.apply(lambda x: get_sequence(fa_object, x['right_exons'], x['right_strand']), axis=1)
+    return df
+
+
+def apply_primers_func(df):
+    df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.runp3(x['name'], x['primer_seq']), axis=1).apply(lambda x: ",".join(x))
+    return df['primers']
 
 
 def get_svtype_func(jxn):
@@ -462,6 +490,9 @@ def main():
         sys.exit(1)
 
     # check files exist and get abs paths
+    if args.fasta:
+        fasta_path = os.path.realpath(args.fasta)
+        check_file_exists(fasta_path)
     if args.bed_file:
         bed_path = os.path.realpath(args.bed_file)
         check_file_exists(bed_path)
@@ -503,16 +534,21 @@ def main():
     global gtree
     if args.ann_source == "refgene":
         refgene = find_resource("refGene.txt.gz")
-        kg = io.BufferedReader(gzip.open(refgene))
+        kg = gzip.open(refgene)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
     elif args.ann_source == "ensgene":
         ensgene = find_resource("ensGene.txt.gz")
-        kg = io.BufferedReader(gzip.open(ensgene))
+        kg = gzip.open(ensgene)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     elif args.ann_source == "gencode":
         gencode = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
-        kg = io.BufferedReader(gzip.open(gencode))
+        kg = gzip.open(gencode)
         gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+
+    # Prepare fasta if used
+    if args.fasta:
+        global fa_object
+        fa_object = pysam.Fastafile(fasta_path)
 
     if args.nucleic_type == "RNA":
         # start output files
@@ -561,8 +597,8 @@ def main():
             # Get Annotation info for each junction
             jxn_filt['ann_format'] = "Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length"
 
-            jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
-            jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
+            jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt['left_exons'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+            jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'], jxn_filt['right_exons'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
             # determine if junction follows canonical splicing at exon junction
             jxn_filt['left_canonical'] = jxn_filt['left_annot'].str.split(':', expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
             jxn_filt['right_canonical'] = jxn_filt['right_annot'].str.split(':', expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
@@ -570,7 +606,7 @@ def main():
                                                (jxn_filt['right_canonical'] == 'CANONICAL_SPLICING'),
                                                 'CANONICAL_SPLICING', 'NON-CANONICAL_SPLICING')
             # get all genes associated to look for overlap for each read later..
-            jxn_filt['left_all'], jxn_filt['right_all'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxn_info_func(x['name'], gtree), axis=1))
+            jxn_filt['left_all'], jxn_filt['right_all'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxn_genes(x['name'], gtree), axis=1))
             jxn_filt['txunion'] = [list(set(a).union(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['txintersection'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['ann'] = jxn_filt['left_symbol'] + "--" + jxn_filt['right_symbol']
@@ -651,10 +687,18 @@ def main():
             # todo: probabilistic module to assign quality score
 
             # Generate Primers using assembled contigs
-            logger.info("Generating primers from assembled contigs")
-            finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
+            if args.fasta:
+                logger.info("Generating primers using indexed fasta")
+                finaldf = pandas_parallel(finaldf, apply_get_sequence, args.threads)
+                finaldf['primer_seq'] = finaldf['left_seq'] + ":" + finaldf['left_seq']
+                finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
+            else:
+                logger.info("Generating primers from assembled contigs")
+                finaldf['primer_seq'] = finaldf['assembly']
+                finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
             # Get breakpoint locations
+            logger.info("Getting normalized breakpoint locations")
             finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
 
             # all candidates
@@ -734,7 +778,8 @@ def main():
 
         if len(jxn_filt.index) >= 1:
             # Annotate genes
-            jxn_filt['genesleft'], jxn_filt['genesright'], jxn_filt['common'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_genes(x['name'], gtree), axis=1))
+            jxn_filt['genesleft'], jxn_filt['genesright'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_genes(x['name'], gtree), axis=1))
+            jxn_filt['common'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.genesleft, jxn_filt.genesright)]
 
             # Get gene info and remove internal gene dups
             if not args.keep_gene_dups:
@@ -749,7 +794,7 @@ def main():
             logger.info('Filtering junctions based on pairs')
             jxn_filt = jxn_filt[(jxn_filt['spans'] >= args.span_reads)]
 
-            #combine all supporting reads together.
+            # combine all supporting reads together.
             jxn_filt['supporting_reads'] = jxn_filt['spanreads'] + ',' + jxn_filt['jxnreadsleft'] + ',' + jxn_filt['jxnreadsright']
 
             # Write candidates to file
@@ -796,7 +841,7 @@ def main():
             finaldf['svtype'] = finaldf.apply(lambda x: get_svtype_func(x['name']), axis=1)
 
             # Get breakpoint locations
-            finaldf['breakpoint_left'], finaldf['breakpoint_right']  = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
+            finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
 
             finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
             # finaldf = finaldf[(finaldf["spans_disc_unique"] >= args.span_reads) &
@@ -804,6 +849,7 @@ def main():
             #                   (finaldf["jxn_second_unique"] >= args.jxn_reads)]
 
             # Write output
+            finaldf['dist'] = finaldf['dist'].str.replace()
             finaldf.sort_values(['jxnleft', "spans"], ascending=[False, False], inplace=True)
             finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
                            columns=breakpoint_cols, mode='w', index=False)

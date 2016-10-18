@@ -15,12 +15,19 @@ def runp3(seq_id, sequence):
     if len(str(sequence)) < 75:
         # logger.debug("Sequence is too short to design primers")
         return ()
+    # get index of split to design targets
+    if ":" in sequence:
+        mybrk = int(sequence.index(":"))
+        sequence = sequence.replace(":", "")
+        brk_target = [mybrk - 20, 40]
+    else:
+        brk_target = [len(sequence) / 2, 1]
     # default values
     mydres = {
         'SEQUENCE_ID': seq_id,
         'SEQUENCE_TEMPLATE': sequence,
-        # 'SEQUENCE_INCLUDED_REGION': [36,342],
-        'SEQUENCE_TARGET': [len(sequence) / 2, 1]
+        # 'SEQUENCE_INCLUDED_REGION': [],
+        'SEQUENCE_TARGET': brk_target  # start, len
     }
     mypres = {
         'PRIMER_NUM_RETURN': 1,
@@ -30,10 +37,10 @@ def runp3(seq_id, sequence):
         'PRIMER_PICK_INTERNAL_OLIGO': 1,
         'PRIMER_OPT_SIZE': 20,
         'PRIMER_MIN_SIZE': 18,
-        'PRIMER_MAX_SIZE': 25,
+        'PRIMER_MAX_SIZE': 27,
         'PRIMER_OPT_TM': 60.0,
-        'PRIMER_MIN_TM': 57.0,
-        'PRIMER_MAX_TM': 63.0,
+        'PRIMER_MIN_TM': 55.0,
+        'PRIMER_MAX_TM': 65.0,
         'PRIMER_OPT_GC_PERCENT': 50,
         'PRIMER_MIN_GC': 20.0,
         'PRIMER_MAX_GC': 80.0,
@@ -51,8 +58,8 @@ def runp3(seq_id, sequence):
         'PRIMER_PAIR_MAX_COMPL_ANY': 12,
         'PRIMER_PAIR_MAX_COMPL_END': 8,
         'PRIMER_PAIR_MAX_DIFF_TM': 6,
-        'PRIMER_PRODUCT_SIZE_RANGE': [[75, 100], [100, 125], [125, 150],
-                                      [150, 175], [175, 200], [50, 100]],
+        'PRIMER_PRODUCT_SIZE_RANGE': [[75, 125], [125, 150],
+                                      [150, 200], [200, 300]],
     }
     try:
         p3output = primer3.bindings.designPrimers(mydres, mypres)
@@ -82,4 +89,4 @@ def parsep3(p3output):
     Rtuple = p3output['PRIMER_RIGHT_0']
     Rstart, Rlen = str(Rtuple[0]), str(Rtuple[1])
     # amplen = str(int(Rstart) - int(Lstart))
-    return (Lprimer, Rprimer)
+    return (Lprimer.upper(), Rprimer.upper())
