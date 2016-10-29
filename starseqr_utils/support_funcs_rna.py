@@ -266,7 +266,7 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
                 map(chr, [x + 33 for x in quals])) + '\n')
         elif read.flag & 256:
             junctionfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
-            junctionfqfh.write(read.query_sequence + '\n')
+            junctionfqfh.write(read.query_alignment_sequence + '\n') # or us original read.query_sequence
             junctionfqfh.write('+' + '\n')
             junctionfqfh.write(''.join(
                 map(chr, [x + 33 for x in read.query_alignment_qualities])) + '\n')

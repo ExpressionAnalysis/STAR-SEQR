@@ -391,29 +391,40 @@ def rc(dna):
     return dna.translate(complements)[::-1]
 
 
-def get_sequence(fa, exon_list, strand, decorate=''):
-    seq = []
-    if len(exon_list) >= 1:
-        for ex_order, chrom, start, end in exon_list:  # exon list still ordered in forward
+def exons2seq(fa, lol_exons, jxn, side, decorate=''):
+    # clean jxn name to get back to support folder made previous
+    clean_jxn = str(jxn).replace(':', '_')
+    clean_jxn = str(clean_jxn).replace('+', 'pos')
+    clean_jxn = str(clean_jxn).replace('-', 'neg')
+    jxn_dir = 'support' + '/' + clean_jxn + '/'
+
+    ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
+    all_seq = []
+    for trx_exons in lol_exons:
+        seq = []
+        for ex_order, chrom, start, end, strand, trx in trx_exons:  # exon list still ordered in forward
             if fa.references:
                 seq.append(fa.fetch(chrom, start, end))
         seq_str = decorate.join(seq)
         if strand == '-':
             seq_str = rc(seq_str)
-        return seq_str
-    else:
-        return "NA"
+        all_seq.append((trx,seq_str))
+        ofile.write(">" + trx + "\n" + seq_str + "\n")
+    ofile.close()
+    return all_seq
 
 
-def apply_get_sequence(df):
-    df['left_seq'] = df.apply(lambda x: get_sequence(fa_object, x['left_exons'], x['left_strand']), axis=1)
-    df['right_seq'] = df.apply(lambda x: get_sequence(fa_object, x['right_exons'], x['right_strand']), axis=1)
+def apply_exons2seq(df):
+    df['left_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_trx_exons'], x['name'], "left"), axis=1)
+    df['right_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
+    df['left_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "left_fusion"), axis=1)
+    df['right_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_exons'], x['name'], "right_fusion"), axis=1)
     return df
 
 
 def apply_primers_func(df):
     df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.runp3(x['name'], x['primer_seq']), axis=1).apply(lambda x: ",".join(x))
-    return df['primers']
+    return df
 
 
 def get_svtype_func(jxn):
@@ -616,7 +627,7 @@ def main():
                 logger.info('Subsetting junctions using the supplied bed file')
                 targets_tree = bed_to_tree(bed_path)
                 jxn_filt['subset'] = jxn_filt.apply(lambda x: subset_bed_func(x['name'], targets_tree), axis=1)
-                jxn_filt = jxn_summary[jxn_filt['subset'] >= 1]
+                jxn_filt = jxn_filt[jxn_filt['subset'] >= 1]
 
             # remove internal gene dups unless otherwise requested, also removes overlapping genes
             if not args.keep_gene_dups:
@@ -682,24 +693,25 @@ def main():
                                      finaldf["spanright_for_second"] + finaldf["spanright_rev_second"]
             finaldf['spans_disc'] = finaldf['span_first']
 
-            # todo: confirm breakpoint with bwa or bowtie or age?
-            # todo: get novel or existing fusion info from Fusco.
-            # todo: probabilistic module to assign quality score
+            # Get all overlapping transcript seqs into one fasta per side
+            finaldf['left_trx_exons'] = finaldf.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1, only_trx=True), axis=1)
+            finaldf['right_trx_exons'] = finaldf.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2, only_trx=True), axis=1)
+            finaldf = pandas_parallel(finaldf, apply_exons2seq, args.threads) # returns sequences for each transcript per side
 
-            # Generate Primers using assembled contigs
-            if args.fasta:
-                logger.info("Generating primers using indexed fasta")
-                finaldf = pandas_parallel(finaldf, apply_get_sequence, args.threads)
-                finaldf['primer_seq'] = finaldf['left_seq'] + ":" + finaldf['left_seq']
-                finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
-            else:
-                logger.info("Generating primers from assembled contigs")
-                finaldf['primer_seq'] = finaldf['assembly']
-                finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
+            # Generate Primers
+            logger.info("Generating primers using indexed fasta")
+            finaldf['primer_seq'] = finaldf['left_fusion_seqs'].apply(lambda x: x[0][1]) + ":" + finaldf['right_fusion_seqs'].apply(lambda x: x[0][1])
+            finaldf = pandas_parallel(finaldf, apply_primers_func, args.threads)
+
 
             # Get breakpoint locations
             logger.info("Getting normalized breakpoint locations")
             finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
+
+            # todo: confirm breakpoint
+            # todo: get novel or existing fusion info from Fusco.
+            # todo: probabilistic module to assign quality score
+
 
             # all candidates
             finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
@@ -778,7 +790,7 @@ def main():
 
         if len(jxn_filt.index) >= 1:
             # Annotate genes
-            jxn_filt['genesleft'], jxn_filt['genesright'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_genes(x['name'], gtree), axis=1))
+            jxn_filt['genesleft'], jxn_filt['genesright'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxn_genes(x['name'], gtree), axis=1))
             jxn_filt['common'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.genesleft, jxn_filt.genesright)]
 
             # Get gene info and remove internal gene dups
@@ -813,7 +825,7 @@ def main():
             finaldf['spans_disc'] = finaldf['spans']
 
             # mark duplicates
-            starseqr_utils.star.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.bam", args)
+            starseqr_utils.star_funcs.convert(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.bam", args)
 
             # # Get read support from BAM
             # assemdict = assem_dna.run_support_parallel(jxn_filt, args.prefix + ".Chimeric.out.bam", args)
@@ -835,7 +847,8 @@ def main():
             # finaldf['primers'] = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
             # Get Annotation
-            finaldf['ann'] = starseqr_utils.annotate_sv.get_gene_info(finaldf, gtree)
+            print(finaldf.head(10))
+            finaldf['ann'] = finaldf['genesleft'].apply(lambda x: str(x[0])) + "--" + finaldf['genesright'].apply(lambda x: str(x[0]))
 
             # Get Breakpoint type
             finaldf['svtype'] = finaldf.apply(lambda x: get_svtype_func(x['name']), axis=1)
@@ -849,7 +862,7 @@ def main():
             #                   (finaldf["jxn_second_unique"] >= args.jxn_reads)]
 
             # Write output
-            finaldf['dist'] = finaldf['dist'].str.replace()
+            # finaldf['dist'] = finaldf['dist'].str.replace()
             finaldf.sort_values(['jxnleft', "spans"], ascending=[False, False], inplace=True)
             finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
                            columns=breakpoint_cols, mode='w', index=False)
