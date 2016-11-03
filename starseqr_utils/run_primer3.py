@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import sys
 import logging
 import primer3
 
@@ -69,12 +68,10 @@ def runp3(seq_id, sequence):
         else:
             p3res = parsep3(p3output)
     except (OSError):
-        logger.error("Primer Design Failed", exc_info=True)
-        sys.exit(1)
-    # end = time.time()
-    # elapsed = end - start
-    # logger.debug("Primer Design took  %g seconds" % (elapsed))
-    # logger.debug("Finished Primer Design")
+        logger.error("Primer Design Failed- continuing", exc_info=True)
+        # sys.exit(1)
+    except (Exception):
+            return ()
     return p3res
 
 
@@ -82,11 +79,11 @@ def parsep3(p3output):
     # logger.debug('Parsing Primer3 Results')
     Lprimer = str(p3output['PRIMER_LEFT_0_SEQUENCE'])
     # Ltm = round(p3output['PRIMER_LEFT_0_TM'])
-    Ltuple = p3output['PRIMER_LEFT_0']
-    Lstart, Llen = str(Ltuple[0]), str(Ltuple[1])
+    # Ltuple = p3output['PRIMER_LEFT_0']
+    # Lstart, Llen = str(Ltuple[0]), str(Ltuple[1])
     Rprimer = str(p3output['PRIMER_RIGHT_0_SEQUENCE'])
     # Rtm = round(p3output['PRIMER_RIGHT_0_TM'])
-    Rtuple = p3output['PRIMER_RIGHT_0']
-    Rstart, Rlen = str(Rtuple[0]), str(Rtuple[1])
+    # Rtuple = p3output['PRIMER_RIGHT_0']
+    # Rstart, Rlen = str(Rtuple[0]), str(Rtuple[1])
     # amplen = str(int(Rstart) - int(Lstart))
     return (Lprimer.upper(), Rprimer.upper())

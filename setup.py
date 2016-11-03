@@ -14,7 +14,7 @@ def read(fname):
 
 setup(
     name='STAR-SEQR',
-    version='0.0.2',
+    version='0.0.4',
     description='',
     long_description=read('README.md'),
     license='Custom',
@@ -26,6 +26,8 @@ setup(
     package_data={"starseqr_utils": ["resources/*"]},
     scripts=['starseqr.py'],
     zip_safe=False,
+    test_suite='nose.collector',
+    tests_require=['nose'],
 )
 
 stderr.write("Installation successful!\n")

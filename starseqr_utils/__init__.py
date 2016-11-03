@@ -4,4 +4,4 @@ import run_primer3
 import star_funcs
 import sv2bedpe
 
-__version__ = "0.0.1"
+__version__ = "0.0.4"

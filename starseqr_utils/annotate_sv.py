@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 import re
-import time
 import logging
 from collections import defaultdict
 import string
@@ -39,44 +38,6 @@ def get_jxn_genes(jxn, gtree):
     else:
         genesR.add("NA")
     return (list(genesL), list(genesR))
-
-
-def get_gene_info(svtable, gtree):
-    logger.info('Annotating each breakpoint')
-    start = time.time()
-    svtable['name'] = svtable['name'].astype(str)
-    for index, row in svtable.iterrows():
-        chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', row['name'])
-        resL = gtree[chrom1].search(int(pos1))
-        resR = gtree[chrom2].search(int(pos2))
-        # get all possible genes, transcripts that overlap
-        # From the left
-        anndict = {}
-        anndict['AnnL'] = []
-        if len(resL) > 0:
-            for idx, val in enumerate(resL):
-                Lsymbol = list(resL)[idx].data['name2']  # symbol
-                Ltrx = list(resL)[idx].data['name']
-                Lstr = list(resL)[idx].data['strand']
-                anndict['AnnL'].append((Lsymbol, Ltrx, Lstr))
-        else:
-            anndict['AnnL'].append(("NA", "NA", "NA"))
-        # From the right
-        anndict['AnnR'] = []
-        if len(resR) > 0:
-            for idx, val in enumerate(resR):
-                Rsymbol = list(resR)[idx].data['name2']  # symbol
-                Rtrx = list(resR)[idx].data['name']
-                Rstr = list(resR)[idx].data['strand']
-                anndict['AnnR'].append((Rsymbol, Rtrx, Rstr))
-        else:
-            anndict['AnnR'].append(("NA", "NA", "NA"))
-        # write to df
-        svtable.loc[index, "ann"] = anndict['AnnL'][0][0] + "--" + anndict['AnnR'][0][0]
-    end = time.time()
-    elapsed = end - start
-    logger.info("Annotation took  %g seconds" % (elapsed))
-    return(svtable['ann'])
 
 
 def overlap_exon(interval, pos, side):
@@ -148,7 +109,7 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
         pos1 = pos2
         flipstr = string.maketrans("-+", "+-")
         str1 = str2.translate(flipstr)
-        repleft = repright
+        repleft = repright  # keep to wiggle later
     if str1 == "+" and side == 1:
         pos1 = int(pos1) - 1
     elif str1 == "-" and side == 1:
@@ -202,4 +163,3 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
                                str(g) for a, b, c, d, e, f, g in zip(ds['symbol'], ds['transcript'], ds['strand'], ds['exon'], ds['dist'], ds['frame'], ds['cdslen'])])
         # print(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0])
         return(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0], ds['all_exons'])  # just the first values for some fields
-

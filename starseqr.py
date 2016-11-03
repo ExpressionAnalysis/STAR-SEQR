@@ -18,6 +18,8 @@ import signal
 import pysam
 import starseqr_utils
 
+pd.options.display.max_rows = 999
+pd.options.display.max_colwidth = 500
 
 def parse_args():
     usage = " "
@@ -44,7 +46,7 @@ def parse_args():
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
     parser.add_argument('-r', '--fasta', type=str, required=True,
-                        help='indexed fata')
+                        help='indexed fasta')
     parser.add_argument('-d', '--dist', type=int, required=False,
                         default=100000,
                         help='minimum distance to call junctions')
@@ -75,8 +77,8 @@ def parse_args():
                         help='allow RNA internal gene duplications to be considered')
     parser.add_argument('--keep_mito', action='store_true',
                         help='allow RNA fusions to contain at least one breakpoint from Mitochondria')
-    parser.add_argument('--keep_novel', action='store_true',
-                        help='allow gene fusions to pass that have no gene annotation')
+    # parser.add_argument('--keep_novel', action='store_true',
+    #                     help='allow gene fusions to pass that have no gene annotation')
     parser.add_argument('--keep_unscaffolded', action='store_true',
                         help='allow gene fusions to pass that are found on unscaffolded contigs')
     parser.add_argument('--keep_noncoding', action='store_true',
@@ -391,8 +393,8 @@ def rc(dna):
     return dna.translate(complements)[::-1]
 
 
-def exons2seq(fa, lol_exons, jxn, side, decorate=''):
-    # clean jxn name to get back to support folder made previous
+def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
+    # clean jxn name to write to support folder made previous
     clean_jxn = str(jxn).replace(':', '_')
     clean_jxn = str(clean_jxn).replace('+', 'pos')
     clean_jxn = str(clean_jxn).replace('-', 'neg')
@@ -400,16 +402,45 @@ def exons2seq(fa, lol_exons, jxn, side, decorate=''):
 
     ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
     all_seq = []
-    for trx_exons in lol_exons:
-        seq = []
-        for ex_order, chrom, start, end, strand, trx in trx_exons:  # exon list still ordered in forward
-            if fa.references:
-                seq.append(fa.fetch(chrom, start, end))
-        seq_str = decorate.join(seq)
-        if strand == '-':
-            seq_str = rc(seq_str)
-        all_seq.append((trx,seq_str))
-        ofile.write(">" + trx + "\n" + seq_str + "\n")
+    if fusion_exons:
+        strand = ''
+        fus_strand = ''
+        for trx_exons in lol_exons:
+            seq = []
+            for ex_order, chrom, start, end, strand, trx in trx_exons:  # exon list still ordered in forward
+                if fa.references:
+                    seq.append(fa.fetch(chrom, start, end))
+            if seq:
+                seq_str = decorate.join(seq)
+                if strand == '-':
+                    seq_str = rc(seq_str)
+                for fus_exons in fusion_exons:
+                    fus_seq = []
+                    for fus_ex_order, fus_chrom, fus_start, fus_end, fus_strand, fus_trx in fus_exons:  # exon list still ordered in forward
+                        if fa.references:
+                            fus_seq.append(fa.fetch(fus_chrom, fus_start, fus_end))
+                    if fus_seq:
+                        fus_seq_str = decorate.join(fus_seq)
+                        if fus_strand == '-':
+                            fus_seq_str = rc(fus_seq_str)
+                        new_trx = str(trx) + "--" + (fus_trx)
+                        all_seq.append((new_trx, seq_str + fus_seq_str))
+                        ofile.write(">" + new_trx + "\n" + seq_str.lower() + fus_seq_str.upper() + "\n")
+    else:
+        for ntrx_exons in lol_exons:
+            nseq = []
+            nstrand = ''
+            ntrx = ''
+            nseq_str = ''
+            for nex_order, nchrom, nstart, nend, nstrand, ntrx in ntrx_exons:  # exon list still ordered in forward
+                if fa.references:
+                    nseq.append(fa.fetch(nchrom, nstart, nend))
+            if nseq:
+                nseq_str = decorate.join(nseq)
+                if nstrand == '-':
+                    nseq_str = rc(nseq_str)
+                ofile.write(">" + ntrx + "\n" + nseq_str + "\n")
+            all_seq.append((ntrx, nseq_str)) # need empty if no seq found
     ofile.close()
     return all_seq
 
@@ -419,6 +450,7 @@ def apply_exons2seq(df):
     df['right_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
     df['left_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "left_fusion"), axis=1)
     df['right_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_exons'], x['name'], "right_fusion"), axis=1)
+    df['all_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusion", x['right_exons']), axis=1)
     return df
 
 
@@ -607,7 +639,6 @@ def main():
 
             # Get Annotation info for each junction
             jxn_filt['ann_format'] = "Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length"
-
             jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt['left_exons'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
             jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'], jxn_filt['right_exons'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
             # determine if junction follows canonical splicing at exon junction
@@ -636,12 +667,12 @@ def main():
                 logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove novel genes unless otherwise requested
-            if not args.keep_novel:
-                before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[(jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA")]
-                jxn_filt = jxn_filt[(jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") &
-                                    (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA")]
-                logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
+            # if not args.keep_novel:
+            before_remove = len(jxn_filt.index)
+            jxn_filt = jxn_filt[(jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA")]
+            jxn_filt = jxn_filt[(jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") &
+                                (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA")]
+            logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove mitochondria unless otherwise requested
             if not args.keep_mito:
