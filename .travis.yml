@@ -1,7 +1,7 @@
 sudo: true
 language: python
 python:
-    - '2.7'
+  - '2.7'
 install:
   - sudo apt-get update
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -13,7 +13,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels bioconda
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION cython samtools biobambam star spades
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION cython pandas==0.18.1 samtools biobambam star spades
   - source activate test-environment
   - python setup.py install
 
