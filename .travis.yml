@@ -1,4 +1,5 @@
-sudo: true
+sudo: required
+dist: trusty
 language: python
 python:
   - '2.7'
@@ -13,10 +14,10 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels bioconda
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION cython pandas==0.18.1 samtools biobambam star spades
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION cython pysam==0.9.0 pandas==0.18.1 samtools biobambam star spades
   - source activate test-environment
   - python setup.py install
 
 before_script:
-  - pip install -f coverage
+  - pip install coverage
 script: nosetests --with-coverage --cover-package=starseqr_utils
