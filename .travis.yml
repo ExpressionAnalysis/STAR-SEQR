@@ -13,7 +13,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
   - conda config --add channels bioconda
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION samtools biobambam2 star spades
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION samtools biobambam star spades
   - source activate test-environment
   - python setup.py install
 
