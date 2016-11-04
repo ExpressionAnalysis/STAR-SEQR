@@ -1,4 +1,4 @@
-sudo: required
+sudo: false
 dist: trusty
 language: python
 python:
@@ -15,7 +15,7 @@ install:
   - conda info -a
   - conda config --add channels r
   - conda config --add channels bioconda
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip nose cython pysam==0.9.0 pandas==0:.18.1 samtools biobambam star spades
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip nose cython pysam==0.9.0 pandas==0.18.1 samtools biobambam star spades
   - source activate test-environment
   - python setup.py install
 
