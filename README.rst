@@ -8,33 +8,27 @@ RNA Fusion Detection using the STAR-Aligner
 
 Installation
 ==========
-- Tools that need to be on path:
+**Requirements**
  - biobambam2
  - STAR
  - Velvet
  - Spades
  - samtools
 
-Download a Release and install::
+**Install**::
    
     python setup.py install
 
-- Required python packages installed automatically:
- - intervaltree_bio
- - pandas >0.18.0
- - pysam >0.9.0
- - primer3-py
-
-
 Usage
 ==========
+-----------
 Generate a STAR index as follows:
 -----------
-*RNA*::
+**RNA**::
      
      STAR --runMode genomeGenerate --genomeFastaFiles hg19.fa --genomeDir STAR_SEQR_hg19gencodeV24lift37_S1_RNA --sjdbGTFfile gencodeV24lift37.gtf --runThreadN 18 --genomeSAsparseD 1
 
-*DNA*::
+**DNA**::
 
     STAR --runMode genomeGenerate --genomeFastaFiles hg19.fa --genomeDir ./ --runThreadN 18 --genomeSAsparseD 2
 
