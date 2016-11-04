@@ -16,7 +16,7 @@ setup(
     name='STAR-SEQR',
     version='0.0.4',
     description='',
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     license='Custom',
     author='Jeff Jasper',
     author_email='jasper1918@gmail.com',
