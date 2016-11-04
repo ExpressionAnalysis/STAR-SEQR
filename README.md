@@ -1,5 +1,4 @@
-!https://travis-ci.org/ExpressionAnalysis/STAR-SEQR.svg?branch=master!:https://travis-ci.org/ExpressionAnalysis/STAR-SEQR
-
+https://travis-ci.org/ExpressionAnalysis/STAR-SEQR.svg?branch=master
 # STAR-SEQR
 Breakpoint and Fusion Detection.
 
