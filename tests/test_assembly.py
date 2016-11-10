@@ -1,6 +1,6 @@
 import unittest
 import sys
-sys.path.insert(0, '../')
+# sys.path.insert(0, '../')
 import starseqr_utils
 import os
 import shutil
