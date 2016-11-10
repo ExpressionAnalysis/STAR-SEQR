@@ -1,0 +1,4 @@
+- interlaced reads: [/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/support/chr11_44146535_pos_chr12_65085249_pos_3_0/paired.fastq]
+  orientation: fr
+  single reads: [/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/support/chr11_44146535_pos_chr12_65085249_pos_3_0/junctions.fastq]
+  type: paired-end

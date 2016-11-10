@@ -10,7 +10,6 @@ import gzip
 import errno
 import logging
 import subprocess as sp
-from itertools import groupby, islice
 import pysam  # requires 0.9.0
 import multiprocessing as mp
 import signal
@@ -215,7 +214,7 @@ def reverse_complement(sequence):
     return ''.join(COMPLEMENT[x] for x in sequence[::-1])
 
 
-def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
+def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
     '''
     STAR writes 3 lines in the SAM file for chimeric reads.
     Custom convert bam2fastq where pair1/2 go into paired.fastq
@@ -229,6 +228,7 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
         sys.exit(1)
     pairfqfh = open(pairfq, 'w')
     junctionfqfh = open(junctionfq, 'w')
+    overhangfqfh = open(overhangfq, 'w')
     try:
         bam_sort = in_bam[:-4] + '.nsorted'
         pysam.sort('-n', in_bam, '-o', bam_sort + '.bam')
@@ -265,112 +265,25 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq):
             pairfqfh.write(''.join(
                 map(chr, [x + 33 for x in quals])) + '\n')
         elif read.flag & 256:
+            # use full junction sequence for assembly
             junctionfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
-            junctionfqfh.write(read.query_alignment_sequence + '\n') # or us original read.query_sequence
+            junctionfqfh.write(read.query_sequence + '\n')
             junctionfqfh.write('+' + '\n')
             junctionfqfh.write(''.join(
+                map(chr, [x + 33 for x in read.query_qualities])) + '\n')
+            # write overhang separately
+            overhangfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
+            overhangfqfh.write(read.query_alignment_sequence + '\n')
+            overhangfqfh.write('+' + '\n')
+            overhangfqfh.write(''.join(
                 map(chr, [x + 33 for x in read.query_alignment_qualities])) + '\n')
     pairfqfh.close()
     junctionfqfh.close()
     os.remove(bam_sort + '.bam')
 
 
-def fasta_iter(fasta_name):
-    '''
-    Given a fasta file, yield tuples of header, sequence
-    '''
-    fh = open(fasta_name)
-    faiter = (x[1] for x in groupby(fh, lambda line: line[0] == '>'))
-    for header in faiter:
-        # drop the '>'
-        header = header.next()[1:].strip()
-        # join all sequence lines to one.
-        seq = ''.join(s.strip() for s in faiter.next())
-        # print(seq)
-        yield header, seq
-    fh.close()
-
-
-def do_velvet(assemdir, fastq, kmer, errlog, *args):
-    '''
-    Run velvet with single or multiple fastqs.
-    '''
-    logger.debug('*Running Velvet.')
-    velveth_cmd = ['velveth', assemdir, str(kmer), '-short', '-fastq', fastq]
-    for ar in args:
-        velveth_cmd.extend(['-shortPaired', '-fastq', ar])
-    vh_args = map(str, velveth_cmd)
-    logger.debug('*velveth Command: ' + ' '.join(vh_args))
-    try:
-        p = sp.Popen(velveth_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = p.communicate()
-        if stdout:
-            errlog.write(stdout)
-        if stderr:
-            errlog.write(stderr)
-        if p.returncode != 0:
-            logger.error('Error: velveth failed')
-            sys.exit(1)
-    except (OSError) as o:
-        logger.error('Exception: ' + str(o))
-        logger.error('velveth Failed!', exc_info=True)
-        sys.exit(1)
-    velvetg_cmd = ['velvetg', assemdir, '-cov_cutoff', '2']
-    vg_args = map(str, velvetg_cmd)
-    logger.debug('*velvetg Command: ' + ' '.join(vg_args))
-    try:
-        p = sp.Popen(velvetg_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = p.communicate()
-        if stdout:
-            errlog.write(stdout)
-        if stderr:
-            errlog.write(stderr)
-        if p.returncode != 0:
-            logger.error('Error: velvetg failed')
-            sys.exit(1)
-    except (OSError) as o:
-        logger.error('Exception: ' + str(o))
-        logger.error('velvetg Failed!', exc_info=True)
-        sys.exit(1)
-    # extract header, sequence to tuple
-    records = fasta_iter(assemdir + '/contigs.fa')
-    # for x in records:
-    #     print(x)
-    # just return first record for now
-    # return islice(records, 1)
-    return list(islice(records, 0, 1))
-
-
-def do_spades(assemdir, pfastq, jxnfastq, errlog):
-    logger.debug('*Running SPADES')
-    spades_cmd = ['spades.py', '--12', pfastq, '-s', jxnfastq,
-                  '-o', assemdir, '--careful', '--phred-offset', 33,
-                  '-t', '1', '-m', '5',
-                  '-cov-cutoff', 'off']
-    spades_args = map(str, spades_cmd)
-    logger.debug('*SPADES Command: ' + ' '.join(spades_args))
-    try:
-        p = sp.Popen(spades_args, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = p.communicate()
-        if stdout:
-            errlog.write(stdout)
-        if stderr:
-            errlog.write(stderr)
-        if p.returncode != 0:
-            logger.error('Error: spades failed')
-            # sys.exit(1)
-        else:
-            if (os.stat(os.path.realpath(assemdir + '/scaffolds.fasta')).st_size != 0):
-                records2 = fasta_iter(assemdir + '/scaffolds.fasta')
-                return list(islice(records2, 0, 1))
-    except (OSError) as o:
-        logger.error('Exception: ' + str(o))
-        logger.error('SPADES Failed!', exc_info=True)
-        sys.exit(1)
-
-
 def run_support_fxn(jxn, tx, s_reads, in_bam, args, *opts):
-    ''' Run command to run assembly for a single breakpoint '''
+    ''' Run command to identify read support for a single breakpoint '''
     logger.debug('Getting read support for ' + jxn)
     start = time.time()
     clean_jxn = str(jxn).replace(':', '_')
@@ -383,6 +296,7 @@ def run_support_fxn(jxn, tx, s_reads, in_bam, args, *opts):
     logger.debug('Found and extracted reads successfully')
 
     results = collections.defaultdict(list)
+    results['name'] = jxn
     u_reads = []
     for ktype in extracted:
         for ktuple in extracted[ktype]:
@@ -411,27 +325,11 @@ def run_support_fxn(jxn, tx, s_reads, in_bam, args, *opts):
     logger.debug('Subsetting reads from bam')
     subset_bam_by_reads(in_bam, support_bam, read_ids_all, jxn)
     pysam.index(support_bam)
-    # convert to fastq and run velvet
+    # convert to fastq
     pairfq = jxn_dir + 'paired.fastq'
     junctionfq = jxn_dir + 'junctions.fastq'
-    bam2fastq(jxn_dir, support_bam, junctionfq, pairfq)
-    errlog = open(jxn_dir + 'assembly_log.txt', 'w')
-    velvet_all = do_velvet(jxn_dir + 'assem_pair', junctionfq, 17, errlog, pairfq)
-    # velvet_all = do_velvet(jxn_dir + 'assem_jxn', junctionfq, 17, errlog)
-    errlog.close()
-    if velvet_all:
-        vname, vseq = velvet_all[0]
-        results['assembly'] = vseq
-    elif args.spades:
-        splog = open(jxn_dir + 'spades_log.txt', 'w')
-        spades_seq = do_spades(jxn_dir + 'spades', pairfq, junctionfq, splog)
-        splog.close()
-        if spades_seq:
-            sname, sseq = spades_seq[0]
-            results['assembly'] = sseq
-    else:
-        results['assembly'] = ''
-    results['name'] = jxn
+    overhangfq = jxn_dir + 'overhang.fastq'
+    bam2fastq(jxn_dir, support_bam, junctionfq, pairfq, overhangfq)
     logger.info(jxn + ' support took  %g seconds' % (time.time() - start))
     return results
 

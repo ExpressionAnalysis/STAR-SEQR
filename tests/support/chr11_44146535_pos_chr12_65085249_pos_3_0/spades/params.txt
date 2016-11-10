@@ -1,0 +1,35 @@
+Command line: /mounts/isilon/data/eahome/q804348/anaconda2/bin/spades.py	--12	/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/paired.fastq	-o	/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/spades	--careful	--phred-offset	33	-t	1	-m	5	--cov-cutoff	off	
+
+System information:
+  SPAdes version: 3.9.0
+  Python version: 2.7.11
+  OS: Linux-3.16.36-031636-generic-x86_64-with-debian-wheezy-sid
+
+Output dir: /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/spades
+Mode: read error correction and assembling
+Debug mode is turned OFF
+
+Dataset parameters:
+  Multi-cell mode (you should set '--sc' flag if input data was obtained with MDA (single-cell) technology or --meta flag if processing metagenomic dataset)
+  Reads:
+    Library number: 1, library type: paired-end
+      orientation: fr
+      left reads: not specified
+      right reads: not specified
+      interlaced reads: ['/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/paired.fastq']
+      single reads: not specified
+Read error correction parameters:
+  Iterations: 1
+  PHRED offset: 33
+  Corrected reads will be compressed (with gzip)
+Assembly parameters:
+  k: automatic selection based on read length
+  Repeat resolution is enabled
+  Mismatch careful mode is turned ON
+  MismatchCorrector will be used
+  Coverage cutoff is turned OFF
+Other parameters:
+  Dir for temp files: /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr11_44146535_pos_chr12_65085249_pos_3_0/spades/tmp
+  Threads: 1
+  Memory limit (in Gb): 5
+

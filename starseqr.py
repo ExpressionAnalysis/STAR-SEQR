@@ -15,11 +15,10 @@ import logging
 import numpy as np
 import multiprocessing as mp
 import signal
+import itertools
 import pysam
 import starseqr_utils
 
-pd.options.display.max_rows = 999
-pd.options.display.max_colwidth = 500
 
 def parse_args():
     usage = " "
@@ -69,16 +68,16 @@ def parse_args():
                         choices=["refgene", "ensgene", "gencode"])
     parser.add_argument('-b', '--bed_file', type=str, required=False,
                         help='Bed file to subset analysis')
-    parser.add_argument('--spades', '--spades', action='store_true',
-                        help='do spades assembly instead of velvet')
+    parser.add_argument('-a', '--as_type', type=str, required=False,
+                        default="velvet",
+                        help='nucleic acid type',
+                        choices=["velvet", "spades"])
     parser.add_argument('--keep_dups', action='store_true',
                         help='keep read duplicates')
     parser.add_argument('--keep_gene_dups', action='store_true',
                         help='allow RNA internal gene duplications to be considered')
     parser.add_argument('--keep_mito', action='store_true',
                         help='allow RNA fusions to contain at least one breakpoint from Mitochondria')
-    # parser.add_argument('--keep_novel', action='store_true',
-    #                     help='allow gene fusions to pass that have no gene annotation')
     parser.add_argument('--keep_unscaffolded', action='store_true',
                         help='allow gene fusions to pass that are found on unscaffolded contigs')
     parser.add_argument('--keep_noncoding', action='store_true',
@@ -176,7 +175,9 @@ def import_jxns_pandas(jxnFile, args):
         return df.drop_duplicates(subset=['identity'], keep='first')
 
 
-def pandas_parallel(df, func, nthreads):
+def pandas_parallel(df, func, nthreads, *opts):
+    '''wrapper to run pandas apply func using map. *opts will take any number of optional arguments to be passed
+    into the function. Note these will be passed to the function as a tuple and need to be parsed. '''
     logger = logging.getLogger("STAR-SEQR")
     start = time.time()
 
@@ -185,7 +186,12 @@ def pandas_parallel(df, func, nthreads):
     try:
         df_split = np.array_split(df, min(nthreads, len(df.index)))
         pool = mp.Pool(nthreads, init_worker)
-        these_res = pool.map(func, df_split)
+        if not opts:
+            these_res = pool.map(func, df_split)
+        if len(opts) == 1:
+            these_res = pool.map(func, itertools.izip(df_split, itertools.repeat(opts[0])))
+        elif len(opts) > 1:
+            these_res = pool.map(func, itertools.izip(df_split, itertools.repeat(opts)))
         df = pd.concat(these_res)
         pool.close()
         pool.join()
@@ -442,7 +448,7 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
                 ofile.write(">" + ntrx + "\n" + nseq_str + "\n")
             all_seq.append((ntrx, nseq_str)) # need empty if no seq found
     ofile.close()
-    return all_seq
+    return pd.Series([[all_seq]])
 
 
 def apply_exons2seq(df):
@@ -450,12 +456,23 @@ def apply_exons2seq(df):
     df['right_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
     df['left_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "left_fusion"), axis=1)
     df['right_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_exons'], x['name'], "right_fusion"), axis=1)
-    df['all_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusion", x['right_exons']), axis=1)
+    # df['all_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusion", x['right_exons']), axis=1)
     return df
 
 
 def apply_primers_func(df):
     df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.runp3(x['name'], x['primer_seq']), axis=1).apply(lambda x: ",".join(x))
+    return df
+
+
+def apply_get_cross_homology(df):
+    df['span_homology_score'], df['jxn_homology_score'] = zip(*df.apply(lambda x: starseqr_utils.cross_homology.get_cross_homology(x['name']), axis=1))
+    return df
+
+
+def apply_get_assembly_seq(args):
+    df, as_type = args
+    df['assembly'], df['assembly_crossjxn'] = zip(*df.apply(lambda x: starseqr_utils.run_assembly.get_assembly_seq(x['name'], x['primer_seq'], as_type), axis=1))
     return df
 
 
@@ -528,7 +545,7 @@ def main():
     if not which("velveth"):
         logger.error("velveth exe not found on path!. Quitting.")
         sys.exit(1)
-    if args.spades and not which("spades.py"):
+    if args.as_type == 'spades' and not which("spades.py"):
         logger.error("spades.py not found on path!. Quitting.")
         sys.exit(1)
 
@@ -631,7 +648,9 @@ def main():
 
         # hard filter on minimal junction and span reads, require at least two reads...
         logger.info('Filtering junctions')
+        before_remove = len(jxn_filt.index)
         jxn_filt = jxn_filt[(jxn_filt["spans"] + jxn_filt["jxn_counts"]) >= 2]
+        logger.info("Number of candidates removed due to total read support less than 2: " + str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
             # Get dist
@@ -727,31 +746,40 @@ def main():
             # Get all overlapping transcript seqs into one fasta per side
             finaldf['left_trx_exons'] = finaldf.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1, only_trx=True), axis=1)
             finaldf['right_trx_exons'] = finaldf.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2, only_trx=True), axis=1)
-            finaldf = pandas_parallel(finaldf, apply_exons2seq, args.threads) # returns sequences for each transcript per side
+            seqdf = pandas_parallel(finaldf, apply_exons2seq, 1) # returns sequences for each transcript per side. Strange error if simultaneous access currently so just 1 thread
 
             # Generate Primers
             logger.info("Generating primers using indexed fasta")
-            finaldf['primer_seq'] = finaldf['left_fusion_seqs'].apply(lambda x: x[0][1]) + ":" + finaldf['right_fusion_seqs'].apply(lambda x: x[0][1])
+            finaldf['primer_seq'] = seqdf['left_fusion_seqs'].apply(lambda x: x[0][0][1]) + ":" + seqdf['right_fusion_seqs'].apply(lambda x: x[0][0][1])
             finaldf = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
+            # get homology mapping
+            logger.info("Getting read homology mapping scores")
+            finaldf = pandas_parallel(finaldf, apply_get_cross_homology, args.threads)
+
+            # get assembly seq and confirm breakpoint
+            logger.info("doing assembly")
+            finaldf = pandas_parallel(finaldf, apply_get_assembly_seq, args.threads, args.as_type)
 
             # Get breakpoint locations
             logger.info("Getting normalized breakpoint locations")
             finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: get_sv_locations(x['name']), axis=1))
 
-            # todo: confirm breakpoint
             # todo: get novel or existing fusion info from Fusco.
             # todo: probabilistic module to assign quality score
 
 
             # all candidates
-            finaldf.to_csv(path_or_buf="STAR-SEQR_candidate_info.txt", header=True, sep="\t", mode='w', index=False)
+            candid_out= args.prefix + "_STAR-SEQR_candidate_info.txt"
+            finaldf.to_csv(path_or_buf=candid_out, header=True, sep="\t", mode='w', index=False)
 
+            # FILTERING
             # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
-            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2 >= 5) |
-                              ((finaldf["jxn_left"] >= 1) & (finaldf['jxn_right'] >= 1)) |
-                              ((finaldf["jxn_left"] >= 1) & (finaldf['span_first'] >= 1)) |
-                              ((finaldf["jxn_right"] >= 1) & (finaldf['span_first'] >= 1)))]
+            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2 >= 5))] # require at least 3 reads
+            # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
+            finaldf = finaldf[((finaldf['span_homology_score'] < 40) &
+                              (finaldf['jxn_homology_score'] < 40))]
+
 
             # Write output
             finaldf.sort_values(['jxn_first', "span_first"], ascending=[False, False], inplace=True)

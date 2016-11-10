@@ -1,0 +1,5 @@
+- left reads: [/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/spades/split_input/paired_1.fastq]
+  orientation: fr
+  right reads: [/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/spades/split_input/paired_2.fastq]
+  single reads: [/mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/junctions.fastq]
+  type: paired-end

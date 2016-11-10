@@ -1,0 +1,24 @@
+---
+- type:            paired-end
+  orientation:     fr
+  left reads:      
+    - /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/spades/corrected/paired_1.00.0_0.cor.fastq.gz
+  right reads:     
+    - /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/spades/corrected/paired_2.00.0_0.cor.fastq.gz
+  single reads:    
+    - /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/spades/corrected/paired__unpaired.00.0_0.cor.fastq.gz
+    - /mounts/isilon/data/eahome/q804348/opt/scripts/STAR-SEQR/tests/support/chr19_580462_pos_chr12_120876181_pos_1_0/spades/corrected/junctions.00.0_1.cor.fastq.gz
+  read length:     75
+  average read length: 56.3474
+  insert size mean: 0
+  insert size deviation: 0
+  insert size left quantile: 0
+  insert size right quantile: 0
+  insert size median: 0
+  insert size mad: 0
+  insert size distribution: {  }
+  average coverage: 0
+  pi threshold:    0
+  binary converted: true
+  single reads mapped: true
+...
