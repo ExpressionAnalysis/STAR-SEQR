@@ -9,7 +9,8 @@ import pysam
 
 
 path = os.path.dirname(__file__)
-os.chdir(path)
+if path != '':
+    os.chdir(path)
 
 
 class ExonSeqTestCase(unittest.TestCase):
@@ -62,7 +63,7 @@ class ExonSeqTestCase(unittest.TestCase):
         df = pd.DataFrame({'name': 'chr1:10:+:chr2:20:+:0:0', 'left_exons': exons, 'right_exons': exons2})
         df['all_fusion_seqs'] = df.apply(lambda x: starseqr.exons2seq(fa_object, x['left_exons'], x['name'], "all_fusion", x['right_exons']), axis=1)
         res2 = df['all_fusion_seqs'][0][0][1]
-        assert(res2[0] == 'ENST1--ENST4')
+        assert(res2[0].split('|')[0] == 'ENST1--ENST4')
         assert(res2[1] == 'ACTAGTGGCCATTGTAAAGTGTGGTTTTTTCTTAAAGAATTTTTCTTCATTTGA')
 
 

@@ -187,3 +187,24 @@ CATEGORIES = 2
 MAXKMERLENGTH = 64
 
 Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/31 reads
+Fri Nov 11 12:05:57 2016
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/junctions.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/paired.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Fri Nov 11 12:05:57 2016
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/31 reads

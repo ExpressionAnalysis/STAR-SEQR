@@ -1,112 +1,112 @@
 [0.000000] Reading FastQ file support/chr1_45268528_pos_chr4_107152937_neg_0_2/junctions.fastq;
-[0.000039] 7 sequences found
-[0.000040] Done
-[0.001091] Reading FastQ file support/chr1_45268528_pos_chr4_107152937_neg_0_2/paired.fastq;
-[0.001136] 24 sequences found
-[0.001137] Done
-[0.003594] Reading read set file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Sequences;
-[0.003618] 31 sequences found
-[0.004114] Done
-[0.004116] 31 sequences in total.
-[0.006875] Writing into roadmap file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Roadmaps...
-[0.006897] Inputting sequences...
-[0.006898] Inputting sequence 0 / 31
-[0.007754]  === Sequences loaded in 0.000858 s
-[0.009735] Done inputting sequences
-[0.009737] Destroying splay table
-[0.009853] Splay table destroyed
+[0.000036] 7 sequences found
+[0.000037] Done
+[0.000949] Reading FastQ file support/chr1_45268528_pos_chr4_107152937_neg_0_2/paired.fastq;
+[0.001007] 24 sequences found
+[0.001008] Done
+[0.002932] Reading read set file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Sequences;
+[0.002974] 31 sequences found
+[0.003382] Done
+[0.003383] 31 sequences in total.
+[0.007727] Writing into roadmap file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Roadmaps...
+[0.007750] Inputting sequences...
+[0.007750] Inputting sequence 0 / 31
+[0.008518]  === Sequences loaded in 0.000769 s
+[0.011331] Done inputting sequences
+[0.011333] Destroying splay table
+[0.011467] Splay table destroyed
 [0.000000] Reading roadmap file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Roadmaps
-[0.000858] 31 roadmaps read
-[0.000869] Creating insertion markers
-[0.000875] Ordering insertion markers
-[0.000894] Counting preNodes
-[0.000898] 54 preNodes counted, creating them now
-[0.001340] Adjusting marker info...
-[0.001344] Connecting preNodes
-[0.001365] Cleaning up memory
-[0.001366] Done creating preGraph
-[0.001366] Concatenation...
-[0.001384] Renumbering preNodes
-[0.001384] Initial preNode count 54
-[0.001386] Destroyed 34 preNodes
-[0.001387] Concatenation over!
-[0.001387] Clipping short tips off preGraph
-[0.001390] Concatenation...
-[0.001394] Renumbering preNodes
-[0.001394] Initial preNode count 20
-[0.001395] Destroyed 7 preNodes
-[0.001396] Concatenation over!
-[0.001396] 4 tips cut off
-[0.001396] 13 nodes left
-[0.006986] Writing into pregraph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/PreGraph...
-[0.016875] Reading read set file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Sequences;
-[0.016898] 31 sequences found
-[0.017840] Done
-[0.019351] Reading pre-graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/PreGraph
-[0.019366] Graph has 13 nodes and 31 sequences
-[0.019743] Scanning pre-graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/PreGraph for k-mers
-[0.019767] 282 kmers found
-[0.020048] Sorting kmer occurence table ... 
-[0.020399] Sorting done.
-[0.020400] Computing acceleration table... 
-[0.047988] Computing offsets... 
-[0.048002] Ghost Threading through reads 0 / 31
-[0.048112]  === Ghost-Threaded in 0.000111 s
-[0.048113] Threading through reads 0 / 31
-[0.048194]  === Threaded in 0.000081 s
-[0.054452] Correcting graph with cutoff 0.200000
-[0.054506] Determining eligible starting points
-[0.054521] Done listing starting nodes
-[0.054521] Initializing todo lists
-[0.054526] Done with initilization
-[0.054526] Activating arc lookup table
-[0.054527] Done activating arc lookup table
-[0.054609] Concatenation...
-[0.054610] Renumbering nodes
-[0.054610] Initial node count 13
-[0.054611] Removed 9 null nodes
-[0.054612] Concatenation over!
-[0.054612] Clipping short tips off graph, drastic
-[0.054612] Concatenation...
-[0.054613] Renumbering nodes
-[0.054613] Initial node count 4
-[0.054613] Removed 0 null nodes
-[0.054614] Concatenation over!
-[0.054614] 4 nodes left
-[0.059680] Writing into graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Graph...
-[0.074045] Removing contigs with coverage < 2.000000...
-[0.074051] Concatenation...
-[0.074055] Renumbering nodes
-[0.074055] Initial node count 4
-[0.074056] Removed 3 null nodes
-[0.074057] Concatenation over!
-[0.074057] Concatenation...
-[0.074057] Renumbering nodes
-[0.074057] Initial node count 1
-[0.074058] Removed 0 null nodes
-[0.074058] Concatenation over!
-[0.074059] Clipping short tips off graph, drastic
-[0.074059] Concatenation...
-[0.074059] Renumbering nodes
-[0.074060] Initial node count 1
-[0.074060] Removed 0 null nodes
-[0.074060] Concatenation over!
-[0.074060] 1 nodes left
-[0.074061] WARNING: NO EXPECTED COVERAGE PROVIDED
-[0.074061] Velvet will be unable to resolve any repeats
-[0.074061] See manual for instructions on how to set the expected coverage parameter
-[0.074062] Concatenation...
-[0.074062] Renumbering nodes
-[0.074062] Initial node count 1
-[0.074062] Removed 0 null nodes
-[0.074063] Concatenation over!
-[0.074063] Removing reference contigs with coverage < 2.000000...
-[0.074064] Concatenation...
-[0.074064] Renumbering nodes
-[0.074064] Initial node count 1
-[0.074064] Removed 0 null nodes
-[0.074065] Concatenation over!
-[0.079949] Writing contigs into support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/contigs.fa...
-[0.087913] Writing into stats file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/stats.txt...
-[0.099376] Writing into graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/LastGraph...
+[0.000456] 31 roadmaps read
+[0.000464] Creating insertion markers
+[0.000469] Ordering insertion markers
+[0.000488] Counting preNodes
+[0.000493] 54 preNodes counted, creating them now
+[0.000741] Adjusting marker info...
+[0.000745] Connecting preNodes
+[0.000766] Cleaning up memory
+[0.000766] Done creating preGraph
+[0.000767] Concatenation...
+[0.000785] Renumbering preNodes
+[0.000785] Initial preNode count 54
+[0.000787] Destroyed 34 preNodes
+[0.000788] Concatenation over!
+[0.000788] Clipping short tips off preGraph
+[0.000791] Concatenation...
+[0.000795] Renumbering preNodes
+[0.000795] Initial preNode count 20
+[0.000796] Destroyed 7 preNodes
+[0.000796] Concatenation over!
+[0.000797] 4 tips cut off
+[0.000797] 13 nodes left
+[0.003169] Writing into pregraph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/PreGraph...
+[0.005866] Reading read set file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Sequences;
+[0.005894] 31 sequences found
+[0.006295] Done
+[0.007325] Reading pre-graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/PreGraph
+[0.007340] Graph has 13 nodes and 31 sequences
+[0.007557] Scanning pre-graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/PreGraph for k-mers
+[0.007576] 282 kmers found
+[0.007800] Sorting kmer occurence table ... 
+[0.008135] Sorting done.
+[0.008136] Computing acceleration table... 
+[0.036781] Computing offsets... 
+[0.036793] Ghost Threading through reads 0 / 31
+[0.036874]  === Ghost-Threaded in 0.000080 s
+[0.036874] Threading through reads 0 / 31
+[0.036948]  === Threaded in 0.000074 s
+[0.041142] Correcting graph with cutoff 0.200000
+[0.041171] Determining eligible starting points
+[0.041188] Done listing starting nodes
+[0.041189] Initializing todo lists
+[0.041193] Done with initilization
+[0.041194] Activating arc lookup table
+[0.041195] Done activating arc lookup table
+[0.041277] Concatenation...
+[0.041278] Renumbering nodes
+[0.041278] Initial node count 13
+[0.041280] Removed 9 null nodes
+[0.041280] Concatenation over!
+[0.041280] Clipping short tips off graph, drastic
+[0.041281] Concatenation...
+[0.041281] Renumbering nodes
+[0.041281] Initial node count 4
+[0.041282] Removed 0 null nodes
+[0.041282] Concatenation over!
+[0.041282] 4 nodes left
+[0.045224] Writing into graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/Graph...
+[0.054305] Removing contigs with coverage < 2.000000...
+[0.054311] Concatenation...
+[0.054315] Renumbering nodes
+[0.054315] Initial node count 4
+[0.054316] Removed 3 null nodes
+[0.054316] Concatenation over!
+[0.054316] Concatenation...
+[0.054317] Renumbering nodes
+[0.054317] Initial node count 1
+[0.054317] Removed 0 null nodes
+[0.054318] Concatenation over!
+[0.054318] Clipping short tips off graph, drastic
+[0.054318] Concatenation...
+[0.054319] Renumbering nodes
+[0.054319] Initial node count 1
+[0.054319] Removed 0 null nodes
+[0.054319] Concatenation over!
+[0.054320] 1 nodes left
+[0.054320] WARNING: NO EXPECTED COVERAGE PROVIDED
+[0.054320] Velvet will be unable to resolve any repeats
+[0.054321] See manual for instructions on how to set the expected coverage parameter
+[0.054321] Concatenation...
+[0.054321] Renumbering nodes
+[0.054321] Initial node count 1
+[0.054322] Removed 0 null nodes
+[0.054322] Concatenation over!
+[0.054322] Removing reference contigs with coverage < 2.000000...
+[0.054323] Concatenation...
+[0.054323] Renumbering nodes
+[0.054323] Initial node count 1
+[0.054324] Removed 0 null nodes
+[0.054324] Concatenation over!
+[0.067933] Writing contigs into support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/contigs.fa...
+[0.088550] Writing into stats file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/stats.txt...
+[0.101792] Writing into graph file support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair/LastGraph...
 Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/31 reads
