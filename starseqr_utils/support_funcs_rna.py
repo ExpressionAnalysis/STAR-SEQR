@@ -204,14 +204,10 @@ def bam_2_nsort_bam(in_bam):
     pysam.sort('-n', in_bam, '-o', bam_sort + '.bam')
 
 
-def reverse_complement(sequence):
-    # DNA base complements
-    COMPLEMENT = {'A': 'T',
-                  'T': 'A',
-                  'C': 'G',
-                  'G': 'C',
-                  'N': 'N'}
-    return ''.join(COMPLEMENT[x] for x in sequence[::-1])
+def rc(dna):
+    ''' reverse complement '''
+    complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
+    return dna.translate(complements)[::-1]
 
 
 def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
@@ -246,7 +242,7 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
             if read.is_read1:
                 orient = 1
                 if read.is_reverse:
-                    seq = reverse_complement(read.query_alignment_sequence)
+                    seq = rc(read.query_alignment_sequence)
                     quals = read.query_alignment_qualities[::-1]
                 else:
                     seq = read.query_alignment_sequence
@@ -254,7 +250,7 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
             else:
                 orient = 2
                 if read.is_reverse:
-                    seq = reverse_complement(read.query_alignment_sequence)
+                    seq = rc(read.query_alignment_sequence)
                     quals = read.query_alignment_qualities[::-1]
                 else:
                     seq = read.query_alignment_sequence

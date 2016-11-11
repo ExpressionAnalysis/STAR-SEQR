@@ -429,7 +429,7 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
                         fus_seq_str = decorate.join(fus_seq)
                         if fus_strand == '-':
                             fus_seq_str = rc(fus_seq_str)
-                        new_trx = str(trx) + "--" + (fus_trx)
+                        new_trx = str(trx) + "--" + (fus_trx) + "|" + str(len(seq_str))
                         all_seq.append((new_trx, seq_str + fus_seq_str))
                         ofile.write(">" + new_trx + "\n" + seq_str.lower() + fus_seq_str.upper() + "\n")
     else:
@@ -456,7 +456,7 @@ def apply_exons2seq(df):
     df['right_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
     df['left_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "left_fusion"), axis=1)
     df['right_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_exons'], x['name'], "right_fusion"), axis=1)
-    # df['all_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusion", x['right_exons']), axis=1)
+    df['all_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusions", x['right_exons']), axis=1)
     return df
 
 
@@ -470,9 +470,9 @@ def apply_get_cross_homology(df):
     return df
 
 
-def apply_get_assembly_seq(args):
+def apply_get_assembly_info(args):
     df, as_type = args
-    df['assembly'], df['assembly_crossjxn'] = zip(*df.apply(lambda x: starseqr_utils.run_assembly.get_assembly_seq(x['name'], x['primer_seq'], as_type), axis=1))
+    df['assembly'], df['assembly_len'], df['assembly_cross_fusions'] = zip(*df.apply(lambda x: starseqr_utils.run_assembly.get_assembly_info(x['name'], as_type), axis=1))
     return df
 
 
@@ -759,7 +759,7 @@ def main():
 
             # get assembly seq and confirm breakpoint
             logger.info("doing assembly")
-            finaldf = pandas_parallel(finaldf, apply_get_assembly_seq, args.threads, args.as_type)
+            finaldf = pandas_parallel(finaldf, apply_get_assembly_info, args.threads, args.as_type)
 
             # Get breakpoint locations
             logger.info("Getting normalized breakpoint locations")

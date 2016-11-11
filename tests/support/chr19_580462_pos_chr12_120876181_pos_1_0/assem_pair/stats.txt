@@ -1,3 +1,0 @@
-ID	lgth	out	in	long_cov	short1_cov	short1_Ocov	short2_cov	short2_Ocov	long_nb	short1_nb	short2_nb
-1	107	2	0	0.000000	50.579439	43.186916	0.000000	0.000000	0	0	0
-2	70	0	0	0.000000	47.400000	45.028571	0.000000	0.000000	0	0	0

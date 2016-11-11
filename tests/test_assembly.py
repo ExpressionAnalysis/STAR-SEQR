@@ -1,6 +1,6 @@
 import unittest
 import sys
-# sys.path.insert(0, '../')
+sys.path.insert(0, '../')
 import starseqr_utils
 import os
 import shutil
@@ -14,7 +14,7 @@ class AssemblyTestCase(unittest.TestCase):
     '''Tests assembly'''
 
     def setUp(self):
-        jxn = 'chr19_580462_pos_chr12_120876181_pos_1_0'
+        jxn = 'chr1_45268528_pos_chr4_107152937_neg_0_2]'
         clean_jxn = str(jxn).replace(':', '_')
         clean_jxn = str(clean_jxn).replace('+', 'pos')
         clean_jxn = str(clean_jxn).replace('-', 'neg')
@@ -23,7 +23,7 @@ class AssemblyTestCase(unittest.TestCase):
         shutil.rmtree(assem_dir, ignore_errors=True)
 
     def tearDown(self):
-        jxn = 'chr19_580462_pos_chr12_120876181_pos_1_0'
+        jxn = 'chr1_45268528_pos_chr4_107152937_neg_0_2]'
         clean_jxn = str(jxn).replace(':', '_')
         clean_jxn = str(clean_jxn).replace('+', 'pos')
         clean_jxn = str(clean_jxn).replace('-', 'neg')
@@ -33,18 +33,10 @@ class AssemblyTestCase(unittest.TestCase):
 
     def test_assembly_v1(self):
         """test velvet"""
-        test_seq = 'TTCCTCCCCGAGCCCATGGGCACGGCCAACATCCAGCTCCACG:CTCGCATGTG'
-        res1 = starseqr_utils.run_assembly.get_assembly_seq('chr19_580462_pos_chr12_120876181_pos_1_0', test_seq, 'velvet')
-        expected_seq = 'CGATCCTCCGCTCCTGAGGCCCCCACAATGAAGCAGTCGGACGCGTCTCCCCAAGAAAGGGTGGACTCCGACGACCAGTGGGGAGAGTACTCCTGCGTCTTCCTCCCCGAGCCCATGGGCACG'
-        assert(res1[0] == expected_seq)
-
-    # def test_assembly_v2(self):
-    #     """test spades--not working for this example"""
-    #     test_seq = 'TTCCTCCCCGAGCCCATGGGCACGGCCAACATCCAGCTCCACG:CTCGCATGTG'
-    #     res2 = starseqr_utils.run_assembly.get_assembly_seq('chr19_580462_pos_chr12_120876181_pos_1_0', test_seq, 'spades', )
-    #     print(res2)
-    #     expected_seq = ''
-    #     assert(res2[0] == expected_seq)
+        # test_seq = 'TTCCTCCCCGAGCCCATGGGCACGGCCAACATCCAGCTCCACG:CTCGCATGTG'
+        res1 = starseqr_utils.run_assembly.get_assembly_info('chr1:45268528:+:chr4:107152937:-:0:2', 'velvet')
+        expected_res = (['CAGCCCGGTTGGAGCCTCCGGAGCAGAGGAAGAAGACCATCTGTGGCACCCCCAACTATGTGGCTCCAGAAGTGCTGCTGAGACAGGGCCACGGCCCTGAGGCGGATGTATGGTCACTGGGCTGTGTCATGTCTTGACTCACTTTGTGCTCCATTCCTATATCTAAACTTCAATAATGAAGCCTTGGCTTATGCATGTATGTCTGCTTTTATTCCCAAATACCTGTATAA'], ['214'], ['ENST00000372201.4--ENST00000432496.6', 'ENST00000372201.4--ENST00000394708.6', 'ENST00000372201.4--ENST00000273980.9', 'ENST00000372201.4--ENST00000361687.8', 'ENST00000372201.4--ENST00000394706.7'])
+        assert(res1 == expected_res)
 
 
 if __name__ == '__main__':

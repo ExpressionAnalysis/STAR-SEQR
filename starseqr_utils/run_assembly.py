@@ -1,15 +1,21 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import os
 import sys
 import logging
 import subprocess as sp
 from itertools import groupby
 import re
+import string
 
 
 logger = logging.getLogger('STAR-SEQR')
+
+
+def rc(dna):
+    ''' reverse complement '''
+    complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
+    return dna.translate(complements)[::-1]
 
 
 def fasta_iter(fasta_name):
@@ -69,77 +75,81 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
     return records
 
 
-def do_spades(assemdir, pfastq, jxnfastq, errlog):
-    logger.debug('Running SPADES')
-    spades_cmd = ['spades.py', '--12', pfastq, '-s', jxnfastq,
-                  '-o', assemdir, '--phred-offset', 33, # --careful causing errors
-                  '-t', '1', '-m', '5',
-                  '--cov-cutoff', 'off']
-    spades_args = map(str, spades_cmd)
-    logger.debug('*SPADES Command: ' + ' '.join(spades_args))
-    errlog.write('*SPADES Command: ' + ' '.join(spades_args))
-    try:
-        p = sp.Popen(spades_args, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = p.communicate()
-        if stdout:
-            errlog.write(stdout)
-        if stderr:
-            errlog.write(stderr)
-        if p.returncode != 0:
-            logger.error('Error: spades failed')
-    except (OSError) as o:
-        logger.error('Exception: ' + str(o))
-        logger.error('SPADES Failed!', exc_info=True)
-        sys.exit(1)
-    if (os.stat(os.path.realpath(assemdir + '/scaffolds.fasta')).st_size != 0):
-        records = fasta_iter(assemdir + '/scaffolds.fasta')
-        return records
+# def do_spades(assemdir, pfastq, jxnfastq, errlog):
+#     logger.debug('Running SPADES')
+#     spades_cmd = ['spades.py', '--12', pfastq, '-s', jxnfastq,
+#                   '-o', assemdir, '--phred-offset', 33, # --careful causing errors
+#                   '-t', '1', '-m', '5',
+#                   '--cov-cutoff', 'off']
+#     spades_args = map(str, spades_cmd)
+#     logger.debug('*SPADES Command: ' + ' '.join(spades_args))
+#     errlog.write('*SPADES Command: ' + ' '.join(spades_args))
+#     try:
+#         p = sp.Popen(spades_args, stdout=sp.PIPE, stderr=sp.PIPE)
+#         stdout, stderr = p.communicate()
+#         if stdout:
+#             errlog.write(stdout)
+#         if stderr:
+#             errlog.write(stderr)
+#         if p.returncode != 0:
+#             logger.error('Error: spades failed')
+#     except (OSError) as o:
+#         logger.error('Exception: ' + str(o))
+#         logger.error('SPADES Failed!', exc_info=True)
+#         sys.exit(1)
+#     if (os.stat(os.path.realpath(assemdir + '/scaffolds.fasta')).st_size != 0):
+#         records = fasta_iter(assemdir + '/scaffolds.fasta')
+#         return records
 
 
-def get_assembly_seq(jxn, jxn_seq, as_type):
-    # TODO determine which transcript(s) have the best match to assembly by sw.
-    # TODO Report transcript, crossing status, assembly quality
+def get_assembly_info(jxn, as_type):
     # clean jxn name to write to support folder made previous
     clean_jxn = str(jxn).replace(':', '_')
     clean_jxn = str(clean_jxn).replace('+', 'pos')
     clean_jxn = str(clean_jxn).replace('-', 'neg')
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
-    # get index of split to confine sequence
-    predicted_seq = None
-    if ":" in jxn_seq:
-        mybrk = int(jxn_seq.index(":"))
-        jxn_seq = jxn_seq.replace(":", "")
-        predicted_seq = jxn_seq[mybrk-10:mybrk+10]
+    fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
+    fusions_list = list(fasta_iter(fusionfq)) # list of tuples containing name, seq
 
     pairfq = jxn_dir + 'paired.fastq'
     junctionfq = jxn_dir + 'junctions.fastq'
-    final_seq = ''
+
     # velvet
+    assembly_list = []
     if as_type == 'velvet':
         errlog = open(jxn_dir + 'assembly_log.txt', 'w')
-        velvet_all = do_velvet(jxn_dir + 'assem_pair', junctionfq, 17, errlog, pairfq)
+        assembly_list = list(do_velvet(jxn_dir + 'assem_pair', junctionfq, 17, errlog, pairfq))
         errlog.close()
-        if velvet_all:
-            for contig in velvet_all:
-                final_id, final_seq = contig
-                break
-    elif as_type == 'spades':
-        splog = open(jxn_dir + 'spades_log.txt', 'w')
-        spades_all = do_spades(jxn_dir + 'spades', pairfq, junctionfq, splog)
-        splog.close()
-        if spades_all:
-            for contig in spades_all:
-                final_id, final_seq = contig
-                break
+
+    # elif as_type == 'spades':
+    #     splog = open(jxn_dir + 'spades_log.txt', 'w')
+    #     spades_all = do_spades(jxn_dir + 'spades', pairfq, junctionfq, splog)
+    #     splog.close()
 
     # confirm assembly crosses breakpoint
-    found_status = 0
-    if predicted_seq:
-        predicted_seq = predicted_seq.upper()
-        # regex solution from: http://stackoverflow.com/questions/2420412/search-for-string-allowing-for-one-mismatch-in-any-location-of-the-string
-        predicted_seq_re=re.compile('|'.join(predicted_seq[:i]+'.{0,2}'+
-                                             predicted_seq[i+1:] for i in range(len(predicted_seq))))
-        if len(predicted_seq_re.findall(final_seq.upper())) > 0:
-            found_status = 1
-    return final_seq, found_status
+    all_crossing = []
+    all_seq = []
+    all_len = []
+    if len(assembly_list) > 0:
+        for assembly in assembly_list:
+            as_id, as_seq = assembly
+            as_len = as_id.split('_')[3]
+            # as_cov = int(float(as_id.split('_')[5]))
+            all_seq.append(as_seq)
+            all_len.append(as_len)
+            # print(as_id, as_len, as_cov, as_seq)
+            as_crossing_fusions = []
+            if len(fusions_list) > 0:
+                for fusion in fusions_list:
+                    fusion_name, brk = fusion[0].split('|')
+                    brk = int(brk)
+                    fusion_seq = fusion[1][brk-10:brk+10].upper()
+                    # print(fusion_name, brk, fusion_seq)
+                    # regex solution from: http://stackoverflow.com/questions/2420412/search-for-string-allowing-for-one-mismatch-in-any-location-of-the-string
+                    fusion_seq_re=re.compile('|'.join(fusion_seq[:i]+'.{0,2}'+
+                                                         fusion_seq[i+1:] for i in range(len(fusion_seq))))
+                    if len(fusion_seq_re.findall(as_seq.upper())) or len(fusion_seq_re.findall(rc(as_seq).upper())) > 0:
+                        as_crossing_fusions.append(fusion_name)
+                all_crossing.extend(as_crossing_fusions)
+    return all_seq, all_len, all_crossing
