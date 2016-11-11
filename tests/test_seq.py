@@ -67,5 +67,15 @@ class ExonSeqTestCase(unittest.TestCase):
         assert(res2[1] == 'ACTAGTGGCCATTGTAAAGTGTGGTTTTTTCTTAAAGAATTTTTCTTCATTTGA')
 
 
+    def test_exons2seq_v4(self):
+        """test_exons2seq: tests empty"""
+        fa_object = pysam.Fastafile('test_data/ex1.fa')
+        exons = ['NA']
+        df = pd.DataFrame({'name': 'chr1:10:+:chr2:20:+:0:0', 'left_trx_exons': exons})
+        df['seqs'] = df.apply(lambda x: starseqr.exons2seq(fa_object, x['left_trx_exons'], x['name'], "left"), axis=1)
+        print(df['seqs'].iloc[0])
+        assert(df['seqs'].iloc[0] == None)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -3,24 +3,25 @@
 from __future__ import print_function
 import logging
 import primer3
+from itertools import groupby
 
 logger = logging.getLogger("STAR-SEQR")
 
 
-def runp3(seq_id, sequence):
-    # logger.info('Designing Primers for ' + seq_id)
-    # start = time.time()
+def runp3(seq_id, sequence, target=None):
     # check input
     if len(str(sequence)) < 75:
-        # logger.debug("Sequence is too short to design primers")
         return ()
     # get index of split to design targets
-    if ":" in sequence:
-        mybrk = int(sequence.index(":"))
-        sequence = sequence.replace(":", "")
-        brk_target = [mybrk - 20, 40]
+    if target:
+        brk_target = [target-10, 20]
     else:
-        brk_target = [len(sequence) / 2, 1]
+        if ":" in sequence:
+            mybrk = int(sequence.index(":"))
+            sequence = sequence.replace(":", "")
+            brk_target = [mybrk - 10, 20]
+        else:
+            brk_target = [len(sequence) / 2, 1]
     # default values
     mydres = {
         'SEQUENCE_ID': seq_id,
@@ -63,13 +64,11 @@ def runp3(seq_id, sequence):
     try:
         p3output = primer3.bindings.designPrimers(mydres, mypres)
         if (p3output['PRIMER_PAIR_NUM_RETURNED'] < 1):
-            # logger.debug("No Primers found for " + seq_id)
             return ()
         else:
             p3res = parsep3(p3output)
     except (OSError):
         logger.error("Primer Design Failed- continuing", exc_info=True)
-        # sys.exit(1)
     except (Exception):
             return ()
     return p3res
@@ -87,3 +86,35 @@ def parsep3(p3output):
     # Rstart, Rlen = str(Rtuple[0]), str(Rtuple[1])
     # amplen = str(int(Rstart) - int(Lstart))
     return (Lprimer.upper(), Rprimer.upper())
+
+
+def fasta_iter(fasta_name):
+    ''' Given a fasta file path, yield tuples of header, sequence '''
+    fh = open(fasta_name)
+    faiter = (x[1] for x in groupby(fh, lambda line: line[0] == '>'))
+    for header in faiter:
+        # drop the '>'
+        header = header.next()[1:].strip()
+        # join all sequence lines to one.
+        seq = ''.join(s.strip() for s in faiter.next())
+        yield header, seq
+    fh.close()
+
+
+def wrap_runp3(jxn, cross_fusions):
+    # clean jxn name to write to support folder made previous
+    clean_jxn = str(jxn).replace(':', '_')
+    clean_jxn = str(clean_jxn).replace('+', 'pos')
+    clean_jxn = str(clean_jxn).replace('-', 'neg')
+    jxn_dir = 'support' + '/' + clean_jxn + '/'
+
+    fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
+    fusions_list = list(fasta_iter(fusionfq)) # list of tuples containing name, seq
+    if len(fusions_list) > 0 and len(cross_fusions) > 0:
+        for fusion in fusions_list:
+            fusion_name, brk = fusion[0].split('|')
+            brk = int(brk)
+            if cross_fusions[0] == fusion_name:
+                return runp3(fusion_name, fusion[1][brk-200:brk+200].upper(), 200)
+    else:
+        return ()

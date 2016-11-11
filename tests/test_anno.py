@@ -1,9 +1,16 @@
 import unittest
 import os
+import sys
 import gzip
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import pandas as pd
+sys.path.insert(0, '../')
 import starseqr_utils
+
+
+path = os.path.dirname(__file__)
+if path != '':
+    os.chdir(path)
 
 
 class AnnoTestCase(unittest.TestCase):
@@ -19,7 +26,7 @@ class AnnoTestCase(unittest.TestCase):
     global gtree
     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
-    def test_get_jxnside_anno(self):
+    def test_get_jxnside_anno_v1(self):
         """test get_jxnside_anno"""
         jxn_filt = pd.DataFrame({'name': 'chr2:42528535:+:chr2:29446451:-:0:0', 'jxn_reads': 'a1,a2,a3', 'jxn_counts': 3, 'spans': 5, 'spanreads': 's1,s2,s3,s4,s5', 'dist': 13082084, 'ann_format': 'Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length'}, index=pd.Series(0))
         jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt['left_exons'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
@@ -30,6 +37,15 @@ class AnnoTestCase(unittest.TestCase):
         self.assertTrue(jxn_filt['right_strand'].iloc[0]=='-')
         self.assertTrue(jxn_filt['left_cdslen'].iloc[0]==160596)
         self.assertTrue(jxn_filt['right_cdslen'].iloc[0]==727436)
+
+    def test_get_jxnside_anno_v2(self):
+        """test get_jxnside_anno.. Tests where no transcripts found"""
+        jxn_filt = pd.DataFrame({'name': 'chr19:560462:+:chr8:560462:-:0:0', 'jxn_reads': 'a1,a2,a3', 'jxn_counts': 3, 'spans': 5, 'spanreads': 's1,s2,s3,s4,s5', 'dist': 13082084, 'ann_format': 'Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length'}, index=pd.Series(0))
+        jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt['left_exons'] = zip(*jxn_filt.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+        self.assertTrue(jxn_filt['left_symbol'].iloc[0]=='NA')
+        self.assertTrue(jxn_filt['left_strand'].iloc[0]=='NA')
+        self.assertTrue(jxn_filt['left_cdslen'].iloc[0]=='NA')
+        self.assertTrue(jxn_filt['left_exons'].iloc[0]==['NA'])
 
     def test_get_jxn_genes(self):
         """test_get_jxn_genes"""

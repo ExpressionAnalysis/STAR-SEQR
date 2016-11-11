@@ -6,6 +6,7 @@ import logging
 from collections import defaultdict
 import string
 from operator import itemgetter
+import pandas as pd
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -151,7 +152,7 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
             ann['dist'].append("NA")
             ann['frame'].append("NA")
             ann['cdslen'].append("NA")
-            ann['all_exons'].append([])
+            ann['all_exons'].append("NA")
 
         # sort results by dist to exon boundary
         ds = {}
@@ -162,4 +163,4 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
                                str(d) + ":" + str(e) + ":" + str(f) + ':' +
                                str(g) for a, b, c, d, e, f, g in zip(ds['symbol'], ds['transcript'], ds['strand'], ds['exon'], ds['dist'], ds['frame'], ds['cdslen'])])
         # print(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0])
-        return(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0], ds['all_exons'])  # just the first values for some fields
+        return [ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0], ds['all_exons']]  # just the first values for some fields

@@ -408,6 +408,8 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
 
     ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
     all_seq = []
+    if sum(1 for x in lol_exons if isinstance(x, list)) == 0:
+        return # avoid errors if no exons..
     if fusion_exons:
         strand = ''
         fus_strand = ''
@@ -452,16 +454,14 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
 
 
 def apply_exons2seq(df):
-    df['left_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_trx_exons'], x['name'], "left"), axis=1)
-    df['right_trx_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
-    df['left_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "left_fusion"), axis=1)
-    df['right_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['right_exons'], x['name'], "right_fusion"), axis=1)
-    df['all_fusion_seqs'] = df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusions", x['right_exons']), axis=1)
-    return df
+    df.apply(lambda x:exons2seq(fa_object,  x['left_trx_exons'], x['name'], "left"), axis=1)
+    df.apply(lambda x:exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
+    df.apply(lambda x:exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusions", x['right_exons']), axis=1)
+    return df # sequences are written to fasta not passed
 
 
 def apply_primers_func(df):
-    df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.runp3(x['name'], x['primer_seq']), axis=1).apply(lambda x: ",".join(x))
+    df['primers'] = df.apply(lambda x: starseqr_utils.run_primer3.wrap_runp3(x['name'], x['assembly_cross_fusions']), axis=1).apply(lambda x: ",".join(x))
     return df
 
 
@@ -746,12 +746,7 @@ def main():
             # Get all overlapping transcript seqs into one fasta per side
             finaldf['left_trx_exons'] = finaldf.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 1, only_trx=True), axis=1)
             finaldf['right_trx_exons'] = finaldf.apply(lambda x: starseqr_utils.annotate_sv.get_jxnside_anno(x['name'], gtree, 2, only_trx=True), axis=1)
-            seqdf = pandas_parallel(finaldf, apply_exons2seq, 1) # returns sequences for each transcript per side. Strange error if simultaneous access currently so just 1 thread
-
-            # Generate Primers
-            logger.info("Generating primers using indexed fasta")
-            finaldf['primer_seq'] = seqdf['left_fusion_seqs'].apply(lambda x: x[0][0][1]) + ":" + seqdf['right_fusion_seqs'].apply(lambda x: x[0][0][1])
-            finaldf = pandas_parallel(finaldf, apply_primers_func, args.threads)
+            finaldf = pandas_parallel(finaldf, apply_exons2seq, 1) # returns sequences for each transcript per side. Strange error if simultaneous access currently so just 1 thread
 
             # get homology mapping
             logger.info("Getting read homology mapping scores")
@@ -760,6 +755,10 @@ def main():
             # get assembly seq and confirm breakpoint
             logger.info("doing assembly")
             finaldf = pandas_parallel(finaldf, apply_get_assembly_info, args.threads, args.as_type)
+
+            # Generate Primers
+            logger.info("Generating primers using indexed fasta")
+            finaldf = pandas_parallel(finaldf, apply_primers_func, args.threads)
 
             # Get breakpoint locations
             logger.info("Getting normalized breakpoint locations")
@@ -775,7 +774,7 @@ def main():
 
             # FILTERING
             # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
-            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2 >= 5))] # require at least 3 reads
+            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2 >= 3))] # require at least 3 reads
             # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
             finaldf = finaldf[((finaldf['span_homology_score'] < 40) &
                               (finaldf['jxn_homology_score'] < 40))]
