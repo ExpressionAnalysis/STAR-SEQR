@@ -163,8 +163,8 @@ def import_jxns_pandas(jxnFile, args):
                   'jxntype', 'jxnleft', 'jxnright', 'readid',
                   'base1', 'cigar1', 'base2', 'cigar2']
     df['readid'] = df['readid'].astype(str)
-    df['pos1'] = df['pos1'].astype(int)
-    df['pos2'] = df['pos2'].astype(int)
+    df['pos1'] = df['pos1'].astype(float).astype(int)
+    df['pos2'] = df['pos2'].astype(float).astype(int)
     df['identity'] = df['base1'].astype(str) + ':' + df['cigar1'].astype(str) + ':' + df['base2'].astype(str) + ':' + df['cigar2'].astype(str)
     df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
     if args.keep_dups:
@@ -774,7 +774,10 @@ def main():
 
             # FILTERING
             # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
-            finaldf = finaldf[((finaldf["span_first"] + finaldf["jxn_first"] * 2 >= 3))] # require at least 3 reads
+            finaldf = finaldf[((finaldf["jxn_first"] >= 4) | # most robust cases
+                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) | # if jxns < 4, require read diversity
+                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
+                                ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1)))]
             # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
             finaldf = finaldf[((finaldf['span_homology_score'] < 40) &
                               (finaldf['jxn_homology_score'] < 40))]
