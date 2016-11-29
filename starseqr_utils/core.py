@@ -20,7 +20,7 @@ def import_jxns_pandas(jxnFile, args):
                   'jxntype', 'jxnleft', 'jxnright', 'readid',
                   'base1', 'cigar1', 'base2', 'cigar2']
     df['readid'] = df['readid'].astype(str)
-    df['pos1'] = df['pos1'].astype(float).astype(int)
+    df['pos1'] = df['pos1'].astype(float).astype(int) # this bypasses some strange numbers
     df['pos2'] = df['pos2'].astype(float).astype(int)
     df['identity'] = df['base1'].astype(str) + ':' + df['cigar1'].astype(str) + ':' + df['base2'].astype(str) + ':' + df['cigar2'].astype(str)
     df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
@@ -71,6 +71,7 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
 
 
 def count_jxns(df, args):
+    ''' aggregate jxn reads into left and right '''
     grouped_df = df.groupby(['name', 'order'], as_index=True)
     new_df = grouped_df.agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
     if args.nucleic_type == "DNA":
@@ -81,12 +82,12 @@ def count_jxns(df, args):
 
 
 def get_distance(jxn):
-    ''' reference distance'''
+    ''' reference distance '''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     if chrom1 == chrom2:
         dist_between = abs(int(pos1) - int(pos2))
     else:
-        dist_between = np.nan  # max value to use between chromosomes.
+        dist_between = np.nan
     return dist_between
 
 
@@ -96,6 +97,7 @@ def get_pairs_func(jxn, rawdf):
     These have a -1 for jxntype.
     Need to grab both sides of jxn. Each is unique in the .junction file.
     Querying the file can be tedious with the flipping of the junctions.
+    This step is SLOW!
     '''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     pos1 = int(pos1)
@@ -129,17 +131,21 @@ def get_pairs_func(jxn, rawdf):
 def flip_jxn(jxn, gs1):
     '''Flip jxn orientation for RNA Fusion that is inverse according to strand info'''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    chrom1 = str(chrom1)
+    chrom2 = str(chrom2)
+    pos1 = int(pos1)
+    pos2 = int(pos2)
     if str1 != gs1[0]:
         flip = 1
         flipstr = string.maketrans("-+", "+-")
         if str1 == "-":
-            new_pos1 = str(chrom1) + ":" + str(int(pos1)) + ":" + str1.translate(flipstr)
+            new_pos1 = chrom1 + ":" + str(pos1) + ":" + str1.translate(flipstr)
         else:
-            new_pos1 = str(chrom1) + ":" + str(int(pos1)) + ":" + str1.translate(flipstr)
+            new_pos1 = chrom1 + ":" + str(pos1) + ":" + str1.translate(flipstr)
         if str2 == "-":
-            new_pos2 = str(chrom2) + ":" + str(int(pos2)) + ":" + str2.translate(flipstr)
+            new_pos2 = chrom2 + ":" + str(pos2) + ":" + str2.translate(flipstr)
         else:
-            new_pos2 = str(chrom2) + ":" + str(int(pos2)) + ":" + str2.translate(flipstr)
+            new_pos2 = chrom2 + ":" + str(pos2) + ":" + str2.translate(flipstr)
         newid = new_pos2 + ":" + new_pos1 + ":" + str(repright) + ":" + str(repleft)
     else:
         newid = jxn
@@ -148,10 +154,11 @@ def flip_jxn(jxn, gs1):
 
 
 def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
-    # clean jxn name to write to support folder made previous
-    clean_jxn = str(jxn).replace(':', '_')
-    clean_jxn = str(clean_jxn).replace('+', 'pos')
-    clean_jxn = str(clean_jxn).replace('-', 'neg')
+    '''
+    Given a fasta and a list of exon coordinates, extract sequence.
+    exon boundaries can be annotated with a delimiter of somekind
+    '''
+    clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
     ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
@@ -203,17 +210,21 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
 
 def get_svtype_func(jxn):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    chrom1 = str(chrom1)
+    chrom2 = str(chrom2)
+    str1 = str(str1)
+    str2 = str(str2)
     if chrom1 != chrom2:
         svtype = "TRANSLOCATION"
     else:
         # STAR notation is same as other tools after strand2 is flipped.
-        if str(str1) == "+" and str(str2) == "-":
+        if str1 == "+" and str2 == "-":
             svtype = "INSERTION"
-        elif str(str1) == "-" and str(str2) == "+":
+        elif str1 == "-" and str2 == "+":
             svtype = "INVERSION"
-        elif str(str1) == "+" and str(str2) == "+":
+        elif str1 == "+" and str2 == "+":
             svtype = "DELETION"
-        elif str(str1) == "-" and str(str2) == "-":
+        elif str1 == "-" and str2 == "-":
             svtype = "DUPLICATION"
     return svtype
 

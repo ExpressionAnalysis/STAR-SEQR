@@ -12,7 +12,6 @@ import pysam  # requires 0.9.0
 import collections
 import numpy as np
 import starseqr_utils as su
-import pandas as pd
 
 logger = logging.getLogger('STAR-SEQR')
 

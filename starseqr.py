@@ -140,8 +140,8 @@ def apply_choose_order(df):
 
 def apply_normalize_jxns(df):
     df['name'] = df.apply(lambda x: su.core.normalize_jxns(x['chrom1'], x['chrom2'], x['pos1'], x['pos2'],
-                                                   x['str1'], x['str2'], x['jxnleft'], x['jxnright'],
-                                                   x['order']), axis=1)
+                                                           x['str1'], x['str2'], x['jxnleft'], x['jxnright'],
+                                                           x['order']), axis=1)
     return df
 
 
@@ -229,16 +229,16 @@ def main():
 
     # check dependent software can be found
     if not su.common.which("bamfilternames"):
-        logger.error("bamfilternames exe not found on path!. Quitting.")
+        logger.error("bamfilternames exe not found on path! Quitting.")
         sys.exit(1)
     if not su.common.which("samtools"):
-        logger.error("samtools exe not found on path!. Quitting.")
+        logger.error("samtools exe not found on path! Quitting.")
         sys.exit(1)
     if not su.common.which("velveth"):
-        logger.error("velveth exe not found on path!. Quitting.")
+        logger.error("velveth exe not found on path! Quitting.")
         sys.exit(1)
     if args.as_type == 'spades' and not su.common.which("spades.py"):
-        logger.error("spades.py not found on path!. Quitting.")
+        logger.error("spades.py not found on path! Quitting.")
         sys.exit(1)
 
     # check files exist and get abs paths
@@ -406,7 +406,7 @@ def main():
 
         # Process candidates
         if len(jxn_filt.index) >= 1:
-            # identify duplicate reads and mark the chimeric fragment
+            # Convert sam to bam
             su.common.sam_2_coord_bam(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.bam", args.threads)
             su.common.check_file_exists(args.prefix + ".Chimeric.out.bam")
 
@@ -435,7 +435,7 @@ def main():
             finaldf['right_trx_exons'] = finaldf.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 2, only_trx=True), axis=1)
             finaldf = su.common.pandas_parallel(finaldf, apply_exons2seq, args.threads, fasta_path) # returns sequences for each transcript per side.
 
-            # get homology mapping
+            # get homology mapping scores
             logger.info("Getting read homology mapping scores")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_cross_homology, args.threads)
 

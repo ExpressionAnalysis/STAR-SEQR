@@ -34,7 +34,6 @@ def get_ssw_scores(reads_fq, trxleft_fa, trxright_fa):
 
 
 def get_cross_homology(jxn):
-    # clean jxn name to write to support folder made previous
     paired_res = None
     overhang_res = None
     clean_jxn = su.common.safe_jxn(jxn)

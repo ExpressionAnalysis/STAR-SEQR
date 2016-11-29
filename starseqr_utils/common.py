@@ -62,10 +62,9 @@ def which(program):
 
 def find_resource(filename):
     packagedir = starseqr_utils.__path__[0]
-    # os.path.dirname(os.path.realpath(__file__))
     dirname = os.path.join(packagedir, 'resources')
-    fullname = os.path.abspath(os.path.join(dirname, filename))
-    return fullname
+    fullpath = os.path.abspath(os.path.join(dirname, filename))
+    return fullpath
 
 
 def pandas_parallel(df, func, nthreads, *opts):
@@ -100,6 +99,7 @@ def pandas_parallel(df, func, nthreads, *opts):
 
 
 def safe_jxn(jxn):
+    ''' make a jxn string safe for folder and filenames'''
     fix_jxn = str(jxn).replace(':', '_')
     fix_jxn = str(fix_jxn).replace('+', 'pos')
     fix_jxn = str(fix_jxn).replace('-', 'neg')
@@ -117,17 +117,15 @@ def fasta_iter(fasta_name):
     fh = open(fasta_name)
     faiter = (x[1] for x in groupby(fh, lambda line: line[0] == '>'))
     for header in faiter:
-        # drop the '>'
-        header = header.next()[1:].strip()
+        header = header.next()[1:].strip() # drop the '>'
         # join all sequence lines to one.
         seq = ''.join(s.strip() for s in faiter.next())
-        # print(seq)
         yield header, seq
     fh.close()
 
 
 class FastqRead(object):
-    """Represents 1 read, or 4 lines of a casava 1.8-style fastq file."""
+    ''' Represents 1 read, or 4 lines of a fastq file.'''
     def __init__(self, file_obj):
         header = file_obj.next().rstrip()
         assert header.startswith('@')
@@ -142,7 +140,7 @@ class FastqRead(object):
 
 
 class FastqParser(object):
-    """Parses a fastq file into FastqReads."""
+    ''' Parses a fastq file into FastqReads'''
     def __init__(self, filename, parse_headers=True):
         if filename.endswith('.gz'):
             self._file = gzip.open(filename, 'rb')
@@ -158,6 +156,7 @@ class FastqParser(object):
 
 
 def sam_2_coord_bam(in_sam, out_bam, nthreads):
+    ''' convert a sam to coordinate sorted bam '''
     if (out_bam[-4:] == ".bam"):
         bam_prefix = out_bam[:-4]
     else:
@@ -170,6 +169,7 @@ def sam_2_coord_bam(in_sam, out_bam, nthreads):
 
 
 def bam_2_nsort_sam(in_bam, out_sam, nthreads):
+    ''' convert a bam to a name sorted sam '''
     bam_sort = in_bam[:-4] + ".nsorted"
     pysam.sort("-n", "-@", str(nthreads),  in_bam, "-o", bam_sort + ".bam")
     pysam.view("-h", "-@", str(nthreads), "-o" , out_sam, bam_sort + ".bam")
