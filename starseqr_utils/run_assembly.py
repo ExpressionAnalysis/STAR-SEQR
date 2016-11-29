@@ -7,7 +7,6 @@ import subprocess as sp
 import re
 import starseqr_utils as su
 
-
 logger = logging.getLogger('STAR-SEQR')
 
 

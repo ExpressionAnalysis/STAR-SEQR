@@ -16,6 +16,7 @@ import multiprocessing as mp
 import signal
 import pysam
 import starseqr_utils
+
 logger = logging.getLogger('STAR-SEQR')
 
 

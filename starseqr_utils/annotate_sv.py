@@ -7,7 +7,6 @@ from collections import defaultdict
 import string
 from operator import itemgetter
 
-
 logger = logging.getLogger("STAR-SEQR")
 # data source for refgene
 # http://hgdownload.cse.ucsc.edu/goldenpath/hg19/database/refGene.txt.gz
