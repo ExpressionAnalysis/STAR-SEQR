@@ -4,32 +4,11 @@ from __future__ import print_function
 import sys
 import logging
 import subprocess as sp
-from itertools import groupby
 import re
-import string
+import starseqr_utils as su
 
 
 logger = logging.getLogger('STAR-SEQR')
-
-
-def rc(dna):
-    ''' reverse complement '''
-    complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
-    return dna.translate(complements)[::-1]
-
-
-def fasta_iter(fasta_name):
-    ''' Given a fasta file path, yield tuples of header, sequence '''
-    fh = open(fasta_name)
-    faiter = (x[1] for x in groupby(fh, lambda line: line[0] == '>'))
-    for header in faiter:
-        # drop the '>'
-        header = header.next()[1:].strip()
-        # join all sequence lines to one.
-        seq = ''.join(s.strip() for s in faiter.next())
-        # print(seq)
-        yield header, seq
-    fh.close()
 
 
 def do_velvet(assemdir, fastq, kmer, errlog, *args):
@@ -71,7 +50,7 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
         logger.error('velvetg Failed!', exc_info=True)
         sys.exit(1)
     # extract header, sequence to generator
-    records = fasta_iter(assemdir + '/contigs.fa')
+    records = su.common.fasta_iter(assemdir + '/contigs.fa')
     return records
 
 
@@ -104,13 +83,11 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
 
 def get_assembly_info(jxn, as_type):
     # clean jxn name to write to support folder made previous
-    clean_jxn = str(jxn).replace(':', '_')
-    clean_jxn = str(clean_jxn).replace('+', 'pos')
-    clean_jxn = str(clean_jxn).replace('-', 'neg')
+    clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
     fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
-    fusions_list = list(fasta_iter(fusionfq)) # list of tuples containing name, seq
+    fusions_list = list(su.common.fasta_iter(fusionfq)) # list of tuples containing name, seq
 
     pairfq = jxn_dir + 'paired.fastq'
     junctionfq = jxn_dir + 'junctions.fastq'
@@ -149,7 +126,7 @@ def get_assembly_info(jxn, as_type):
                     # regex solution from: http://stackoverflow.com/questions/2420412/search-for-string-allowing-for-one-mismatch-in-any-location-of-the-string
                     fusion_seq_re=re.compile('|'.join(fusion_seq[:i]+'.{0,2}'+
                                                          fusion_seq[i+1:] for i in range(len(fusion_seq))))
-                    if len(fusion_seq_re.findall(as_seq.upper())) or len(fusion_seq_re.findall(rc(as_seq).upper())) > 0:
+                    if len(fusion_seq_re.findall(as_seq.upper())) or len(fusion_seq_re.findall(su.common.rc(as_seq).upper())) > 0:
                         as_crossing_fusions.append(fusion_name)
                 all_crossing.extend(as_crossing_fusions)
     return all_seq, all_len, all_crossing

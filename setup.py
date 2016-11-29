@@ -15,7 +15,7 @@ libssw_ext = Extension('_libssw_ext', sources = ['ssw/src/ssw.c'], include_dirs 
 
 setup(
     name='STAR-SEQR',
-    version='0.0.5',
+    version='0.0.6',
     description='',
     long_description=read('README.rst'),
     license='Custom',

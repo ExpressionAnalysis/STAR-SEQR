@@ -6,7 +6,6 @@ import logging
 from collections import defaultdict
 import string
 from operator import itemgetter
-import pandas as pd
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -164,3 +163,15 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
                                str(g) for a, b, c, d, e, f, g in zip(ds['symbol'], ds['transcript'], ds['strand'], ds['exon'], ds['dist'], ds['frame'], ds['cdslen'])])
         # print(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0])
         return [ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0], ds['all_exons']]  # just the first values for some fields
+
+
+def get_pos_genes(chrom1, pos1, gtree):
+    resL = gtree[chrom1].search(int(pos1))
+    genesL = set()
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            Lsymbol = list(resL)[idx].data['name2']
+            genesL.add(Lsymbol)
+    else:
+        genesL.add("NA")
+    return list(genesL)

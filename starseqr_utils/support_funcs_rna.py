@@ -6,47 +6,15 @@ import sys
 import re
 import string
 import time
-import gzip
-import errno
 import logging
 import subprocess as sp
 import pysam  # requires 0.9.0
-import multiprocessing as mp
-import signal
-from intervaltree_bio import GenomeIntervalTree, UCSCTable
 import collections
 import numpy as np
-
+import starseqr_utils as su
+import pandas as pd
 
 logger = logging.getLogger('STAR-SEQR')
-
-
-def make_new_dir(newdir):
-    try:
-        os.mkdir(newdir)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise e
-        pass
-
-
-def find_resource(filename):
-    packagedir = os.path.dirname(os.path.realpath(__file__))
-    dirname = os.path.join(packagedir, 'resources')
-    fullname = os.path.abspath(os.path.join(dirname, filename))
-    return fullname
-
-
-def get_pos_genes(chrom1, pos1, gtree):
-    resL = gtree[chrom1].search(int(pos1))
-    genesL = set()
-    if len(resL) > 0:
-        for idx, val in enumerate(resL):
-            Lsymbol = list(resL)[idx].data['name2']
-            genesL.add(Lsymbol)
-    else:
-        genesL.add("NA")
-    return list(genesL)
 
 
 def find_support_reads(jxn, bam, side, tx, sub_reads, gtree):
@@ -118,8 +86,8 @@ def find_support_reads(jxn, bam, side, tx, sub_reads, gtree):
             myorient = 'first' if (read.flag & 64) else 'second'
             is_subset = 'SUB' if read.query_name in sub_reads else 'ALL'
             if is_subset == 'SUB':
-                read_tx = get_pos_genes(read.reference_name, read.reference_start, gtree)
-                read_tx2 = get_pos_genes(read.next_reference_name, read.next_reference_start, gtree)
+                read_tx = su.annotate_sv.get_pos_genes(read.reference_name, read.reference_start, gtree)
+                read_tx2 = su.annotate_sv.get_pos_genes(read.next_reference_name, read.next_reference_start, gtree)
                 if set(tx).intersection(set(read_tx)) and set(tx).intersection(set(read_tx2)):
                     retDict[mytype][(mystrand, myorient)][read.query_name] = (is_subset,
                                                                               read.get_tag('AS'),
@@ -129,7 +97,7 @@ def find_support_reads(jxn, bam, side, tx, sub_reads, gtree):
     return retDict
 
 
-def get_reads_from_bam(bam_file, jxn, tx, s_reads, gtree, args):
+def get_reads_from_bam(bam_file, jxn, tx, s_reads, gtree):
     '''
     Fetch reads from each direction of jxn and get an accounting of each if unique or duplicate.
     '''
@@ -187,27 +155,12 @@ def subset_bam_by_reads(bam, out_bam, read_ids, jxn):
                                tmpfile], stdin=f, stdout=bamf, stderr=sp.PIPE)
         bamf.close()
         if retcode != 0:
-            # !!! Don't do a sys.exit here.. you will hang and lose error info
             logger.error('bamfilternames failed on:' + jxn)
-            # for line in retcode.stderr:
-            #     logger.error(line)
-            # os._exit(1)
     except OSError, o:
         logger.error('bamfilternames Failed', exc_info=True)
         logger.error('Exception: ' + str(o))
         bamf.close()
         os._exit(1)
-
-
-def bam_2_nsort_bam(in_bam):
-    bam_sort = in_bam[:-4] + '.nsorted'
-    pysam.sort('-n', in_bam, '-o', bam_sort + '.bam')
-
-
-def rc(dna):
-    ''' reverse complement '''
-    complements = string.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
-    return dna.translate(complements)[::-1]
 
 
 def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
@@ -242,7 +195,7 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
             if read.is_read1:
                 orient = 1
                 if read.is_reverse:
-                    seq = rc(read.query_alignment_sequence)
+                    seq = su.common.rc(read.query_alignment_sequence)
                     quals = read.query_alignment_qualities[::-1]
                 else:
                     seq = read.query_alignment_sequence
@@ -250,7 +203,7 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
             else:
                 orient = 2
                 if read.is_reverse:
-                    seq = rc(read.query_alignment_sequence)
+                    seq = su.common.rc(read.query_alignment_sequence)
                     quals = read.query_alignment_qualities[::-1]
                 else:
                     seq = read.query_alignment_sequence
@@ -278,19 +231,17 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
     os.remove(bam_sort + '.bam')
 
 
-def run_support_fxn(jxn, tx, s_reads, in_bam, args, *opts):
+def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
     ''' Run command to identify read support for a single breakpoint '''
     logger.debug('Getting read support for ' + jxn)
     start = time.time()
-    clean_jxn = str(jxn).replace(':', '_')
-    clean_jxn = str(clean_jxn).replace('+', 'pos')
-    clean_jxn = str(clean_jxn).replace('-', 'neg')
+    clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
-    make_new_dir(jxn_dir)
+    su.common.make_new_dir(jxn_dir)
     # get supporting read counts and other metrics
-    extracted = get_reads_from_bam(in_bam, jxn, tx, s_reads, gtree, args)
+    s_reads = s_reads.split(',')
+    extracted = get_reads_from_bam(in_bam, jxn, tx, s_reads, gtree)
     logger.debug('Found and extracted reads successfully')
-
     results = collections.defaultdict(list)
     results['name'] = jxn
     u_reads = []
@@ -328,53 +279,3 @@ def run_support_fxn(jxn, tx, s_reads, in_bam, args, *opts):
     bam2fastq(jxn_dir, support_bam, junctionfq, pairfq, overhangfq)
     logger.info(jxn + ' support took  %g seconds' % (time.time() - start))
     return results
-
-
-def init_worker():
-    '''this is to sidestep multiproc bug with keyboard interrupts'''
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
-def run_support_parallel(df, in_bam, args):
-    '''Run assembly in parallel'''
-    logger.debug('Getting Read Support')
-    make_new_dir('support')
-    results = []
-    # annotation to be used
-    global gtree
-    if args.ann_source == "refgene":
-        refgene = find_resource("refGene.txt.gz")
-        kg = gzip.open(refgene)
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
-    elif args.ann_source == "ensgene":
-        ensgene = find_resource("ensGene.txt.gz")
-        kg = gzip.open(ensgene)
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
-    elif args.ann_source == "gencode":
-        gencode = find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
-        kg = gzip.open(gencode)
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
-
-    pool = mp.Pool(int(args.threads), init_worker)
-    try:
-        for i in (df.index.values):
-            args2pass = [df.loc[i, 'name'], df.loc[i, 'txunion'], df.loc[i, 'supporting_reads'].split(','), in_bam, args]
-            seq = pool.apply_async(run_support_fxn, args=args2pass)
-            results.append(seq)
-        pool.close()
-        pool.join()
-        list_of_dicts = []
-        for res in results:
-            jxn_ld = res.get()
-            list_of_dicts.append(jxn_ld)
-    except KeyboardInterrupt as e:
-        logger.error('Error: Keyboard interrupt')
-        pool.terminate()
-        raise e
-    except Exception as e:
-        logger.error('Exception: ' + str(e))
-        pool.terminate()
-        raise e
-
-    logger.debug('Finished Assembly')
-    return list_of_dicts

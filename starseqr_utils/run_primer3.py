@@ -3,7 +3,7 @@
 from __future__ import print_function
 import logging
 import primer3
-from itertools import groupby
+import starseqr_utils as su
 
 logger = logging.getLogger("STAR-SEQR")
 
@@ -88,28 +88,13 @@ def parsep3(p3output):
     return (Lprimer.upper(), Rprimer.upper())
 
 
-def fasta_iter(fasta_name):
-    ''' Given a fasta file path, yield tuples of header, sequence '''
-    fh = open(fasta_name)
-    faiter = (x[1] for x in groupby(fh, lambda line: line[0] == '>'))
-    for header in faiter:
-        # drop the '>'
-        header = header.next()[1:].strip()
-        # join all sequence lines to one.
-        seq = ''.join(s.strip() for s in faiter.next())
-        yield header, seq
-    fh.close()
-
-
 def wrap_runp3(jxn, cross_fusions):
     # clean jxn name to write to support folder made previous
-    clean_jxn = str(jxn).replace(':', '_')
-    clean_jxn = str(clean_jxn).replace('+', 'pos')
-    clean_jxn = str(clean_jxn).replace('-', 'neg')
+    clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
     fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
-    fusions_list = list(fasta_iter(fusionfq)) # list of tuples containing name, seq
+    fusions_list = list(su.common.fasta_iter(fusionfq)) # list of tuples containing name, seq
     if len(fusions_list) > 0 and len(cross_fusions) > 0:
         for fusion in fusions_list:
             fusion_name, brk = fusion[0].split('|')

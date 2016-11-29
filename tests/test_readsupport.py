@@ -2,7 +2,7 @@ import unittest
 import os
 import sys
 sys.path.insert(0, '../')
-import starseqr_utils
+import starseqr_utils as su
 
 path = os.path.dirname(__file__)
 if path != '':
