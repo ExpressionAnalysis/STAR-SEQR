@@ -26,6 +26,12 @@ def check_file_exists(path):
         sys.exit(1)
 
 
+def is_newer_than(target_path, orig_path):
+    if not os.path.isfile(target_path):
+        return False
+    return (os.stat(target_path).st_mtime >= os.stat(orig_path).st_mtime)
+
+
 def make_new_dir(newdir):
     try:
         os.mkdir(newdir)
