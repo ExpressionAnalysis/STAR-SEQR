@@ -192,6 +192,11 @@ def apply_get_cross_homology(df):
     return df
 
 
+def apply_get_diversity(df):
+    df['overhang_diversity_left'], df['overhang_diversity_right'] = zip(*df.apply(lambda x: su.overhang_diversity.get_diversity(x['name']), axis=1))
+    return df
+
+
 def apply_get_assembly_info(args):
     df, as_type = args
     df['assembly'], df['assembly_len'], df['assembly_cross_fusions'] = zip(*df.apply(lambda x: su.run_assembly.get_assembly_info(x['name'], as_type), axis=1))
@@ -439,6 +444,10 @@ def main():
             logger.info("Getting read homology mapping scores")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_cross_homology, args.threads)
 
+            # get overhang read diversity
+            logger.info("Getting overhang read diversity")
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_diversity, args.threads)
+
             # get assembly seq and confirm breakpoint
             logger.info("doing assembly")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_assembly_info, args.threads, args.as_type)
@@ -463,34 +472,45 @@ def main():
                             'strand1', 'strand2', 'Methods', 'Cancers', 'Fusion_name']
             finaldf = su.common.pandas_parallel(finaldf, apply_get_annot_db, args.threads, chimerdb3, fuca)
 
-            # todo: probabilistic module to assign quality score
+            # TODO: probabilistic module to assign quality score
+
+            # HARD FILTERING - Change this once a probabilistic module is ready.
+            # Hard filter on read counts after accounting for transcript info.
+            finaldf['filter1'] = (((finaldf["jxn_first"] >= 2) | # most robust cases
+                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) | # read diversity
+                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
+                                ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1))))
+
+            # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
+            finaldf['filter2'] = (((finaldf['span_homology_score'] < 40) &
+                              (finaldf['jxn_homology_score'] < 40)))
+
+            # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique
+            finaldf['filter3'] = ((finaldf['overhang_diversity_left'] + finaldf['overhang_diversity_right'] >=
+                                         finaldf['jxn_first'] * .2))
+
+            # Hard filter to require non-canonical splicing events to have greater read support
+            finaldf['filter4'] = (finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]['jxn_first'] >= 5)
+
+            finaldf['PASS'] = finaldf[['filter1', 'filter2', 'filter3', 'filter4']].all(axis=1)
 
             # all candidates
             candid_out= args.prefix + "_STAR-SEQR_candidate_info.txt"
             finaldf.to_csv(path_or_buf=candid_out, header=True, sep="\t", mode='w', index=False)
 
-            # FILTERING
-            # Hard filter on read counts after accounting for transcript info. Change this once a probabilistic module is ready.
-            finaldf = finaldf[((finaldf["jxn_first"] >= 4) | # most robust cases
-                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) | # if jxns < 4, require read diversity
-                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
-                                ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1)))]
-            # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
-            finaldf = finaldf[((finaldf['span_homology_score'] < 40) &
-                              (finaldf['jxn_homology_score'] < 40))]
-
+            resultsdf = finaldf[finaldf['PASS'] == True]
 
             # Write output
-            finaldf.sort_values(['jxn_first', "span_first"], ascending=[False, False], inplace=True)
-            finaldf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
+            resultsdf.sort_values(['jxn_first', "span_first"], ascending=[False, False], inplace=True)
+            resultsdf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
                            columns=breakpoint_cols, mode='w', index=False)
             breakpoints_fh.close()
 
             # Make bedpe and VCF
-            su.sv2bedpe.process(finaldf, args)
+            su.sv2bedpe.process(resultsdf, args)
 
             # Log Stats
-            stats_res['Passing_Breakpoints'] = len(finaldf.index)
+            stats_res['Passing_Breakpoints'] = len(resultsdf.index)
             logger.info('Passing Breakpoints:' + str(stats_res['Passing_Breakpoints']))
 
         if len(jxn_filt.index) == 0:
