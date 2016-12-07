@@ -132,7 +132,7 @@ def fasta_iter(fasta_name):
 
 
 class FastqRead(object):
-    ''' Represents 1 read, or 4 lines of a fastq file.'''
+    """Represents 1 read, or 4 lines of a casava 1.8-style fastq file."""
     def __init__(self, file_obj):
         header = file_obj.next().rstrip()
         assert header.startswith('@')
@@ -142,12 +142,12 @@ class FastqRead(object):
         file_obj.next()
         self.quality = file_obj.next().rstrip()
     def __str__(self):
-        return "{0}\n{1}\n+\n{2}\n".format(self.header, self.sequence,
+        return "{0}\n{1}\n+\n{2}\n+\n{3}\n".format(self.header, self.sequence,
                                            self.quality, self.seq_len)
 
 
 class FastqParser(object):
-    ''' Parses a fastq file into FastqReads'''
+    """Parses a fastq file into FastqReads."""
     def __init__(self, filename, parse_headers=True):
         if filename.endswith('.gz'):
             self._file = gzip.open(filename, 'rb')
@@ -158,8 +158,12 @@ class FastqParser(object):
         return self
     def next(self):
         read = FastqRead(self._file)
-        self._line_index += 4
-        return read
+        if read:
+            self._line_index += 4
+            return read
+        else:
+            self._file.close()
+            raise StopIteration()
 
 
 def sam_2_coord_bam(in_sam, out_bam, nthreads):
