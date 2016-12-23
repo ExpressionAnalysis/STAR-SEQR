@@ -8,12 +8,6 @@ import string
 from operator import itemgetter
 
 logger = logging.getLogger("STAR-SEQR")
-# data source for refgene
-# http://hgdownload.cse.ucsc.edu/goldenpath/hg19/database/refGene.txt.gz
-# http://hgdownload.cse.ucsc.edu/goldenpath/hg19/database/knownGene.txt.gz
-# http://hgdownload.cse.ucsc.edu/goldenpath/hg19/database/wgEncodeGencodeBasicV24lift37.txt.gz
-# http://hgdownload.cse.ucsc.edu/goldenpath/hg38/database/knownGene.txt.gz
-# can also use ucsc or ensg
 
 
 def get_jxn_genes(jxn, gtree):
