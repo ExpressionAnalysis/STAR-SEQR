@@ -51,7 +51,6 @@ def force_symlink(file1, file2):
 
 
 def which(program):
-
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
     fpath, fname = os.path.split(program)
