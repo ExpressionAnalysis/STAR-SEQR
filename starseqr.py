@@ -41,6 +41,8 @@ def parse_args():
                         help='prefix to name files')
     parser.add_argument('-r', '--fasta', type=str, required=True,
                         help='indexed fasta')
+    parser.add_argument('-g', '--gtf', type=str, required=True,
+                        help='gtf file')
     parser.add_argument('-d', '--dist', type=int, required=False,
                         default=100000,
                         help='minimum distance to call junctions')
@@ -55,22 +57,18 @@ def parse_args():
                         help='nucleic acid type',
                         choices=["RNA", "DNA"])
     parser.add_argument('-t', '--threads', type=int, required=False,
-                        default=12,
-                        help='Number of threads to use for STAR')
-    parser.add_argument('--ann_source', '--ann_source', type=str, required=False,
-                        default="gencode",
-                        help='annotation source',
-                        choices=["refgene", "ensgene", "gencode"])
+                        default=8,
+                        help='Number of threads to use for STAR and STAR-SEQR')
     parser.add_argument('-b', '--bed_file', type=str, required=False,
                         help='Bed file to subset analysis')
     parser.add_argument('--subset', type=str, required=False,
                         default="either",
-                        help='allow fusions to pass with either one breakend in bed file or require both.',
+                        help='allow fusions to pass with either one breakend in bed file or require both. Must use -b.',
                         choices=["either", "both"])
     parser.add_argument('-a', '--as_type', type=str, required=False,
                         default="velvet",
                         help='nucleic acid type',
-                        choices=["velvet", "spades"])
+                        choices=["velvet"])
     parser.add_argument('--keep_dups', action='store_true',
                         help='keep read duplicates')
     parser.add_argument('--keep_gene_dups', action='store_true',
@@ -79,8 +77,6 @@ def parse_args():
                         help='allow RNA fusions to contain at least one breakpoint from Mitochondria')
     parser.add_argument('--keep_unscaffolded', action='store_true',
                         help='allow gene fusions to pass that are found on unscaffolded contigs')
-    parser.add_argument('--keep_noncoding', action='store_true',
-                        help='allow gene fusions to pass that have at least one member as non-coding')
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
     args = parser.parse_args()
@@ -151,8 +147,8 @@ def apply_count_vals(df):
 
 
 def apply_pairs_func(args):
-    df, rawdf = args
-    df['spans'], df['spanreads'] = zip(*df.apply(lambda x: su.core.get_pairs_func(x['name'], rawdf), axis=1))
+    df, dd = args
+    df['spans'], df['spanreads'] = zip(*df.apply(lambda x: su.core.get_pairs_func(x['name'], dd), axis=1))
     return df
 
 
@@ -170,7 +166,7 @@ def apply_get_rna_support(args):
     df, in_bam = args
     dict_res = list(df.apply(lambda x: su.support_funcs_rna.get_rna_support(x['name'], x['txunion'], x['supporting_reads'], in_bam, gtree), axis=1))
     newdf = pd.DataFrame.from_records(dict_res, index='name')
-    return newdf # not passed back in same df
+    return newdf  # not passed back in same df
 
 
 def apply_exons2seq(args):
@@ -288,18 +284,12 @@ def main():
 
     # Prepare Annotation
     global gtree
-    if args.ann_source == "refgene":
-        refgene = su.common.find_resource("refGene.txt.gz")
-        kg = gzip.open(refgene)
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.REF_GENE)
-    elif args.ann_source == "ensgene":
-        ensgene = su.common.find_resource("ensGene.txt.gz")
-        kg = gzip.open(ensgene)
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
-    elif args.ann_source == "gencode":
-        gencode = su.common.find_resource("wgEncodeGencodeBasicV24lift37.txt.gz")
-        kg = gzip.open(gencode)
-        gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+    genepred_annot = os.path.splitext(args.gtf)[0] + ".genePred"
+    ucsc_annot = os.path.splitext(args.gtf)[0] + ".UCSCTable.gz"
+    su.gtf_convert.gtf_to_genepred(args.gtf, genepred_annot)
+    su.gtf_convert.genepred_to_UCSCtable(genepred_annot, ucsc_annot)
+    kg = gzip.open(ucsc_annot)
+    gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
 
     if args.nucleic_type == "RNA":
@@ -336,7 +326,10 @@ def main():
 
         # Get discordant pairs
         logger.info('Getting pair info')
-        jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, rawdf)
+        dd = {}
+        for chrom in set(rawdf['chrom1'].unique()) | set(rawdf['chrom2'].unique()):
+            dd[chrom] = rawdf[(rawdf['chrom1']==chrom) & (rawdf['jxntype'] == -1)]
+        jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, dd)
 
         # hard filter on minimal junction and span reads, require at least two reads...
         logger.info('Filtering junctions')
@@ -363,6 +356,8 @@ def main():
             jxn_filt['txunion'] = [list(set(a).union(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['txintersection'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['ann'] = jxn_filt['left_symbol'] + "--" + jxn_filt['right_symbol']
+
+            jxn_filt.to_csv(path_or_buf="transformed.txt", header=True, sep="\t", mode='w', index=False)
 
             # subset to ROI using bed file if it exists
             if args.bed_file:
@@ -392,16 +387,16 @@ def main():
                 logger.info("Number of candidates removed due to Mitochondria filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove non-canonical contigs unless otherwise requested
-            if not args.keep_unscaffolded:
-                before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap")]
-                logger.info("Number of candidates removed due to non-canonical contigs filter: " + str(before_remove - len(jxn_filt.index)))
+            # if not args.keep_unscaffolded:
+            #     before_remove = len(jxn_filt.index)
+            #     jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("Un|random|hap|GL0|NC")]
+            #     logger.info("Number of candidates removed due to non-canonical contigs filter: " + str(before_remove - len(jxn_filt.index)))
 
             # remove non-coding
-            if not args.keep_noncoding:
-                before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[(jxn_filt['left_cdslen'] != 0) & (jxn_filt['right_cdslen'] != 0)]
-                logger.info("Number of candidates removed due to non-coding filter: " + str(before_remove - len(jxn_filt.index)))
+            # if not args.keep_noncoding:
+            #     before_remove = len(jxn_filt.index)
+            #     jxn_filt = jxn_filt[(jxn_filt['left_cdslen'] != 0) & (jxn_filt['right_cdslen'] != 0)]
+            #     logger.info("Number of candidates removed due to non-coding filter: " + str(before_remove - len(jxn_filt.index)))
 
             # combine all supporting reads together.
             jxn_filt['supporting_reads'] = jxn_filt['jxn_reads'] + ',' + jxn_filt['spanreads']
@@ -498,10 +493,9 @@ def main():
             candid_out= args.prefix + "_STAR-SEQR_candidate_info.txt"
             finaldf.to_csv(path_or_buf=candid_out, header=True, sep="\t", mode='w', index=False)
 
-            resultsdf = finaldf[finaldf['PASS'] == True]
+            resultsdf = finaldf[finaldf['PASS'] == True].sort_values(['jxn_first', "span_first"], ascending=[False, False])
 
             # Write output
-            resultsdf.sort_values(['jxn_first', "span_first"], ascending=[False, False], inplace=True)
             resultsdf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
                            columns=breakpoint_cols, mode='w', index=False)
             breakpoints_fh.close()
