@@ -1,5 +1,6 @@
 import common
 import core
+import gtf_convert
 import annotate_sv
 import support_funcs_rna
 import run_primer3
@@ -11,4 +12,4 @@ import annotate_db
 import sv2bedpe
 
 
-__version__ = "0.0.6"
+__version__ = "0.1.0"
