@@ -19,7 +19,7 @@ def write_header(args, fh, file_type):
     bedpe_head = '\t'.join(['#CHROM_A', 'START_A', 'END_A', 'CHROM_B', 'START_B', 'END_B', 'ID', 'QUAL', 'STRAND_A', 'STRAND_B',
                             'TYPE', 'FILTER', 'NAME_A', 'REF_A', 'ALT_A', 'NAME_B', 'REF_B', 'ALT_B', 'INFO_A', 'INFO_B', 'FORMAT', args.prefix])
     header = ['##fileformat=VCFv4.2', '##fileDate=' + today,
-              '##source=STAR-SEQR', '##reference=' + 'hg19',
+              '##source=STAR-SEQR', '##reference=' + args.fasta,
               '##FILTER=<ID=PASS,Description="All filters passed">',
               '##FILTER=<ID=FAIL,Description="Site failed to reach confidence">',
               '##INFO=<ID=ANN,Number=.,Type=String,Description="Functional annotations: \'Symbol\'">',
@@ -182,23 +182,10 @@ def write_bedpe(df, out_bedpe, args):
 
 
 def write_vcf(in_bed, out_vcf):
-    # sv_args = ['svtools', 'bedpetovcf', '-b', in_bed, '-o', out_vcf]
-    # sv_args = map(str, sv_args)
-    # logger.info("*svtools Command: " + " ".join(sv_args))
-    # run svtools
     try:
         in_fh = open(in_bed, 'r')
         out_fh = open(out_vcf, 'w')
         sv.bedpeToVcf(in_fh, out_fh)
-        # p = sp.Popen(sv_args, stdout=sp.PIPE, stderr=sp.PIPE)
-        # stdout, stderr = p.communicate()
-        # if stdout:
-        #     logger.info(stdout)
-        # if stderr:
-        #     logger.error(stderr)
-        # if p.returncode != 0:
-        #     logger.error("Error: svtools failed", exc_info=True)
-        #     sys.exit(1)
     except (OSError) as o:
         logger.error("Exception: " + str(o))
         logger.error("sv Failed", exc_info=True)
