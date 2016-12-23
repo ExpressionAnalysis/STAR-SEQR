@@ -44,25 +44,18 @@ def run_star(fq1, fq2, args):
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
                          '--runThreadN', str(args.threads), '--genomeDir', args.star_index,
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
-                         '--alignIntronMax', 200000, '--alignMatesGapMax', 200000,
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', -1,
                          '--alignSJDBoverhangMin', 3, '--outFilterMultimapScoreRange', 1]
             # choose sensitivity mode
             if (args.mode == 0):
-                sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 15,
+                sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "Basic",
                                '--outFilterMultimapNmax', 5, '--alignSJstitchMismatchNmax', 5, -1, 5, 5]
             elif (args.mode == 1):
-                sens_params = ['--chimSegmentMin', 5, '--chimJunctionOverhangMin', 8,
+                sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
                                '--chimScoreMin', 0, '--chimScoreDropMax', 30,
-                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic",
-                               '--outFilterMultimapNmax', 5, '--alignSJstitchMismatchNmax', 5, -1, 5, 5]
-            elif (args.mode == 2):
-                sens_params = ['--chimSegmentMin', 5, '--chimJunctionOverhangMin', 5,
-                               '--chimScoreMin', 0, '--chimScoreDropMax', 40,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "Basic",
                                '--outFilterMultimapNmax', 5, '--alignSJstitchMismatchNmax', 5, -1, 5, 5]
