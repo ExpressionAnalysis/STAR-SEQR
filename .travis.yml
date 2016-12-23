@@ -3,6 +3,7 @@ dist: trusty
 language: python
 python:
   - '2.7'
+#  - '3.4'
 install:
   - sudo apt-get update
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -15,7 +16,7 @@ install:
   - conda info -a
   - conda config --add channels r
   - conda config --add channels bioconda
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip nose cython pysam==0.9.0 pandas==0.18.1 samtools biobambam star velvet spades
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip nose cython pysam==0.9.0 pandas==0.18.1 samtools biobambam star velvet ucsc-gtftogenepred
   - source activate test-environment
   - python setup.py install
 
