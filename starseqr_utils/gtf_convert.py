@@ -1,5 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
+from __future__ import (absolute_import, division, print_function)
 import os
 import subprocess
 import logging
@@ -19,7 +21,7 @@ def file_exists(fname):
 
 def gtf_to_genepred(gtf, out_file):
     if file_exists(out_file):
-        logger.warn("Skipping gtf_to_genepred as files already exist!")
+        logger.warning("Skipping gtf_to_genepred as files already exist!")
         return out_file
     cmd = "gtfToGenePred -allErrors -ignoreGroupsWithoutExons -genePredExt -geneNameAsName2 {gtf} {out_file}"
     subprocess.check_call(cmd.format(**locals()), shell=True)
@@ -33,12 +35,11 @@ def genepred_to_UCSCtable(genepred, out_file):
     #           "name2", "cdsStartStat", "cdsEndStat",
     #           "exonFrames"]
     if file_exists(out_file):
-        logger.warn("Skipping genepred_to_UCSC_table as files already exist!")
+        logger.warning("Skipping genepred_to_UCSC_table as files already exist!")
         return out_file
-    with open(genepred) as in_handle, gzip.open(out_file, "wb") as out_handle:
+    with open(genepred) as in_handle, gzip.open(out_file, "wt") as out_handle:
         counter = -1
         current_item = None
-        # out_handle.write("\t".join(header) + "\n")
         for l in in_handle:
             item = l.split("\t")[0]
             if current_item != item:

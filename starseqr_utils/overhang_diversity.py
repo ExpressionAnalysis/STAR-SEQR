@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import logging
 import re
 import starseqr_utils as su
@@ -10,7 +11,7 @@ logger = logging.getLogger('STAR-SEQR')
 
 def find_unique_overhangs(reads_fq):
     '''get unique reads'''
-    rfq_gen = su.common.FastqParser(reads_fq, parse_headers=False)
+    rfq_gen = su.common.FastqParser(reads_fq)
     # matches = {'321': 0, '337': 0, '385':0, '401': 0}
     res_left = set()
     res_right = set()

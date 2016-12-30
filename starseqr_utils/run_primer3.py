@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import logging
 import primer3
 import starseqr_utils as su
@@ -14,14 +15,14 @@ def runp3(seq_id, sequence, target=None):
         return ()
     # get index of split to design targets
     if target:
-        brk_target = [target-10, 20]
+        brk_target = [target - 10, 20]
     else:
         if ":" in sequence:
             mybrk = int(sequence.index(":"))
             sequence = sequence.replace(":", "")
             brk_target = [mybrk - 10, 20]
         else:
-            brk_target = [len(sequence) / 2, 1]
+            brk_target = [int(len(sequence) / 2), 1]
     # default values
     mydres = {
         'SEQUENCE_ID': seq_id,
@@ -94,12 +95,12 @@ def wrap_runp3(jxn, cross_fusions):
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
     fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
-    fusions_list = list(su.common.fasta_iter(fusionfq)) # list of tuples containing name, seq
+    fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
     if len(fusions_list) > 0 and len(cross_fusions) > 0:
         for fusion in fusions_list:
             fusion_name, brk = fusion[0].split('|')
             brk = int(brk)
             if cross_fusions[0] == fusion_name:
-                return runp3(fusion_name, fusion[1][brk-200:brk+200].upper(), 200)
+                return runp3(fusion_name, fusion[1][brk - 200:brk + 200].upper(), 200)
     else:
         return ()

@@ -69,7 +69,6 @@ class ExonSeqTestCase(unittest.TestCase):
         exons = ['NA']
         df = pd.DataFrame({'name': 'chr1:10:+:chr2:20:+:0:0', 'left_trx_exons': exons})
         df['seqs'] = df.apply(lambda x: su.core.exons2seq(fa_object, x['left_trx_exons'], x['name'], "left"), axis=1)
-        print(df['seqs'].iloc[0])
         assert(df['seqs'].iloc[0] == None)
 
 

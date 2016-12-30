@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import os
 import sys
 import re
@@ -155,7 +156,7 @@ def subset_bam_by_reads(bam, out_bam, read_ids, jxn):
         bamf.close()
         if retcode != 0:
             logger.error('bamfilternames failed on:' + jxn)
-    except OSError, o:
+    except OSError as o:
         logger.error('bamfilternames Failed', exc_info=True)
         logger.error('Exception: ' + str(o))
         bamf.close()

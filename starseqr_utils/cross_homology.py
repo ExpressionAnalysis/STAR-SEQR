@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import logging
 import ssw
 import numpy as np
@@ -12,7 +13,7 @@ logger = logging.getLogger('STAR-SEQR')
 def get_ssw_scores(reads_fq, trxleft_fa, trxright_fa):
     '''get sw score for left and right gene'''
     aligner = ssw.Aligner(gap_open=12, gap_extend=4)
-    rfq_gen = su.common.FastqParser(reads_fq, parse_headers=False)
+    rfq_gen = su.common.FastqParser(reads_fq)
     matches = []
     for rfq in rfq_gen:
         l_max = 0
@@ -28,7 +29,7 @@ def get_ssw_scores(reads_fq, trxleft_fa, trxright_fa):
         read_norm = min(l_max, r_max)
         matches.append(read_norm)
     if len(matches) > 0:
-        return(int(np.percentile(matches, 75))) #UQ75 of ssw from cross-mapping
+        return(int(np.percentile(matches, 75)))  # UQ75 of ssw from cross-mapping
     else:
         return(None)
 

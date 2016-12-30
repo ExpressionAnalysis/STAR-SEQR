@@ -16,7 +16,7 @@ import svtools.varlookup
 class SupportAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         support_string = 'For further help or to report a bug, please open an issue on the svtools repository: https://github.com/hall-lab/svtools/issues'
-        print support_string
+        print(support_string)
         sys.exit()
 
 def svtools_cli_parser():
@@ -31,7 +31,7 @@ def svtools_cli_parser():
 
     lmerge = subparsers.add_parser('lmerge', help=svtools.lmerge.description(), epilog=svtools.lmerge.epilog())
     svtools.lmerge.add_arguments_to_parser(lmerge)
-    
+
     vcf_paste = subparsers.add_parser('vcfpaste', help=svtools.vcfpaste.description(), epilog=svtools.vcfpaste.epilog())
     svtools.vcfpaste.add_arguments_to_parser(vcf_paste)
 
@@ -40,7 +40,7 @@ def svtools_cli_parser():
 
     genotype = subparsers.add_parser('genotype', help=svtools.genotype.description())
     svtools.genotype.add_arguments_to_parser(genotype)
-    
+
     afreq = subparsers.add_parser('afreq', help=svtools.afreq.description(), epilog=svtools.afreq.epilog())
     svtools.afreq.add_arguments_to_parser(afreq)
 
@@ -58,7 +58,7 @@ def svtools_cli_parser():
 
     bedpesort = subparsers.add_parser('bedpesort', help=svtools.bedpesort.description())
     svtools.bedpesort.add_arguments_to_parser(bedpesort)
-    
+
     prune = subparsers.add_parser('prune', help=svtools.prune.description(), epilog=svtools.prune.epilog())
     svtools.prune.add_arguments_to_parser(prune)
 

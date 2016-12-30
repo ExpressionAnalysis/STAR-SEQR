@@ -1,24 +1,55 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
+import six
 import re
 import logging
 from collections import defaultdict
-import string
 from operator import itemgetter
 
+
 logger = logging.getLogger("STAR-SEQR")
+
+try:
+    maketrans = ''.maketrans
+except AttributeError:
+    # fallback for Python 2
+    from string import maketrans
+
+
+def convert(data):
+    # data_type = type(data)
+    # if data_type == six.binary_type:
+    #     return data.decode('utf-8')
+    # if data_type in (six.string_types, six.text_type):
+    #     if isinstance(data, six.text_type):
+    #         return data
+    #     else:
+    #         return six.u(data)
+    # if data_type == dict:
+    #     data = six.iteritems(data)
+    # return data_type(map(convert, data))
+    return data
+
+
+def clean_intervals(interval_set):
+    newres = []
+    for idx, val in enumerate(interval_set):
+        newres.append(convert(list(interval_set)[idx].data))
+    return convert(newres)
 
 
 def get_jxn_genes(jxn, gtree):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    resL = gtree[chrom1].search(int(pos1))
-    resR = gtree[chrom2].search(int(pos2))
+    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
+    resR = clean_intervals(gtree[six.b(chrom2)].search(int(pos2)))
+
     # From the left
     genesL = set()
     if len(resL) > 0:
         for idx, val in enumerate(resL):
-            Lsymbol = list(resL)[idx].data['name2']
+            Lsymbol = resL[idx]['name2']
             genesL.add(Lsymbol)
     else:
         genesL.add("NA")
@@ -26,7 +57,7 @@ def get_jxn_genes(jxn, gtree):
     genesR = set()
     if len(resR) > 0:
         for idx, val in enumerate(resR):
-            Rsymbol = list(resR)[idx].data['name2']
+            Rsymbol = resR[idx]['name2']
             genesR.add(Rsymbol)
     else:
         genesR.add("NA")
@@ -36,12 +67,12 @@ def get_jxn_genes(jxn, gtree):
 def overlap_exon(interval, pos, side):
     '''Input is a single interval... list(resL)[0]'''
     try:
-        ends = map(int, filter(None, interval.data['exonEnds'].split(",")))
-        starts = map(int, filter(None, interval.data['exonStarts'].split(",")))
-        frames = map(int, filter(None, interval.data['exonFrames'].split(",")))
+        ends = map(int, filter(None, interval['exonEnds'].split(",")))
+        starts = map(int, filter(None, interval['exonStarts'].split(",")))
+        frames = map(int, filter(None, interval['exonFrames'].split(",")))
         for idx, x in enumerate(starts):
             if pos in range(starts[idx], ends[idx] + 1):  # end is not inclusive so add 1
-                if interval.data['strand'] == "+":
+                if interval['strand'] == "+":
                     if side == 1:
                         dist = ends[idx] - pos
                     else:
@@ -61,20 +92,20 @@ def overlap_exon(interval, pos, side):
 
 
 def get_exons(interval, coding=True, brkpt=False, brkpt_side=1):
-    chrom = str(interval.data['chrom'])
-    starts = map(int, filter(None, interval.data['exonStarts'].split(",")))
-    ends = map(int, filter(None, interval.data['exonEnds'].split(",")))
-    strand = interval.data['strand']
-    trx = interval.data['name']
+    chrom = interval['chrom']
+    starts = list(map(int, filter(None, interval['exonStarts'].split(","))))
+    ends = list(map(int, filter(None, interval['exonEnds'].split(","))))
+    strand = interval['strand']
+    trx = interval['name']
     assert len(ends) == len(starts)
     if coding:
-        cs = int(interval.data['cdsStart'])
-        ce = int(interval.data['cdsEnd'])
+        cs = int(interval['cdsStart'])
+        ce = int(interval['cdsEnd'])
     else:
         cs = starts[0]
         ce = ends[-1]
     if brkpt:
-        if interval.data['strand'] == '+':
+        if strand == '+':
             if brkpt_side == 1:
                 ce = brkpt
             else:
@@ -84,13 +115,13 @@ def get_exons(interval, coding=True, brkpt=False, brkpt_side=1):
                 cs = brkpt
             else:
                 ce = brkpt
-    if interval.data['strand'] == '+':
-        found_exons = filter(lambda (i, s, e): float(min(e, ce) - max(s, cs)) /
-                             (e - s) > 0, zip(range(1, len(starts) + 1), starts, ends))
+    if strand == '+':
+        pos_list = list(zip(range(1, len(starts) + 1), starts, ends))
+        found_exons = [(i, s, e) for i, s, e in pos_list if float(min(e, ce) - max(s, cs)) / (e - s) > 0]
     else:
-        found_exons = filter(lambda (i, s, e): float(min(e, ce) - max(s, cs)) /
-                             (e - s) > 0, zip(range(len(starts), 0, -1), starts, ends))
-    trimmed_exons = map(lambda (i, s, e): [i, chrom, max(s, cs), min(e, ce), strand, trx], found_exons)
+        pos_list = list(zip(range(len(starts), 0, -1), starts, ends))
+        found_exons = [(i, s, e) for i, s, e in pos_list if float(min(e, ce) - max(s, cs)) / (e - s) > 0]
+    trimmed_exons = [(i, chrom, max(s, cs), min(e, ce), strand, trx) for i, s, e in found_exons]
     # returns list of order, chrom, start, stop, strand, transcript
     return trimmed_exons
 
@@ -100,7 +131,7 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
     if side == 2:
         chrom1 = chrom2
         pos1 = pos2
-        flipstr = string.maketrans("-+", "+-")
+        flipstr = maketrans("-+", "+-")
         str1 = str2.translate(flipstr)
         repleft = repright  # keep to wiggle later
     if str1 == "+" and side == 1:
@@ -111,14 +142,14 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
         pos1 = int(pos1) - 1
     elif str1 == "-" and side == 2:
         pos1 = int(pos1)
-    resL = gtree[chrom1].search(int(pos1))
+    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
     # From the left
 
     ann = defaultdict(list)
     if only_trx:
         if len(resL) > 0:
             for idx, val in enumerate(resL):
-                ann['all_exons'].append(get_exons(list(resL)[idx], coding=False))
+                ann['all_exons'].append(get_exons(resL[idx], coding=False))
         else:
             ann['all_exons'].append([])
         return ann['all_exons']
@@ -126,15 +157,15 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
     else:
         if len(resL) > 0:
             for idx, val in enumerate(resL):
-                ann['symbol'].append(list(resL)[idx].data['name2'])  # symbol
-                ann['transcript'].append(list(resL)[idx].data['name'])
-                ann['strand'].append(list(resL)[idx].data['strand'])
-                dist, exon, frame = overlap_exon(list(resL)[idx], pos1, side)
+                ann['symbol'].append(resL[idx]['name2'])  # symbol
+                ann['transcript'].append(resL[idx]['name'])
+                ann['strand'].append(resL[idx]['strand'])
+                dist, exon, frame = overlap_exon(resL[idx], pos1, side)
                 ann['exon'].append(exon)
                 ann['dist'].append(dist)
                 ann['frame'].append(frame)
-                ann['cdslen'].append(int(list(resL)[idx].data['cdsEnd']) - int(list(resL)[idx].data['cdsStart']))
-                ann['all_exons'].append(get_exons(list(resL)[idx], coding=False, brkpt=pos1, brkpt_side=side))
+                ann['cdslen'].append(int(resL[idx]['cdsEnd']) - int(resL[idx]['cdsStart']))
+                ann['all_exons'].append(get_exons(resL[idx], coding=False, brkpt=pos1, brkpt_side=side))
 
         else:
             ann['symbol'].append("NA")
@@ -159,11 +190,11 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
 
 
 def get_pos_genes(chrom1, pos1, gtree):
-    resL = gtree[chrom1].search(int(pos1))
+    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
     genesL = set()
     if len(resL) > 0:
         for idx, val in enumerate(resL):
-            Lsymbol = list(resL)[idx].data['name2']
+            Lsymbol = resL[idx]['name2']
             genesL.add(Lsymbol)
     else:
         genesL.add("NA")

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import os
 import sys
 import time
@@ -142,7 +143,8 @@ def apply_normalize_jxns(df):
 
 
 def apply_count_vals(df):
-    new_df = df.groupby(['name', 'order'], as_index=True).agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
+    new_df = df.groupby(['name', 'order'], as_index=True).agg({'readid': {'reads': lambda col: ','.join(
+        col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
     return new_df
 
 
@@ -172,10 +174,10 @@ def apply_get_rna_support(args):
 def apply_exons2seq(args):
     df, fa_path = args
     fa_object = pysam.Fastafile(fa_path)
-    df.apply(lambda x: su.core.exons2seq(fa_object,  x['left_trx_exons'], x['name'], "left"), axis=1)
-    df.apply(lambda x: su.core.exons2seq(fa_object,  x['right_trx_exons'], x['name'], "right"), axis=1)
-    df.apply(lambda x: su.core.exons2seq(fa_object,  x['left_exons'], x['name'], "all_fusions", x['right_exons']), axis=1)
-    return df # sequences are written to fasta not passed
+    df.apply(lambda x: su.core.exons2seq(fa_object, x['left_trx_exons'], x['name'], "left"), axis=1)
+    df.apply(lambda x: su.core.exons2seq(fa_object, x['right_trx_exons'], x['name'], "right"), axis=1)
+    df.apply(lambda x: su.core.exons2seq(fa_object, x['left_exons'], x['name'], "all_fusions", x['right_exons']), axis=1)
+    return df  # sequences are written to fasta not passed
 
 
 def apply_primers_func(df):
@@ -195,7 +197,13 @@ def apply_get_diversity(df):
 
 def apply_get_assembly_info(args):
     df, as_type = args
-    df['assembly'], df['assembly_len'], df['assembly_cross_fusions'] = zip(*df.apply(lambda x: su.run_assembly.get_assembly_info(x['name'], as_type), axis=1))
+    df['assembly'], df['assembly_len'], df['assembly_cross_fusions'] = zip(
+        *df.apply(lambda x: su.run_assembly.get_assembly_info(x['name'], as_type), axis=1))
+    return df
+
+
+def apply_get_fusion_class(df):
+    df['Fusion_Class'] = df.apply(lambda x: su.core.get_fusion_class(x['name'], x['txintersection']), axis=1)
     return df
 
 
@@ -291,7 +299,6 @@ def main():
     kg = gzip.open(ucsc_annot)
     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
-
     if args.nucleic_type == "RNA":
         # start output files
         stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
@@ -304,7 +311,7 @@ def main():
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
                              "SPLICE_TYPE", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "ASSEMBLY", "PRIMERS", "ID"]
-        print(*breakpoint_header, sep='\t', file=breakpoints_fh)
+        print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
         # stats dict
         stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
@@ -328,7 +335,7 @@ def main():
         logger.info('Getting pair info')
         dd = {}
         for chrom in set(rawdf['chrom1'].unique()) | set(rawdf['chrom2'].unique()):
-            dd[chrom] = rawdf[(rawdf['chrom1']==chrom) & (rawdf['jxntype'] == -1)]
+            dd[chrom] = rawdf[(rawdf['chrom1'] == chrom) & (rawdf['jxntype'] == -1)]
         jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, dd)
 
         # hard filter on minimal junction and span reads, require at least two reads...
@@ -343,21 +350,25 @@ def main():
 
             # Get Annotation info for each junction
             jxn_filt['ann_format'] = "Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length"
-            jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt['left_exons'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
-            jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'], jxn_filt['right_exons'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
+            jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt[
+                'left_exons'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+            jxn_filt['right_symbol'], jxn_filt['right_annot'], jxn_filt['right_strand'], jxn_filt['right_cdslen'], jxn_filt[
+                'right_exons'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 2), axis=1))
             # determine if junction follows canonical splicing at exon junction
-            jxn_filt['left_canonical'] = jxn_filt['left_annot'].str.split(':', expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
-            jxn_filt['right_canonical'] = jxn_filt['right_annot'].str.split(':', expand=True)[4].apply(lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
+            jxn_filt['left_canonical'] = jxn_filt['left_annot'].str.split(':', expand=True)[4].apply(
+                lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
+            jxn_filt['right_canonical'] = jxn_filt['right_annot'].str.split(':', expand=True)[4].apply(
+                lambda x: 'CANONICAL_SPLICING' if x == '0' else 'NON-CANONICAL_SPLICING')
             jxn_filt['splice_type'] = np.where((jxn_filt['left_canonical'] == 'CANONICAL_SPLICING') &
                                                (jxn_filt['right_canonical'] == 'CANONICAL_SPLICING'),
-                                                'CANONICAL_SPLICING', 'NON-CANONICAL_SPLICING')
+                                               'CANONICAL_SPLICING', 'NON-CANONICAL_SPLICING')
             # get all genes associated to look for overlap for each read later..
             jxn_filt['left_all'], jxn_filt['right_all'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxn_genes(x['name'], gtree), axis=1))
             jxn_filt['txunion'] = [list(set(a).union(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['txintersection'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['ann'] = jxn_filt['left_symbol'] + "--" + jxn_filt['right_symbol']
 
-            jxn_filt.to_csv(path_or_buf="transformed.txt", header=True, sep="\t", mode='w', index=False)
+            jxn_filt.to_csv(path_or_buf="transformed.txt", header=True, sep=str('\t'), mode='w', index=False)
 
             # subset to ROI using bed file if it exists
             if args.bed_file:
@@ -421,19 +432,19 @@ def main():
             finaldf['jxn_left'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"]
             finaldf['jxn_right'] = finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
             finaldf['jxn_first'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"] + \
-                                   finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
+                finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
             finaldf['jxn_second'] = finaldf["jxnleft_for_second"] + finaldf["jxnleft_rev_second"] + \
-                                    finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
+                finaldf["jxnright_for_second"] + finaldf["jxnright_rev_second"]
             finaldf['span_first'] = finaldf["spanleft_for_first"] + finaldf["spanleft_rev_first"] + \
-                                    finaldf["spanright_for_first"] + finaldf["spanright_rev_first"]
+                finaldf["spanright_for_first"] + finaldf["spanright_rev_first"]
             finaldf['span_second'] = finaldf["spanleft_for_second"] + finaldf["spanleft_rev_second"] + \
-                                     finaldf["spanright_for_second"] + finaldf["spanright_rev_second"]
+                finaldf["spanright_for_second"] + finaldf["spanright_rev_second"]
             finaldf['spans_disc'] = finaldf['span_first']
 
             # Get all overlapping transcript seqs into one fasta per side
             finaldf['left_trx_exons'] = finaldf.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 1, only_trx=True), axis=1)
             finaldf['right_trx_exons'] = finaldf.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 2, only_trx=True), axis=1)
-            finaldf = su.common.pandas_parallel(finaldf, apply_exons2seq, args.threads, fasta_path) # returns sequences for each transcript per side.
+            finaldf = su.common.pandas_parallel(finaldf, apply_exons2seq, args.threads, fasta_path)  # returns sequences for each transcript per side.
 
             # get homology mapping scores
             logger.info("Getting read homology mapping scores")
@@ -455,6 +466,10 @@ def main():
             logger.info("Getting normalized breakpoint locations")
             finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: su.core.get_sv_locations(x['name']), axis=1))
 
+            # get homology mapping scores
+            logger.info("Getting read homology mapping scores")
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_fusion_class, args.threads)
+
             # Get annotations for known fusions
             logger.info("Getting annotation")
             chimerdb3_path = su.common.find_resource('ChimerDB3.0_ChimerSeq.bedpe')
@@ -471,18 +486,17 @@ def main():
 
             # HARD FILTERING - Change this once a probabilistic module is ready.
             # Hard filter on read counts after accounting for transcript info.
-            finaldf['filter1'] = (((finaldf["jxn_first"] >= 2) | # most robust cases
-                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) | # read diversity
-                                ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
-                                ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1))))
+            finaldf['filter1'] = (((finaldf["jxn_first"] >= 2) |  # most robust cases
+                                   ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) |  # read diversity
+                                   ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
+                                   ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1))))
 
             # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
             finaldf['filter2'] = (((finaldf['span_homology_score'] < 40) &
-                              (finaldf['jxn_homology_score'] < 40)))
+                                   (finaldf['jxn_homology_score'] < 40)))
 
             # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique
-            finaldf['filter3'] = ((finaldf['overhang_diversity_left'] + finaldf['overhang_diversity_right'] >=
-                                         finaldf['jxn_first'] * .2))
+            finaldf['filter3'] = ((finaldf['overhang_diversity_left'] + finaldf['overhang_diversity_right'] >= finaldf['jxn_first'] * .2))
 
             # Hard filter to require non-canonical splicing events to have greater read support
             finaldf['filter4'] = (finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]['jxn_first'] >= 5)
@@ -490,14 +504,14 @@ def main():
             finaldf['PASS'] = finaldf[['filter1', 'filter2', 'filter3', 'filter4']].all(axis=1)
 
             # all candidates
-            candid_out= args.prefix + "_STAR-SEQR_candidate_info.txt"
+            candid_out = args.prefix + "_STAR-SEQR_candidate_info.txt"
             finaldf.to_csv(path_or_buf=candid_out, header=True, sep="\t", mode='w', index=False)
 
             resultsdf = finaldf[finaldf['PASS'] == True].sort_values(['jxn_first', "span_first"], ascending=[False, False])
 
             # Write output
             resultsdf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
-                           columns=breakpoint_cols, mode='w', index=False)
+                             columns=breakpoint_cols, mode='w', index=False)
             breakpoints_fh.close()
 
             # Make bedpe and VCF
@@ -559,7 +573,6 @@ def main():
                                (jxn_summary["jxnright"] >= args.jxn_reads)].sort_values("jxnleft", ascending=False)
         logger.info('Junctions passing junction read filter:' + str(len(jxn_filt.index)))
 
-
         if len(jxn_filt.index) >= 1:
             # Annotate genes
             jxn_filt['genesleft'], jxn_filt['genesright'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxn_genes(x['name'], gtree), axis=1))
@@ -574,7 +587,10 @@ def main():
         if len(jxn_filt.index) >= 1:
             # Get paired discordant spanning reads supporting junctions and filter
             logger.info('Getting pair info')
-            jxn_filt = su.common.pandas_parallel(jxn_filt, apply_pairs_func, args.threads)
+            dd = {}
+            for chrom in set(rawdf['chrom1'].unique()) | set(rawdf['chrom2'].unique()):
+                dd[chrom] = rawdf[(rawdf['chrom1'] == chrom) & (rawdf['jxntype'] == -1)]
+            jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, dd)
             logger.info('Filtering junctions based on pairs')
             jxn_filt = jxn_filt[(jxn_filt['spans'] >= args.span_reads)]
 
@@ -632,11 +648,9 @@ def main():
             # Make bedpe and VCF, write headers only
             su.sv2bedpe.process(jxn_filt, args)
 
-
     # Write stats to file
     for key, value in stats_res.items():
         stats_fh.write(key + "\t" + str(value) + "\n")
-
 
     # Finish
     logger.info("Program took  %g seconds" % (time.time() - start))

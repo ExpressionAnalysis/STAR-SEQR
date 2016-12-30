@@ -3,6 +3,7 @@
 import unittest
 import ssw
 
+
 class TestSSW(unittest.TestCase):
     def test_mixed_case(self):
         reference = "GTGCGATGTGCGATGAGATC"
@@ -85,6 +86,7 @@ class TestSSW(unittest.TestCase):
         # https://github.com/vishnubob/ssw/issues/3
         self.assertRaises(ValueError, ssw.Aligner, gap_open=1, gap_extend=2)
         self.assertRaises(ValueError, ssw.Aligner, gap_open=1, gap_extend=1)
+
 
 if __name__ == '__main__':
     unittest.main()

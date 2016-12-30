@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import sys
 import logging
 import subprocess as sp
@@ -22,9 +23,9 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
         p = sp.Popen(velveth_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
         stdout, stderr = p.communicate()
         if stdout:
-            errlog.write(stdout)
+            errlog.write(str(stdout))
         if stderr:
-            errlog.write(stderr)
+            errlog.write(str(stderr))
         if p.returncode != 0:
             logger.error('Error: velveth failed')
     except (OSError) as o:
@@ -38,9 +39,9 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
         p = sp.Popen(velvetg_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
         stdout, stderr = p.communicate()
         if stdout:
-            errlog.write(stdout)
+            errlog.write(str(stdout))
         if stderr:
-            errlog.write(stderr)
+            errlog.write(str(stderr))
         if p.returncode != 0:
             logger.error('Error: velvetg failed')
             sys.exit(1)
@@ -86,7 +87,7 @@ def get_assembly_info(jxn, as_type):
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
     fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
-    fusions_list = list(su.common.fasta_iter(fusionfq)) # list of tuples containing name, seq
+    fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
 
     pairfq = jxn_dir + 'paired.fastq'
     junctionfq = jxn_dir + 'junctions.fastq'
@@ -120,11 +121,11 @@ def get_assembly_info(jxn, as_type):
                 for fusion in fusions_list:
                     fusion_name, brk = fusion[0].split('|')
                     brk = int(brk)
-                    fusion_seq = fusion[1][brk-10:brk+10].upper()
+                    fusion_seq = fusion[1][brk - 10:brk + 10].upper()
                     # print(fusion_name, brk, fusion_seq)
                     # regex solution from: http://stackoverflow.com/questions/2420412/search-for-string-allowing-for-one-mismatch-in-any-location-of-the-string
-                    fusion_seq_re=re.compile('|'.join(fusion_seq[:i]+'.{0,2}'+
-                                                         fusion_seq[i+1:] for i in range(len(fusion_seq))))
+                    fusion_seq_re = re.compile('|'.join(fusion_seq[:i] + '.{0,2}' +
+                                                        fusion_seq[i + 1:] for i in range(len(fusion_seq))))
                     if len(fusion_seq_re.findall(as_seq.upper())) or len(fusion_seq_re.findall(su.common.rc(as_seq).upper())) > 0:
                         as_crossing_fusions.append(fusion_name)
                 all_crossing.extend(as_crossing_fusions)
