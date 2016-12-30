@@ -1,15 +1,14 @@
-import common
-import core
-import gtf_convert
-import annotate_sv
-import support_funcs_rna
-import run_primer3
-import star_funcs
-import cross_homology
-import overhang_diversity
-import run_assembly
-import annotate_db
-import sv2bedpe
+import starseqr_utils.common
+import starseqr_utils.core
+import starseqr_utils.gtf_convert
+import starseqr_utils.annotate_sv
+import starseqr_utils.support_funcs_rna
+import starseqr_utils.run_primer3
+import starseqr_utils.star_funcs
+import starseqr_utils.cross_homology
+import starseqr_utils.overhang_diversity
+import starseqr_utils.run_assembly
+import starseqr_utils.annotate_db
+import starseqr_utils.sv2bedpe
 
-
-__version__ = "0.1.0"
+__version__ = "0.1.0.dev0"
