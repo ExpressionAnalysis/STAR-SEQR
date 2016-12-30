@@ -1,12 +1,18 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function)
 import re
 import logging
-import string
 import pandas as pd
 import numpy as np
 import starseqr_utils as su
+
+try:
+    maketrans = ''.maketrans
+except AttributeError:
+    # fallback for Python 2
+    from string import maketrans
 
 
 logger = logging.getLogger('STAR-SEQR')
@@ -52,7 +58,7 @@ def choose_order(chrL1, posL1, chrL2, posL2):
 
 def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, repright, order):
     '''Choose one representation for DNA breakpoints'''
-    flipstr = string.maketrans("-+", "+-")
+    flipstr = maketrans("-+", "+-")
     if order == 2:
         if strand1 == "-":
             new_pos1 = str(chrom1) + ":" + str(pos1 - int(repright)) + ":" + strand1.translate(flipstr)
@@ -73,7 +79,8 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
 def count_jxns(df, args):
     ''' aggregate jxn reads into left and right '''
     grouped_df = df.groupby(['name', 'order'], as_index=True)
-    new_df = grouped_df.agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
+    new_df = grouped_df.agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}
+                            ).reset_index().pivot(index='name', columns='order').reset_index()
     if args.nucleic_type == "DNA":
         new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright']
     elif args.nucleic_type == "RNA":
@@ -115,14 +122,12 @@ def get_pairs_func(jxn, dd):
     elif str2 == "-":
         pos2left = pos2 - 100000
         pos2right = pos2 + maxhom + 1
-    forward = dd[chrom1][
-                    (dd[chrom1]['chrom2'] == chrom2) &
-                    (dd[chrom1]['pos1'] >= pos1left) & (dd[chrom1]['pos1'] <= pos1right) &
-                    (dd[chrom1]['pos2'] >= pos2left) & (dd[chrom1]['pos2'] <= pos2right)]
-    reverse = dd[chrom2][
-                    (dd[chrom2]['chrom2'] == chrom1) &
-                    (dd[chrom2]['pos1'] >= pos2left) & (dd[chrom2]['pos1'] <= pos2right) &
-                    (dd[chrom2]['pos2'] >= pos1left) & (dd[chrom2]['pos2'] <= pos1right)]
+    forward = dd[chrom1][(dd[chrom1]['chrom2'] == chrom2) &
+                         (dd[chrom1]['pos1'] >= pos1left) & (dd[chrom1]['pos1'] <= pos1right) &
+                         (dd[chrom1]['pos2'] >= pos2left) & (dd[chrom1]['pos2'] <= pos2right)]
+    reverse = dd[chrom2][(dd[chrom2]['chrom2'] == chrom1) &
+                         (dd[chrom2]['pos1'] >= pos2left) & (dd[chrom2]['pos1'] <= pos2right) &
+                         (dd[chrom2]['pos2'] >= pos1left) & (dd[chrom2]['pos2'] <= pos1right)]
     npairs = len(forward['readid'].index) + len(reverse['readid'].index)
     reads = ','.join(forward['readid'].tolist()) + ',' + ','.join(reverse['readid'].tolist())
 
@@ -138,7 +143,7 @@ def flip_jxn(jxn, gs1):
     pos2 = int(pos2)
     if str1 != gs1[0]:
         flip = 1
-        flipstr = string.maketrans("-+", "+-")
+        flipstr = maketrans("-+", "+-")
         if str1 == "-":
             new_pos1 = chrom1 + ":" + str(pos1) + ":" + str1.translate(flipstr)
         else:
@@ -165,7 +170,8 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
     ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
     all_seq = []
     if sum(1 for x in lol_exons if isinstance(x, list)) == 0:
-        return # avoid errors if no exons..
+        ofile.close()
+        return  # avoid errors if no exons..
     if fusion_exons:
         strand = ''
         fus_strand = ''
@@ -204,9 +210,31 @@ def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
                 if nstrand == '-':
                     nseq_str = su.common.rc(nseq_str)
                 ofile.write(">" + ntrx + "\n" + nseq_str + "\n")
-            all_seq.append((ntrx, nseq_str)) # need empty if no seq found
+            all_seq.append((ntrx, nseq_str))  # need empty if no seq found
     ofile.close()
     return pd.Series([[all_seq]])
+
+
+def get_fusion_class(jxn, txintersection):
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    chrom1 = str(chrom1)
+    chrom2 = str(chrom2)
+    str1 = str(str1)
+    str2 = str(str2)
+
+    if len(str(txintersection)) > 3:  # [] counts as two
+        return "GENE_INTERNAL"
+
+    if chrom1 != chrom2:
+        return "TRANSLOCATION"
+
+    if chrom1 == chrom2:
+        if abs(int(pos1) - int(pos2)) < 1000000:
+            return "READ_THROUGH"
+        elif str1 == str2:
+            return "INTERCHROM_INVERTED"
+        elif str1 != str2:
+            return "INTERCHROM_INTERSTRAND"
 
 
 def get_svtype_func(jxn):
