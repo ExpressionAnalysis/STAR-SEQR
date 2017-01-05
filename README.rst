@@ -7,7 +7,7 @@ RNA Fusion Detection using the STAR-Aligner
 
 
 Installation
-==========
+=============
 **Required**
  - biobambam2(https://github.com/gt1/biobambam2) or conda install biobambam
  - STAR(https://github.com/alexdobin/STAR) or conda install star
@@ -20,10 +20,10 @@ Installation
     python setup.py install
 
 Usage
-==========
------------
+======
+---------------------------------
 Generate a STAR index as follows:
------------
+---------------------------------
 **RNA**
  - *Index*::
 
@@ -34,9 +34,9 @@ Generate a STAR index as follows:
 
     STAR --runMode genomeGenerate --genomeFastaFiles hg19.fa --genomeDir ./ --runThreadN 18 --genomeSAsparseD 2
 
------------
+-------------------------
 Run STAR-SEQR as follows:
------------
+-------------------------
 **RNA**
  - *Align and Call*::
 
