@@ -19,8 +19,7 @@ RUN apt-get install -y curl grep sed dpkg && \
     TINI_VERSION=`curl https://github.com/krallin/tini/releases/latest | grep -o "/v.*\"" | sed 's:^..\(.*\).$:\1:'` && \
     curl -L "https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini_${TINI_VERSION}.deb" > tini.deb && \
     dpkg -i tini.deb && \
-    rm tini.deb && \
-    apt-get clean
+    rm tini.deb
 
 ENV PATH /opt/conda/bin:$PATH
 
@@ -31,7 +30,7 @@ CMD [ "/bin/bash" ]
 WORKDIR /opt
 RUN conda config --add channels r
 RUN conda config --add channels bioconda
-RUN conda install -y pip nose cython pysam==0.9.0 pandas==0.18.1 samtools biobambam star velvet ucsc-gtftogenepred
+RUN conda install -y pip nose cython pysam>=0.9.0 pandas>=0.18.1 samtools biobambam star velvet ucsc-gtftogenepred
 
 # Install STAR-SEQR
 RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.1.0.tar.gz  && \
