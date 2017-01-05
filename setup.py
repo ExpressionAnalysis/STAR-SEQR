@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages, Extension
-import sys
 from io import open
 from sys import stderr
 
@@ -17,9 +16,9 @@ def get_version(string):
 libssw_ext = Extension('_libssw_ext', sources=['ssw/src/ssw.c'], include_dirs=['ssw/src/'])
 
 setup(
-    name='STAR-SEQR',
+    name='starseqr',
     version=get_version(open('starseqr_utils/__init__.py', encoding='utf-8').read()),
-    description='RNA-Fusion Caller',
+    description='RNA-Fusion Calling with STAR',
     long_description=open('README.rst', encoding='utf-8').read(),
     license='Custom',
     author='Jeff Jasper',
@@ -33,8 +32,7 @@ setup(
     zip_safe=False,
     test_suite='nose.collector',
     tests_require=['nose'],
+    keywords=['rna', 'rna-seq', 'fusions', 'chimeric', 'star']
 )
 
 stderr.write("Installation was successful!\n")
-
-sys.exit(0)
