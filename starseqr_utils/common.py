@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 from __future__ import (absolute_import, division, print_function)
+from six.moves import zip
 from six import reraise as raise_
 import os
 import sys
@@ -12,8 +13,7 @@ import time
 import errno
 import pandas as pd
 import numpy as np
-import itertools
-from itertools import groupby
+from itertools import groupby, repeat
 import multiprocessing as mp
 import signal
 import pysam
@@ -94,9 +94,9 @@ def pandas_parallel(df, func, nthreads, *opts):
         if not opts:
             tuple_opts = df_split
         if len(opts) == 1:
-            tuple_opts = itertools.izip(df_split, itertools.repeat(opts[0]))
+            tuple_opts = zip(df_split, repeat(opts[0]))
         elif len(opts) > 1:
-            tuple_opts = itertools.izip(df_split, itertools.repeat(opts))
+            tuple_opts = zip(df_split, repeat(opts))
         these_res = pool.map(func, tuple_opts)
         df = pd.concat(these_res)
         pool.close()
@@ -187,15 +187,15 @@ def sam_2_coord_bam(in_sam, out_bam, nthreads):
     else:
         bam_prefix = str(out_bam)
     bam_unsort = bam_prefix + ".unsorted.bam"
-    pysam.view("-Sbu", "-@", str(nthreads), "-o", str(bam_unsort), str(in_sam))
-    pysam.sort(str(bam_unsort), "-@", str(nthreads), "-o", str(bam_prefix + ".bam"))
-    pysam.index("%s.bam" % bam_prefix)
+    pysam.view("-Sbu", "-@", str(nthreads), "-o", str(bam_unsort), str(in_sam), catch_stdout=False)
+    pysam.sort(str(bam_unsort), "-@", str(nthreads), "-o", str(bam_prefix + ".bam"), catch_stdout=False)
+    pysam.index("%s.bam" % bam_prefix, catch_stdout=False)
     os.remove(bam_unsort)
 
 
 def bam_2_nsort_sam(in_bam, out_sam, nthreads):
     ''' convert a bam to a name sorted sam '''
     bam_sort = str(in_bam[:-4] + ".nsorted")
-    pysam.sort("-n", "-@", str(nthreads), str(in_bam), "-o", str(bam_sort + ".bam"))
-    pysam.view("-h", "-@", str(nthreads), "-o", str(out_sam), str(bam_sort + ".bam"))
+    pysam.sort("-n", "-@", str(nthreads), str(in_bam), "-o", str(bam_sort + ".bam"), catch_stdout=False)
+    pysam.view("-h", "-@", str(nthreads), "-o", str(out_sam), str(bam_sort + ".bam"), catch_stdout=False)
     os.remove(bam_sort + ".bam")

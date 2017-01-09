@@ -17,7 +17,7 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
     velveth_cmd = ['velveth', assemdir, str(kmer), '-short', '-fastq', fastq]
     for ar in args:
         velveth_cmd.extend(['-shortPaired', '-fastq', ar])
-    vh_args = map(str, velveth_cmd)
+    vh_args = list(map(str, velveth_cmd))
     logger.debug('*velveth Command: ' + ' '.join(vh_args))
     try:
         p = sp.Popen(velveth_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -33,7 +33,7 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
         logger.error('velveth Failed!', exc_info=True)
         sys.exit(1)
     velvetg_cmd = ['velvetg', assemdir, '-cov_cutoff', '2']
-    vg_args = map(str, velvetg_cmd)
+    vg_args = list(map(str, velvetg_cmd))
     logger.debug('*velvetg Command: ' + ' '.join(vg_args))
     try:
         p = sp.Popen(velvetg_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -60,7 +60,7 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
 #                   '-o', assemdir, '--phred-offset', 33, # --careful causing errors
 #                   '-t', '1', '-m', '5',
 #                   '--cov-cutoff', 'off']
-#     spades_args = map(str, spades_cmd)
+#     spades_args = list(map(str, spades_cmd))
 #     logger.debug('*SPADES Command: ' + ' '.join(spades_args))
 #     errlog.write('*SPADES Command: ' + ' '.join(spades_args))
 #     try:

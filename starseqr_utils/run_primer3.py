@@ -70,8 +70,9 @@ def runp3(seq_id, sequence, target=None):
             p3res = parsep3(p3output)
     except (OSError):
         logger.error("Primer Design Failed- continuing", exc_info=True)
+        return ()
     except (Exception):
-            return ()
+        return ()
     return p3res
 
 
@@ -101,6 +102,9 @@ def wrap_runp3(jxn, cross_fusions):
             fusion_name, brk = fusion[0].split('|')
             brk = int(brk)
             if cross_fusions[0] == fusion_name:
-                return runp3(fusion_name, fusion[1][brk - 200:brk + 200].upper(), 200)
+                mypad = min(int(len(fusion) / 2), 200)
+                mymin = min(0, brk - mypad)
+                mymax = max(len(fusion[1]), brk + mypad)
+                return runp3(fusion_name, fusion[1][mymin:mymax].upper(), 200)
     else:
         return ()

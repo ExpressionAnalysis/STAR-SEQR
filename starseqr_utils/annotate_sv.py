@@ -6,7 +6,7 @@ import six
 import re
 import logging
 from collections import defaultdict
-from operator import itemgetter
+import pandas as pd
 
 
 logger = logging.getLogger("STAR-SEQR")
@@ -18,26 +18,27 @@ except AttributeError:
     from string import maketrans
 
 
-def convert(data):
-    # data_type = type(data)
-    # if data_type == six.binary_type:
-    #     return data.decode('utf-8')
-    # if data_type in (six.string_types, six.text_type):
-    #     if isinstance(data, six.text_type):
-    #         return data
-    #     else:
-    #         return six.u(data)
-    # if data_type == dict:
-    #     data = six.iteritems(data)
-    # return data_type(map(convert, data))
-    return data
+def convert_str(data):
+    if isinstance(data, str):
+        return data
+    else:
+        data_type = type(data)
+        if six.PY3 and data_type == six.binary_type:
+            return data.decode('utf-8')
+        if data_type in (six.string_types, six.text_type):
+            return str(data)
+        if data_type == dict:
+            data = six.iteritems(data)
+            return data_type(map(convert_str, data))
+        if data_type in (tuple, list, set):
+            return data_type(map(convert_str, data))
 
 
 def clean_intervals(interval_set):
     newres = []
     for idx, val in enumerate(interval_set):
-        newres.append(convert(list(interval_set)[idx].data))
-    return convert(newres)
+        newres.append(convert_str(list(interval_set)[idx].data))
+    return convert_str(newres)
 
 
 def get_jxn_genes(jxn, gtree):
@@ -67,9 +68,9 @@ def get_jxn_genes(jxn, gtree):
 def overlap_exon(interval, pos, side):
     '''Input is a single interval... list(resL)[0]'''
     try:
-        ends = map(int, filter(None, interval['exonEnds'].split(",")))
-        starts = map(int, filter(None, interval['exonStarts'].split(",")))
-        frames = map(int, filter(None, interval['exonFrames'].split(",")))
+        ends = list(map(int, filter(None, interval['exonEnds'].split(","))))
+        starts = list(map(int, filter(None, interval['exonStarts'].split(","))))
+        frames = list(map(int, filter(None, interval['exonFrames'].split(","))))
         for idx, x in enumerate(starts):
             if pos in range(starts[idx], ends[idx] + 1):  # end is not inclusive so add 1
                 if interval['strand'] == "+":
@@ -177,10 +178,10 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
             ann['cdslen'].append("NA")
             ann['all_exons'].append("NA")
 
-        # sort results by dist to exon boundary
-        ds = {}
-        for k in ann.keys():
-            _, ds[k] = (list(t) for t in zip(*sorted(zip(ann['dist'], ann[k]), key=itemgetter(0))))
+        # sort results by dist to exon boundary and then by cdslen and then by transcript for consistency
+        dsdf = pd.DataFrame(ann).sort_values(['dist', 'cdslen', 'transcript'], ascending=[True, False, True]).reset_index()
+        dsdf['dist'] = dsdf['dist'].astype(str)
+        ds = dsdf.to_dict(orient='list')
 
         ann_string = ','.join([str(a) + ":" + b + ":" + c + ":" +
                                str(d) + ":" + str(e) + ":" + str(f) + ':' +

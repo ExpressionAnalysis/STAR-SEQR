@@ -37,32 +37,40 @@ def run_star(fq1, fq2, args):
                                '--chimScoreSeparation', 5, '--chimSegmentReadGapMax', 0]
             STAR_args.extend(sens_params)
             # Need to convert all to string
-            STAR_args = map(str, STAR_args)
+            STAR_args = list(map(str, STAR_args))
         elif args.nucleic_type == "RNA":
             if not os.path.isdir(args.star_index):
                 logger.error("Error: STAR index was not found at " + args.star_index + " Please update the path.", exc_info=True)
                 sys.exit(1)
+            # outFilterMultimapNmax does not have any effect on chimeric alignments
+            # chimSegmentReadGapMax allows for variation at breakpoints
+            # chimScoreDropMax is the difference in aligned read length and total read length due to clipping
+            # chimMainSegmentMultNmax - new parameter >2.5b.
+            # mismatches at sj: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif.
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
                          '--runThreadN', str(args.threads), '--genomeDir', args.star_index,
                          '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
                          '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', -1,
-                         '--alignSJDBoverhangMin', 3, '--outFilterMultimapScoreRange', 1]
+                         '--alignSJDBoverhangMin', 3, '--outFilterMultimapScoreRange', 1,
+                         '--outFilterMultimapNmax', 5]
             # choose sensitivity mode
             if (args.mode == 0):
                 sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
                                '--chimScoreMin', 1, '--chimScoreDropMax', 20,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "Basic",
-                               '--outFilterMultimapNmax', 5, '--alignSJstitchMismatchNmax', 5, -1, 5, 5]
+                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5]  # ,
+                               # '--chimMainSegmentMultNmax', 1]
             elif (args.mode == 1):
                 sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
                                '--chimScoreMin', 0, '--chimScoreDropMax', 30,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "Basic",
-                               '--outFilterMultimapNmax', 5, '--alignSJstitchMismatchNmax', 5, -1, 5, 5]
+                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5]  # ,
+                               # '--chimMainSegmentMultNmax', 1]
             STAR_args.extend(sens_params)
             # Need to convert all to string
-            STAR_args = map(str, STAR_args)
+            STAR_args = list(map(str, STAR_args))
         else:
             logger.error("Need to define nucleic_type as either RNA or DNA")
             sys.exit(1)

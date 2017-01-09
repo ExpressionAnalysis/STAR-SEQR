@@ -6,6 +6,7 @@ import re
 import logging
 import pandas as pd
 import numpy as np
+from collections import OrderedDict
 import starseqr_utils as su
 
 try:
@@ -79,8 +80,8 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
 def count_jxns(df, args):
     ''' aggregate jxn reads into left and right '''
     grouped_df = df.groupby(['name', 'order'], as_index=True)
-    new_df = grouped_df.agg({'readid': {'reads': lambda col: ','.join(col), 'counts': 'count'}}
-                            ).reset_index().pivot(index='name', columns='order').reset_index()
+    new_df = grouped_df['readid'].agg(OrderedDict([('reads', lambda col: ','.join(col)), ('counts', 'count')]))
+    new_df = new_df.reset_index().pivot(index='name', columns='order').reset_index()
     if args.nucleic_type == "DNA":
         new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright']
     elif args.nucleic_type == "RNA":

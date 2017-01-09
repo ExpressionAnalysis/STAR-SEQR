@@ -2,10 +2,10 @@
 # encoding: utf-8
 
 from __future__ import (absolute_import, division, print_function)
+import six
 import os
 import sys
 import re
-import string
 import time
 import logging
 import subprocess as sp
@@ -13,6 +13,12 @@ import pysam  # requires 0.9.0
 import collections
 import numpy as np
 import starseqr_utils as su
+
+try:
+    maketrans = ''.maketrans
+except AttributeError:
+    # fallback for Python 2
+    from string import maketrans
 
 logger = logging.getLogger('STAR-SEQR')
 
@@ -25,7 +31,7 @@ def find_support_reads(jxn, bam, side, tx, sub_reads, gtree):
     if side == 2:
         chrom1, chrom2 = chrom2, chrom1
         pos1, pos2 = pos2, pos1
-        flipstr = string.maketrans('-+', '+-')
+        flipstr = maketrans('-+', '+-')
         str1, str2 = str2.translate(flipstr), str1.translate(flipstr)
         repleft, repright = repright, repleft
 
@@ -113,8 +119,8 @@ def get_reads_from_bam(bam_file, jxn, tx, s_reads, gtree):
         sys.exit()
 
     # account for genome boundaries
-    len1 = (item for item in bamObject.header['SQ'] if item['SN'] == chrom1).next()['LN']
-    len2 = (item for item in bamObject.header['SQ'] if item['SN'] == chrom2).next()['LN']
+    len1 = six.next((item for item in bamObject.header['SQ'] if item['SN'] == chrom1))['LN']
+    len2 = six.next((item for item in bamObject.header['SQ'] if item['SN'] == chrom2))['LN']
     dist1_less = max(i for i in [int(pos1) - 100000, 0] if i >= 0)
     dist1_plus = min(i for i in [int(pos1) + 100000, len1] if i >= 0)
     dist2_less = max(i for i in [int(pos2) - 100000, 0] if i >= 0)
@@ -212,20 +218,20 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
             pairfqfh.write(seq + '\n')
             pairfqfh.write('+' + '\n')
             pairfqfh.write(''.join(
-                map(chr, [x + 33 for x in quals])) + '\n')
+                list(map(chr, [x + 33 for x in quals]))) + '\n')
         elif read.flag & 256:
             # use full junction sequence for assembly
             junctionfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
             junctionfqfh.write(read.query_sequence + '\n')
             junctionfqfh.write('+' + '\n')
             junctionfqfh.write(''.join(
-                map(chr, [x + 33 for x in read.query_qualities])) + '\n')
+                list(map(chr, [x + 33 for x in read.query_qualities]))) + '\n')
             # write overhang separately
             overhangfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
             overhangfqfh.write(read.query_alignment_sequence + '\n')
             overhangfqfh.write('+' + '\n')
             overhangfqfh.write(''.join(
-                map(chr, [x + 33 for x in read.query_alignment_qualities])) + '\n')
+                list(map(chr, [x + 33 for x in read.query_alignment_qualities]))) + '\n')
     pairfqfh.close()
     junctionfqfh.close()
     os.remove(bam_sort + '.bam')
@@ -252,7 +258,7 @@ def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
             found_reads = list(set(extracted[ktype][ktuple].keys()))
             results[dname + "_reads"] = found_reads
             results[dname] = len(results[dname + "_reads"])
-            for kname, val in extracted[ktype][ktuple].iteritems():
+            for kname, val in six.iteritems(extracted[ktype][ktuple]):
                 u_reads.append(kname)
                 vun, vas, vmm, vseqlen, vmeanbq = val  # metric values: read flag, AS, nM, length, qualities
                 results[dname + '_AS'].append(vas)

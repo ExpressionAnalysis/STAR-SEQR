@@ -5,9 +5,14 @@ from __future__ import (absolute_import, division, print_function)
 import sys
 import time
 import pandas as pd
-import string
 import logging
 import svtools_star.svtools.bedpetovcf as sv  # temporary until svtools is fixed
+
+try:
+    maketrans = ''.maketrans
+except AttributeError:
+    # fallback for Python 2
+    from string import maketrans
 
 logger = logging.getLogger("STAR-SEQR")
 
@@ -153,7 +158,7 @@ def write_bedpe(df, out_bedpe, args):
         df = df.reset_index()
         df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
         # STAR has second object flipped
-        flipstr = string.maketrans("-+", "+-")
+        flipstr = maketrans("-+", "+-")
         df['st2'] = df['st2'].str.translate(flipstr)
         # use 0-based positions from breakpoint cols
         df['c1'], df['s1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
@@ -161,7 +166,7 @@ def write_bedpe(df, out_bedpe, args):
         df['s1'] = df['s1'].astype(int)
         df['s2'] = df['s2'].astype(int)
         # Common stuff to BNDs and others
-        df['e1'] = df['s1'] + 1 # these are 1-based endings.
+        df['e1'] = df['s1'] + 1  # these are 1-based endings.
         df['e2'] = df['s2'] + 1
         df['id'] = df['index'].astype(int) + 1
         df['qual'] = df['jxn_first'] + df['jxn_second']  # Eventually get a handle on a scoring metric besides number of reads

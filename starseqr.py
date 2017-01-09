@@ -31,12 +31,26 @@ def parse_args():
                         default=0,
                         choices=[0, 1],
                         help='STAR alignment sensitivity Mode. 0=Default, 1=More-Sensitive')
+
     # existing STAR alignment
     group2 = parser.add_argument_group('Use Existing Alignment', '')
     group2.add_argument('-sj', '--star_jxns', type=str, required=False,
                         help='chimeric junctions file produce by STAR')
     group2.add_argument('-ss', '--star_sam', type=str, required=False,
                         help='chimeric sam file produced by STAR')
+
+    # DNA Parameters
+    group3 = parser.add_argument_group('DNA Parameters', '')
+    group3.add_argument('-d', '--dist', type=int, required=False,
+                        default=100000,
+                        help='DNA Only: minimum distance to call junctions')
+    group3.add_argument('-j', '--jxn_reads', type=int, required=False,
+                        default=2,
+                        help='DNA Only: minimum number of junction reads to keep junctions.')
+    group3.add_argument('-s', '--span_reads', type=int, required=False,
+                        default=2,
+                        help='DNA Only: minimum number of spanning discordant read pairs to call junctions.')
+
     # shared args
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
@@ -44,15 +58,6 @@ def parse_args():
                         help='indexed fasta')
     parser.add_argument('-g', '--gtf', type=str, required=True,
                         help='gtf file')
-    parser.add_argument('-d', '--dist', type=int, required=False,
-                        default=100000,
-                        help='minimum distance to call junctions')
-    parser.add_argument('-j', '--jxn_reads', type=int, required=False,
-                        default=2,
-                        help='minimum number of junction reads to keep junctions.')
-    parser.add_argument('-s', '--span_reads', type=int, required=False,
-                        default=2,
-                        help='minimum number of spanning discordant read pairs to call junctions.')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
@@ -71,13 +76,13 @@ def parse_args():
                         help='nucleic acid type',
                         choices=["velvet"])
     parser.add_argument('--keep_dups', action='store_true',
-                        help='keep read duplicates')
+                        help='keep read duplicates. Use for PCR data.')
     parser.add_argument('--keep_gene_dups', action='store_true',
-                        help='allow RNA internal gene duplications to be considered')
+                        help='allow internal gene duplications to be considered')
     parser.add_argument('--keep_mito', action='store_true',
                         help='allow RNA fusions to contain at least one breakpoint from Mitochondria')
-    parser.add_argument('--keep_unscaffolded', action='store_true',
-                        help='allow gene fusions to pass that are found on unscaffolded contigs')
+    # parser.add_argument('--keep_unscaffolded', action='store_true',
+    #                    help='allow gene fusions to pass that are found on unscaffolded contigs')
     parser.add_argument('-v', '--verbose', action="count",
                         help="verbose level... repeat up to three times.")
     args = parser.parse_args()
@@ -341,7 +346,7 @@ def main():
         # hard filter on minimal junction and span reads, require at least two reads...
         logger.info('Filtering junctions')
         before_remove = len(jxn_filt.index)
-        jxn_filt = jxn_filt[(jxn_filt["spans"] + jxn_filt["jxn_counts"]) >= 2]
+        jxn_filt = jxn_filt[(jxn_filt["spans"].astype(int) + jxn_filt["jxn_counts"].astype(int)) >= 2]
         logger.info("Number of candidates removed due to total read support less than 2: " + str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
@@ -368,7 +373,7 @@ def main():
             jxn_filt['txintersection'] = [list(set(a).intersection(set(b))) for a, b in zip(jxn_filt.left_all, jxn_filt.right_all)]
             jxn_filt['ann'] = jxn_filt['left_symbol'] + "--" + jxn_filt['right_symbol']
 
-            jxn_filt.to_csv(path_or_buf="transformed.txt", header=True, sep=str('\t'), mode='w', index=False)
+            # jxn_filt.to_csv(path_or_buf="transformed.txt", header=True, sep=str('\t'), mode='w', index=False)
 
             # subset to ROI using bed file if it exists
             if args.bed_file:

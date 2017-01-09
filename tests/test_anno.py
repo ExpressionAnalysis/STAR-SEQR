@@ -55,6 +55,22 @@ class AnnoTestCase(unittest.TestCase):
         assert(jxn_filt['left_cdslen'].iloc[0] == 'NA')
         assert(jxn_filt['left_exons'].iloc[0] == ['NA'])
 
+    def test_get_jxnside_anno_v3(self):
+        """test get_jxnside_anno.. Tests non-coding transcripts for sorting"""
+        jxn_filt = pd.DataFrame({'name': 'chr12:15704606:+:chr1:11918527:-:2:1',
+                                 'jxn_reads': 'a1,a2,a3',
+                                 'jxn_counts': 3,
+                                 'spans': 5,
+                                 'spanreads': 's1,s2,s3,s4,s5',
+                                 'dist': 'NA',
+                                 'ann_format': 'Symbol:Transcript:Strand:Exon_No:Dist_to_Exon:Frame:CDS_Length'},
+                                index=pd.Series(0))
+        jxn_filt['left_symbol'], jxn_filt['left_annot'], jxn_filt['left_strand'], jxn_filt['left_cdslen'], jxn_filt['left_exons'] = zip(*jxn_filt.apply(lambda x: su.annotate_sv.get_jxnside_anno(x['name'], gtree, 1), axis=1))
+        assert(jxn_filt['left_symbol'].iloc[0] == 'NA')
+        assert(jxn_filt['left_strand'].iloc[0] == 'NA')
+        assert(jxn_filt['left_cdslen'].iloc[0] == 'NA')
+        assert(jxn_filt['left_exons'].iloc[0] == ['NA'])
+
     def test_get_jxn_genes(self):
         """test_get_jxn_genes"""
         jxn_filt = pd.DataFrame({'name': 'chr1:871160:+:chr1:985950:-:0:0',
