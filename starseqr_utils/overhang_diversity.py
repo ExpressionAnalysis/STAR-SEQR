@@ -10,17 +10,17 @@ logger = logging.getLogger('STAR-SEQR')
 
 
 def find_unique_overhangs(reads_fq):
-    '''get unique reads'''
+    '''get unique reads with flags 321, 337, 385, 401 in context of strand'''
+    # +/+ = 401/321, +/- = 385/321, -/+ = 401/337, -/- = 385/337
     rfq_gen = su.common.FastqParser(reads_fq)
-    # matches = {'321': 0, '337': 0, '385':0, '401': 0}
     res_left = set()
     res_right = set()
     for rfq in rfq_gen:
         read_tag = int(float(re.split('_', rfq.header)[-1]))
-        if read_tag == 321 or read_tag == 337:
-            res_left.add(rfq.sequence)
-        else:
-            res_right.add(rfq.sequence)
+        if read_tag in [321, 337]:
+            res_left.add(rfq.sequence)  # reads start from jxnright
+        else:  # 385,401
+            res_right.add(rfq.sequence)  # reads start from jxnleft
     return len(res_left), len(res_right)
 
 
