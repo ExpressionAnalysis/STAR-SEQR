@@ -64,7 +64,7 @@ def parse_args():
                         choices=["RNA", "DNA"])
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=8,
-                        help='Number of threads to use for STAR and STAR-SEQR')
+                        help='Number of threads to use for STAR and STAR-SEQR. 4-8 recommended.')
     parser.add_argument('-b', '--bed_file', type=str, required=False,
                         help='Bed file to subset analysis')
     parser.add_argument('--subset', type=str, required=False,
@@ -251,14 +251,17 @@ def main():
     if not su.common.which("velveth"):
         logger.error("velveth exe not found on path! Quitting.")
         sys.exit(1)
-    if args.as_type == 'spades' and not su.common.which("spades.py"):
-        logger.error("spades.py not found on path! Quitting.")
+    if not su.common.which('gtfToGenePred'):
+        logger.error("gtfToGenePred not found on path! Quitting.")
         sys.exit(1)
 
     # check files exist and get abs paths
     if args.fasta:
         fasta_path = os.path.realpath(args.fasta)
         su.common.check_file_exists(fasta_path)
+    if args.gtf:
+        gtf_path = os.path.realpath(args.gtf)
+        su.common.check_file_exists(gtf_path)
     if args.bed_file:
         bed_path = os.path.realpath(args.bed_file)
         su.common.check_file_exists(bed_path)
@@ -297,9 +300,9 @@ def main():
 
     # Prepare Annotation
     global gtree
-    genepred_annot = os.path.splitext(args.gtf)[0] + ".genePred"
-    ucsc_annot = os.path.splitext(args.gtf)[0] + ".UCSCTable.gz"
-    su.gtf_convert.gtf_to_genepred(args.gtf, genepred_annot)
+    genepred_annot = os.path.splitext(gtf_path)[0] + ".genePred"
+    ucsc_annot = os.path.splitext(gtf_path)[0] + ".UCSCTable.gz"
+    su.gtf_convert.gtf_to_genepred(gtf_path, genepred_annot)
     su.gtf_convert.genepred_to_UCSCtable(genepred_annot, ucsc_annot)
     kg = gzip.open(ucsc_annot)
     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
@@ -308,18 +311,18 @@ def main():
         # start output files
         stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
         breakpoints_fh = open(args.prefix + "_STAR-SEQR_breakpoints.txt", 'w')
-        breakpoint_cols = ["ann", "breakpoint_left", "breakpoint_right",
+        breakpoint_cols = ["ann", "Fusion_Class", "breakpoint_left", "breakpoint_right",
                            "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
                            "splice_type", "dist", "span_first", "jxn_left", "jxn_right",
                            "assembly", "primers", "name"]
-        breakpoint_header = ["NAME", "BRKPT_LEFT", "BRKPT_RIGHT",
+        breakpoint_header = ["NAME", "FUSION_CLASS", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
                              "SPLICE_TYPE", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "ASSEMBLY", "PRIMERS", "ID"]
         print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
         # stats dict
-        stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
+        stats_res = {'All_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
 
         # Order, Normalize and Aggregate
         logger.info("Ordering junctions")
@@ -333,8 +336,8 @@ def main():
         jxn_summary = su.core.count_jxns(jxns, args)
 
         # write stats
-        stats_res['Total_Breakpoints'] = len(jxn_summary.index)
-        logger.info('Total Breakpoints:' + str(stats_res['Total_Breakpoints']))
+        stats_res['All_Breakpoints'] = len(jxn_summary.index)
+        logger.info('Total Breakpoints:' + str(stats_res['All_Breakpoints']))
 
         # Get discordant pairs
         logger.info('Getting pair info')
@@ -540,7 +543,7 @@ def main():
         print(*breakpoint_header, sep='\t', file=breakpoints_fh)
 
         # stats dict
-        stats_res = {'Total_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
+        stats_res = {'All_Breakpoints': 0, 'Candidate_Breakpoints': 0, 'Passing_Breakpoints': 0}
 
         # Order, Normalize and Aggregate
         logger.info("Ordering junctions")
@@ -563,8 +566,8 @@ def main():
             logger.info("Time to subset junction from bed took %g seconds" % (time.time() - start_bed))
 
         # print stats
-        stats_res['Total_Breakpoints'] = len(jxn_summary.index)
-        logger.info('Total Breakpoints:' + str(stats_res['Total_Breakpoints']))
+        stats_res['All_Breakpoints'] = len(jxn_summary.index)
+        logger.info('Total Breakpoints:' + str(stats_res['All_Breakpoints']))
 
         # Filter on distance
         logger.info('Filtering junctions based on distance')
