@@ -13,7 +13,7 @@ class ReadSupportTestCase(unittest.TestCase):
     '''Tests read support'''
 
     def test_readsupport_v1(self):
-        """PLSCR1 and PLSCR2 test case"""
+        '''v1'''
         pass
 
 
