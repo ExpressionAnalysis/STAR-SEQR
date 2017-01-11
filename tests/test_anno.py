@@ -15,8 +15,14 @@ if path != '':
 
 class AnnoTestCase(unittest.TestCase):
     """Tests annotation"""
-    gtable = os.path.realpath("test_data/test.gtf.UCSCTable.gz")
-    kg = gzip.open(gtable)
+    mygtf = os.path.realpath("test_data/test.gtf.gz")
+    genepred_annot = os.path.splitext(mygtf)[0] + ".genePred"
+    ucsc_annot = os.path.splitext(mygtf)[0] + ".UCSCTable.gz"
+    su.gtf_convert.gtf_to_genepred(mygtf, genepred_annot)
+    su.gtf_convert.genepred_to_UCSCtable(genepred_annot, ucsc_annot)
+    su.gtf_convert.gtf_to_genepred(mygtf, genepred_annot)
+    su.gtf_convert.genepred_to_UCSCtable(genepred_annot, ucsc_annot)
+    kg = gzip.open(ucsc_annot)
     global gtree
     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
 
