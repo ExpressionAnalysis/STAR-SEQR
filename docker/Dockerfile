@@ -38,9 +38,9 @@ RUN conda config --add channels conda-forge && \
     conda clean -ilty
 
 # Install STAR-SEQR
-RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.1.0.tar.gz  && \
-    tar -zxvf v0.1.0.tar.gz && \
-    cd STAR-SEQR-0.1.0 && \
+RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.2.0.tar.gz  && \
+    tar -zxvf v0.2.0.tar.gz && \
+    cd STAR-SEQR-0.2.0 && \
     python setup.py build && \
     python setup.py install && \
     python setup.py clean && \
