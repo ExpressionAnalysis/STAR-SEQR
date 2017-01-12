@@ -265,6 +265,12 @@ def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
                 results[dname + '_mismatches'].append(vmm)
                 results[dname + '_seqlen'].append(vseqlen)
                 results[dname + '_meanBQ'].append(vmeanbq)
+            # convert lists to strings for easier record keeping
+            results[dname + '_reads'] = ','.join(list(map(str, results[dname + '_reads'])))
+            results[dname + '_AS'] = ','.join(list(map(str, results[dname + '_AS'])))
+            results[dname + '_mismatches'] = ','.join(list(map(str, results[dname + '_mismatches'])))
+            results[dname + '_seqlen'] = ','.join(list(map(str, results[dname + '_seqlen'])))
+            results[dname + '_meanBQ'] = ','.join(list(map(str, results[dname + '_meanBQ'])))
 
     # write unique reads to file
     read_ids_all = jxn_dir + 'supporting_reads_all.txt'

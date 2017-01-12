@@ -200,6 +200,11 @@ def apply_get_diversity(df):
     return df
 
 
+def apply_get_minfrag_length(df):
+    df['minfrag20'], df['minfrag35'] = zip(*df.apply(lambda x: su.core.get_minfrag_length(x['name'], x), axis=1))
+    return df
+
+
 def apply_get_assembly_info(args):
     df, as_type = args
     df['assembly'], df['assembly_len'], df['assembly_cross_fusions'] = zip(
@@ -311,14 +316,18 @@ def main():
         # start output files
         stats_fh = open(args.prefix + "_STAR-SEQR.stats", 'w')
         breakpoints_fh = open(args.prefix + "_STAR-SEQR_breakpoints.txt", 'w')
-        breakpoint_cols = ["ann", "Fusion_Class", "breakpoint_left", "breakpoint_right",
+        breakpoint_cols = ["ann", "span_first", "jxn_left", "jxn_right",
+                           "Fusion_Class", "splice_type", "breakpoint_left", "breakpoint_right",
                            "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
-                           "splice_type", "dist", "span_first", "jxn_left", "jxn_right",
-                           "assembly", "primers", "name"]
-        breakpoint_header = ["NAME", "FUSION_CLASS", "BRKPT_LEFT", "BRKPT_RIGHT",
+                           "dist", "assembly", "primers", "name",
+                           "span_homology_score", "jxn_homology_score", "overhang_diversity_left", "overhang_diversity_right",
+                           "minfrag20", "minfrag35", "PASS"]
+        breakpoint_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
+                             "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
-                             "SPLICE_TYPE", "DISTANCE", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
-                             "ASSEMBLY", "PRIMERS", "ID"]
+                             "DISTANCE", "ASSEMBLY", "PRIMERS", "ID",
+                             "SPAN_CROSSHOM_SCORE", "JXN_CROSSHOM_SCORE", "OVERHANG_DIVERSITY_LEFT", "OVERHANG_DIVERSITY_RIGHT",
+                             "MINFRAG20", "MINFRAG35", "PASS"]
         print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
         # stats dict
@@ -462,6 +471,10 @@ def main():
             logger.info("Getting overhang read diversity")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_diversity, args.threads)
 
+            # get min frag lengths for anchor/overhang
+            logger.info("Getting min frag length support")
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_minfrag_length, args.threads)
+
             # get assembly seq and confirm breakpoint
             logger.info("doing assembly")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_assembly_info, args.threads, args.as_type)
@@ -500,20 +513,41 @@ def main():
                                    ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1))))
 
             # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
-            finaldf['filter2'] = (((finaldf['span_homology_score'] < 40) &
-                                   (finaldf['jxn_homology_score'] < 40)))
+            finaldf['filter2'] = ((finaldf['span_homology_score'] < 40) &
+                                  (finaldf['jxn_homology_score'] < 40))
 
             # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique
             finaldf['filter3'] = ((finaldf['overhang_diversity_left'] + finaldf['overhang_diversity_right'] >= finaldf['jxn_first'] * .2))
 
-            # Hard filter to require non-canonical splicing events to have greater read support
-            finaldf['filter4'] = (finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]['jxn_first'] >= 5)
+            # Hard filter to require non-canonical splicing events to have greater read support and at least 10% with minfrag35
+            finaldf['filter4'] = ((finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]['jxn_first'] >= 5) &
+                                  (finaldf['minfrag35'] >= finaldf['jxn_first'] * .1))
 
-            finaldf['PASS'] = finaldf[['filter1', 'filter2', 'filter3', 'filter4']].all(axis=1)
+            # Hard filter to require at least 10% of reads to pass minfrag20 if span reads < 1
+            finaldf['filter5'] = (finaldf[finaldf["span_first"] < 1]['minfrag20'] >= finaldf[finaldf["span_first"] < 1]['jxn_first'] * .1)
+
+            # Hard filter to require at least 10% of reads to pass minfrag20 if jxn reads > 10
+            finaldf['filter6'] = (finaldf[finaldf["jxn_first"] >= 10]['minfrag20'] >= finaldf[finaldf["jxn_first"] >= 10]['jxn_first'] * .1)
+
+            finaldf['PASS'] = finaldf[['filter1', 'filter2', 'filter3', 'filter4', 'filter5', 'filter6']].all(axis=1)
 
             # all candidates
-            candid_out = args.prefix + "_STAR-SEQR_candidate_info.txt"
-            finaldf.to_csv(path_or_buf=candid_out, header=True, sep="\t", mode='w', index=False)
+            candid_fh = open(args.prefix + "_STAR-SEQR_candidates.txt", 'w')
+            candid_cols = ["ann", "span_first", "jxn_left", "jxn_right",
+                               "Fusion_Class", "splice_type", "breakpoint_left", "breakpoint_right",
+                               "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
+                               "dist", "assembly", "primers", "name",
+                               "span_homology_score", "jxn_homology_score", "overhang_diversity_left", "overhang_diversity_right",
+                               "minfrag20", "minfrag35", "PASS"]
+            candid_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
+                                 "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
+                                 "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
+                                 "DISTANCE", "ASSEMBLY", "PRIMERS", "ID",
+                                 "SPAN_CROSSHOM_SCORE", "JXN_CROSSHOM_SCORE", "OVERHANG_DIVERSITY_LEFT", "OVERHANG_DIVERSITY_RIGHT",
+                                 "MINFRAG20", "MINFRAG35", "PASS"]
+            print('\t'.join(map(str, candid_header)), file=candid_fh)
+            finaldf.to_csv(path_or_buf=candid_fh, header=False, sep="\t", columns=candid_cols, mode='w', index=False)
+            candid_fh.close()
 
             resultsdf = finaldf[finaldf['PASS'] == True].sort_values(['jxn_first', "span_first"], ascending=[False, False])
 

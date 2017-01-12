@@ -97,6 +97,7 @@ def wrap_runp3(jxn, cross_fusions):
 
     fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
     fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
+    cross_fusions = [x for x in cross_fusions.split(',') if x] # removes empty strings
     if len(fusions_list) > 0 and len(cross_fusions) > 0:
         for fusion in fusions_list:
             fusion_name, brk = fusion[0].split('|')

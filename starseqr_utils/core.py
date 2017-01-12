@@ -238,6 +238,28 @@ def get_fusion_class(jxn, txintersection):
             return "INTERCHROM_INTERSTRAND"
 
 
+def get_minfrag_length(jxn, df):
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    if str1 == '+':
+        left_over = [(int(x) if x else 0) for x in str(df['hangleft_rev_first_seqlen']).split(",")]
+        left_jxn = [(int(x) if x else 0) for x in str(df['jxnleft_for_second_seqlen']).split(",")]
+    elif str1 == '-':
+        left_over = [(int(x) if x else 0) for x in str(df['hangleft_for_first_seqlen']).split(",")]
+        left_jxn = [(int(x) if x else 0) for x in str(df['jxnleft_rev_second_seqlen']).split(",")]
+    if str2 == '+':
+        right_over = [(int(x) if x else 0) for x in str(df['hangright_for_second_seqlen']).split(",")]
+        right_jxn = [(int(x) if x else 0) for x in str(df['jxnright_rev_first_seqlen']).split(",")]
+    elif str2 == '-':
+        right_over = [(int(x) if x else 0) for x in str(df['hangright_rev_second_seqlen']).split(",")]
+        right_jxn = [(int(x) if x else 0) for x in str(df['jxnright_for_first_seqlen']).split(",")]
+    all_over = left_over + right_over # order matters
+    all_jxn = right_jxn + left_jxn # order matters
+    all_min = [min(i) for i in list(zip(all_over, all_jxn))] # get the minimum of anchor vs overhang
+    all_min20 = np.sum(i > 20 for i in all_min) # how many of the min fragments are > 20
+    all_min35 = np.sum(i > 35 for i in all_min) # how many of the min fragments are > 35
+    return (all_min20, all_min35)
+
+
 def get_svtype_func(jxn):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     chrom1 = str(chrom1)
@@ -275,6 +297,6 @@ def get_sv_locations(jxn):
     elif str(str1) == "-" and str(str2) == "+":
         pos1 += 1
         pos2 += 1
-    brk1 = str(chrom1) + ":" + str(pos1)
-    brk2 = str(chrom2) + ":" + str(pos2)
+    brk1 = str(chrom1) + ":" + str(pos1) + ":" + str(str1)
+    brk2 = str(chrom2) + ":" + str(pos2) + ":" + str(str2)
     return (brk1, brk2)
