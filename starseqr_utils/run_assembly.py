@@ -129,4 +129,8 @@ def get_assembly_info(jxn, as_type):
                     if len(fusion_seq_re.findall(as_seq.upper())) or len(fusion_seq_re.findall(su.common.rc(as_seq).upper())) > 0:
                         as_crossing_fusions.append(fusion_name)
                 all_crossing.extend(as_crossing_fusions)
+    # convert all lists to string for good recordkeeping
+    all_seq = ','.join(list(map(str, all_seq)))
+    all_len = ','.join(list(map(str, all_len)))
+    all_crossing = ','.join(list(map(str, all_crossing)))
     return all_seq, all_len, all_crossing
