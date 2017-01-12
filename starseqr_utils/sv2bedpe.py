@@ -158,11 +158,11 @@ def write_bedpe(df, out_bedpe, args):
         df = df.reset_index()
         df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
         # STAR has second object flipped
-        flipstr = maketrans("-+", "+-")
-        df['st2'] = df['st2'].str.translate(flipstr)
+        # flipstr = maketrans("-+", "+-")
+        # df['st2'] = df['st2'].str.translate(flipstr)
         # use 0-based positions from breakpoint cols
-        df['c1'], df['s1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
-        df['c2'], df['s2'] = zip(*df['breakpoint_right'].str.split(':').tolist())
+        df['c1'], df['s1'], df['st1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
+        df['c2'], df['s2'], df['st2'] = zip(*df['breakpoint_right'].str.split(':').tolist())
         df['s1'] = df['s1'].astype(int)
         df['s2'] = df['s2'].astype(int)
         # Common stuff to BNDs and others
