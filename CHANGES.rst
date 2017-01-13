@@ -9,3 +9,6 @@ STAR-SEQR 0.2.0:
  * More filters are applied to remove FPs with certain read characteristics such as diversity, MINFRAG20, and Cross-Homology
  * Candidate info has been converted to not contain nested lists
  * New output format with more info
+
+STAR-SEQR 0.2.1:
+ * Added a script for making a DREAM challenge compliant bedpe
