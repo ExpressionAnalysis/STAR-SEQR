@@ -12,3 +12,9 @@ STAR-SEQR 0.2.0:
 
 STAR-SEQR 0.2.1:
  * Added a script for making a DREAM challenge compliant bedpe
+
+STAR-SEQRv0.2.2:
+ * Change absolute path requirements for gtf and fasta to accomodate docker
+
+STAR-SEQRv0.2.3:
+ * Changed all realpath statements to abspath.

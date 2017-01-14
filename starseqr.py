@@ -262,22 +262,22 @@ def main():
 
     # check files exist and get abs paths
     if args.fasta:
-        fasta_path = args.fasta # need here for docker
+        fasta_path = os.path.abspath(args.fasta) # need here for docker
         su.common.check_file_exists(fasta_path)
     if args.gtf:
-        gtf_path = args.gtf # need here for docker
+        gtf_path = os.path.abspath(args.gtf)
         su.common.check_file_exists(gtf_path)
     if args.bed_file:
-        bed_path = os.path.realpath(args.bed_file)
+        bed_path = os.path.abspath(args.bed_file)
         su.common.check_file_exists(bed_path)
     if args.fastq1:
-        fq1_path = os.path.realpath(args.fastq1)
-        fq2_path = os.path.realpath(args.fastq2)
+        fq1_path = os.path.abspath(args.fastq1)
+        fq2_path = os.path.abspath(args.fastq2)
         su.common.check_file_exists(fq1_path)
         su.common.check_file_exists(fq2_path)
     if args.star_jxns:
-        starjxns_path = os.path.realpath(args.star_jxns)
-        starsam_path = os.path.realpath(args.star_sam)
+        starjxns_path = os.path.abspath(args.star_jxns)
+        starsam_path = os.path.abspath(args.star_sam)
         su.common.check_file_exists(starjxns_path)
         su.common.check_file_exists(starsam_path)
 

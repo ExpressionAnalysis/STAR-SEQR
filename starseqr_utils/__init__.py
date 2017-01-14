@@ -11,4 +11,4 @@ import starseqr_utils.run_assembly
 import starseqr_utils.annotate_db
 import starseqr_utils.sv2bedpe
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
