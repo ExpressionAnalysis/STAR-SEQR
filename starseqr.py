@@ -262,10 +262,10 @@ def main():
 
     # check files exist and get abs paths
     if args.fasta:
-        fasta_path = os.path.realpath(args.fasta)
+        fasta_path = args.fasta # need here for docker
         su.common.check_file_exists(fasta_path)
     if args.gtf:
-        gtf_path = os.path.realpath(args.gtf)
+        gtf_path = args.gtf # need here for docker
         su.common.check_file_exists(gtf_path)
     if args.bed_file:
         bed_path = os.path.realpath(args.bed_file)
