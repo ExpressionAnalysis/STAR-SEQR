@@ -552,7 +552,6 @@ def main():
             finaldf['filter_all'] = finaldf[['filter_minreads', 'filter_homology', 'filter_diversity', 'filter_noncanonical', 'filter_nospanminfrag', 'filter_minfrag']].values.tolist()
             finaldf['PASS'] = finaldf['filter_all'].apply(lambda x: ','.join(x for x in list(map(str, x)) if x not in ['True', 'nan']))
             finaldf['PASS'].replace('', 'PASS', inplace=True)
-            finaldf.to_csv(path_or_buf="prefilter.txt", header=True, sep="\t", mode='w', index=False)
 
             # all candidates
             candid_fh = open(args.prefix + "_STAR-SEQR_candidates.txt", 'w')
