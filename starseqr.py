@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 from __future__ import (absolute_import, division, print_function)
+from six import reraise as raise_
 import os
 import sys
 import time
@@ -22,9 +23,9 @@ def parse_args():
     # create STAR alignment
     group1 = parser.add_argument_group('Do Alignment', '')
     group1.add_argument('-1', '--fastq1', type=str, required=False,
-                        help='fastq 1')
+                        help='fastq.gz 1')
     group1.add_argument('-2', '--fastq2', type=str, required=False,
-                        help='fastq 2')
+                        help='fastq.gz 2')
     group1.add_argument('-i', '--star_index', type=str, required=False,
                         help='path to STAR index folder')
     group1.add_argument('-m', '--mode', type=int, required=False,
@@ -55,9 +56,9 @@ def parse_args():
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
     parser.add_argument('-r', '--fasta', type=str, required=True,
-                        help='indexed fasta')
+                        help='indexed fasta (.fa|.fa.gz)')
     parser.add_argument('-g', '--gtf', type=str, required=True,
-                        help='gtf file')
+                        help='gtf file. (.gtf|.gtf.gz)')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
@@ -178,6 +179,15 @@ def apply_get_rna_support(args):
 
 def apply_exons2seq(args):
     df, fa_path = args
+
+    #fasta index
+    if not os.path.exists('%s.fai' % fa_path):
+        try:
+            pysam.faidx(fa_path)
+        except Exception as e:
+            logger.info('Fasta Indexing Failed.')
+            traceback = sys.exc_info()[2]
+            raise_(ValueError, e, traceback)
     fa_object = pysam.Fastafile(fa_path)
     df.apply(lambda x: su.core.exons2seq(fa_object, x['left_trx_exons'], x['name'], "left"), axis=1)
     df.apply(lambda x: su.core.exons2seq(fa_object, x['right_trx_exons'], x['name'], "right"), axis=1)
@@ -507,29 +517,42 @@ def main():
 
             # HARD FILTERING - Change this once a probabilistic module is ready.
             # Hard filter on read counts after accounting for transcript info.
-            finaldf['filter1'] = (((finaldf["jxn_first"] >= 2) |  # most robust cases
+            finaldf['filter_minreads'] = (((finaldf["jxn_first"] >= 2) |  # most robust cases
                                    ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) |  # read diversity
                                    ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
                                    ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1))))
+            finaldf['filter_minreads'].replace(to_replace=[False], value='minreads', inplace=True, method=None)
 
             # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
-            finaldf['filter2'] = ((finaldf['span_homology_score'] < 40) &
-                                  (finaldf['jxn_homology_score'] < 40))
+            finaldf['filter_homology'] = ((finaldf['span_homology_score'] < 40) &
+                                          (finaldf['jxn_homology_score'] < 40))
+            finaldf['filter_homology'].replace(to_replace=[False], value='homology', inplace=True, method=None)
+
 
             # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique
-            finaldf['filter3'] = ((finaldf['overhang_diversity_left'] + finaldf['overhang_diversity_right'] >= finaldf['jxn_first'] * .2))
+            finaldf['filter_diversity'] = ((finaldf['overhang_diversity_left'] + finaldf['overhang_diversity_right'] >= finaldf['jxn_first'] * .2))
+            finaldf['filter_diversity'].replace(to_replace=[False], value='diversity', inplace=True, method=None)
 
             # Hard filter to require non-canonical splicing events to have greater read support and at least 10% with minfrag35
-            finaldf['filter4'] = ((finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]['jxn_first'] >= 5) &
-                                  (finaldf['minfrag35'] >= finaldf['jxn_first'] * .1))
+            noncan_mask = finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]
+            finaldf['filter_noncanonical'] = ((noncan_mask['jxn_first'] >= 5) &
+                                              (noncan_mask['minfrag35'] >= noncan_mask['jxn_first'] * .1))
+            finaldf['filter_noncanonical'].replace(to_replace=[False], value='noncanonical_support', inplace=True, method=None)
 
-            # Hard filter to require at least 10% of reads to pass minfrag20 if span reads < 1
-            finaldf['filter5'] = (finaldf[finaldf["span_first"] < 1]['minfrag20'] >= finaldf[finaldf["span_first"] < 1]['jxn_first'] * .1)
+            # Hard filter to require at least 10% of reads to pass minfrag20 if span reads == 0
+            nospan_mask = finaldf[finaldf["span_first"] == 0]
+            finaldf['filter_nospanminfrag'] = (nospan_mask['minfrag20'] >= nospan_mask['jxn_first'] * .1)
+            finaldf['filter_nospanminfrag'].replace(to_replace=[False], value='nospan_minfrag', inplace=True, method=None)
 
             # Hard filter to require at least 10% of reads to pass minfrag20 if jxn reads > 10
-            finaldf['filter6'] = (finaldf[finaldf["jxn_first"] >= 10]['minfrag20'] >= finaldf[finaldf["jxn_first"] >= 10]['jxn_first'] * .1)
+            highjxn_mask = finaldf[finaldf["jxn_first"] >= 10]
+            finaldf['filter_minfrag'] = (highjxn_mask['minfrag20'] >= highjxn_mask['jxn_first'] * .1)
+            finaldf['filter_minfrag'].replace(to_replace=[False], value='minfrag', inplace=True, method=None)
 
-            finaldf['PASS'] = finaldf[['filter1', 'filter2', 'filter3', 'filter4', 'filter5', 'filter6']].all(axis=1)
+            finaldf['filter_all'] = finaldf[['filter_minreads', 'filter_homology', 'filter_diversity', 'filter_noncanonical', 'filter_nospanminfrag', 'filter_minfrag']].values.tolist()
+            finaldf['PASS'] = finaldf['filter_all'].apply(lambda x: ','.join(x for x in list(map(str, x)) if x not in ['True', 'nan']))
+            finaldf['PASS'].replace('', 'PASS', inplace=True)
+            finaldf.to_csv(path_or_buf="prefilter.txt", header=True, sep="\t", mode='w', index=False)
 
             # all candidates
             candid_fh = open(args.prefix + "_STAR-SEQR_candidates.txt", 'w')
@@ -549,7 +572,7 @@ def main():
             finaldf.to_csv(path_or_buf=candid_fh, header=False, sep="\t", columns=candid_cols, mode='w', index=False)
             candid_fh.close()
 
-            resultsdf = finaldf[finaldf['PASS'] == True].sort_values(['jxn_first', "span_first"], ascending=[False, False])
+            resultsdf = finaldf[finaldf['PASS'] == 'PASS'].sort_values(['jxn_first', "span_first"], ascending=[False, False])
 
             # Write output
             resultsdf.to_csv(path_or_buf=breakpoints_fh, header=False, sep="\t",
