@@ -18,3 +18,7 @@ STAR-SEQRv0.2.2:
 
 STAR-SEQRv0.2.3:
  * Changed all realpath statements to abspath.
+
+ STAR-SEQRv0.2.4:
+ * Updated to work with pandas 19.2 and numpy 11.3
+ * Fasta index is created if non-existent
