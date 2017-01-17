@@ -20,7 +20,6 @@ logger = logging.getLogger('STAR-SEQR')
 
 
 def import_jxns_pandas(jxnFile, args):
-    logger = logging.getLogger("STAR-SEQR")
     logger.info('Importing junctions')
     df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=False, engine='c')
     df.columns = ['chrom1', 'pos1', 'str1', 'chrom2', 'pos2', 'str2',
