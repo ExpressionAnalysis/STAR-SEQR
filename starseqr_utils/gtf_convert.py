@@ -6,6 +6,8 @@ import os
 import subprocess
 import logging
 import gzip
+from intervaltree_bio import GenomeIntervalTree, UCSCTable
+
 
 logger = logging.getLogger("STAR-SEQR")
 
@@ -47,3 +49,13 @@ def genepred_to_UCSCtable(genepred, out_file):
                 counter = counter + 1
             out_handle.write("\t".join([str(counter), l]))
     return out_file
+
+
+def gtf2tree(gtf_path):
+    genepred_annot = os.path.splitext(gtf_path)[0] + ".genePred"
+    ucsc_annot = os.path.splitext(gtf_path)[0] + ".UCSCTable.gz"
+    gtf_to_genepred(gtf_path, genepred_annot)
+    genepred_to_UCSCtable(genepred_annot, ucsc_annot)
+    kg = gzip.open(ucsc_annot)
+    gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
+    return gtree

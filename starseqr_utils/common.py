@@ -3,10 +3,11 @@
 
 from __future__ import (absolute_import, division, print_function)
 from six.moves import zip
+import six
 from six import reraise as raise_
 import os
 import sys
-import six
+import re
 import gzip
 import logging
 import time
@@ -17,6 +18,7 @@ from itertools import groupby, repeat
 import multiprocessing as mp
 import signal
 import pysam
+from intervaltree_bio import GenomeIntervalTree
 import starseqr_utils as su
 
 logger = logging.getLogger('STAR-SEQR')
@@ -30,7 +32,7 @@ except AttributeError:
 
 def check_file_exists(path):
     if (os.stat(os.path.realpath(path)).st_size == 0):
-        logger.error("Exiting. Cannot find file: " + os.path.realpath(path))
+        logger.error("Exiting. Cannot find file: " + os.path.abspath(path))
         sys.exit(1)
 
 
@@ -52,6 +54,7 @@ def make_new_dir(newdir):
         os.mkdir(newdir)
     except OSError as e:
         if e.errno != errno.EEXIST:
+            logger.error("Exception: " + str(e))
             raise e
         pass
 
@@ -120,6 +123,28 @@ def safe_jxn(jxn):
     fix_jxn = str(fix_jxn).replace('+', 'pos')
     fix_jxn = str(fix_jxn).replace('-', 'neg')
     return fix_jxn
+
+
+def bed_to_tree(bed):
+    with open(bed, 'r') as f:
+        btree = GenomeIntervalTree.from_bed(fileobj=f)
+    return btree
+
+
+def subset_bed_func(jxn, targets_tree, sub_style='either'):
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    intersect1 = len(targets_tree[str(chrom1)].search(int(pos1)))
+    intersect2 = len(targets_tree[str(chrom2)].search(int(pos2)))
+    if sub_style == 'either':
+        if intersect1 or intersect2 >= 1:
+            return 1
+        else:
+            return 0
+    elif sub_style == 'both':
+        if intersect1 >= 1 and intersect2 >= 1:
+            return 1
+        else:
+            return 0
 
 
 def rc(dna):

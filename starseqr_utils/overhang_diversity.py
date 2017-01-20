@@ -21,7 +21,7 @@ def find_unique_overhangs(reads_fq):
             res_left.add(rfq.sequence)  # reads start from jxnright
         else:  # 385,401
             res_right.add(rfq.sequence)  # reads start from jxnleft
-    return len(res_left), len(res_right)
+    return len(res_left) + len(res_right) # eventually break these down into separate
 
 
 def get_diversity(jxn):

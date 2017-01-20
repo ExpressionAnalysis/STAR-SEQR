@@ -19,7 +19,20 @@ STAR-SEQRv0.2.2:
 STAR-SEQRv0.2.3:
  * Changed all realpath statements to abspath.
 
- STAR-SEQRv0.2.4:
+STAR-SEQRv0.2.4:
  * Updated to work with pandas 19.2 and numpy 11.3
  * Fasta index is created if non-existent
  * Candidates.txt shows PASS or fail reasons
+
+STAR-SEQRv0.3.0:
+ * Big release!
+ * Better modularity in code
+ * Speed improvements for all annotation functions
+ * Improved logging
+ * Fixed a bug in bed subsetting when using the "both" style
+ * No longer produces the same style of bedpe/VCF for Fusions.
+ * New Fusion bedpe using proper coordinates
+ * Support fastqs are broken into more coherent groupings: span, split, overhang
+ * Cross homology checks now use span and overhang reads separately
+ * Fixed a primer bug where breakpoints were not being used correctly in some cases
+ * Fixed several bugs that were introduced that prevented DNA mode from working.

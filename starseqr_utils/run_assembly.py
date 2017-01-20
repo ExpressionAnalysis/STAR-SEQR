@@ -54,33 +54,6 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
     return records
 
 
-# def do_spades(assemdir, pfastq, jxnfastq, errlog):
-#     logger.debug('Running SPADES')
-#     spades_cmd = ['spades.py', '--12', pfastq, '-s', jxnfastq,
-#                   '-o', assemdir, '--phred-offset', 33, # --careful causing errors
-#                   '-t', '1', '-m', '5',
-#                   '--cov-cutoff', 'off']
-#     spades_args = list(map(str, spades_cmd))
-#     logger.debug('*SPADES Command: ' + ' '.join(spades_args))
-#     errlog.write('*SPADES Command: ' + ' '.join(spades_args))
-#     try:
-#         p = sp.Popen(spades_args, stdout=sp.PIPE, stderr=sp.PIPE)
-#         stdout, stderr = p.communicate()
-#         if stdout:
-#             errlog.write(stdout)
-#         if stderr:
-#             errlog.write(stderr)
-#         if p.returncode != 0:
-#             logger.error('Error: spades failed')
-#     except (OSError) as o:
-#         logger.error('Exception: ' + str(o))
-#         logger.error('SPADES Failed!', exc_info=True)
-#         sys.exit(1)
-#     if (os.stat(os.path.realpath(assemdir + '/scaffolds.fasta')).st_size != 0):
-#         records = fasta_iter(assemdir + '/scaffolds.fasta')
-#         return records
-
-
 def get_assembly_info(jxn, as_type):
     # clean jxn name to write to support folder made previous
     clean_jxn = su.common.safe_jxn(jxn)
@@ -89,8 +62,8 @@ def get_assembly_info(jxn, as_type):
     fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
     fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
 
-    pairfq = jxn_dir + 'paired.fastq'
-    junctionfq = jxn_dir + 'junctions.fastq'
+    pairfq = jxn_dir + 'span.fastq'
+    junctionfq = jxn_dir + 'split.fastq'
 
     # velvet
     assembly_list = []
@@ -98,11 +71,6 @@ def get_assembly_info(jxn, as_type):
         errlog = open(jxn_dir + 'assembly_log.txt', 'w')
         assembly_list = list(do_velvet(jxn_dir + 'assem_pair', junctionfq, 17, errlog, pairfq))
         errlog.close()
-
-    # elif as_type == 'spades':
-    #     splog = open(jxn_dir + 'spades_log.txt', 'w')
-    #     spades_all = do_spades(jxn_dir + 'spades', pairfq, junctionfq, splog)
-    #     splog.close()
 
     # confirm assembly crosses breakpoint
     all_crossing = []
