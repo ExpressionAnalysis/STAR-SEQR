@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 from __future__ import (absolute_import, division, print_function)
+from six import reraise as raise_
 import sys
 import time
 import pandas as pd
@@ -157,9 +158,9 @@ def write_bedpe(df, out_bedpe, args):
         df = df.reset_index(drop=True)
         df = df.reset_index()
         df['c1'], df['s1'], df['st1'], df['c2'], df['s2'], df['st2'], df['a1'], df['a2'] = zip(*df['name'].str.split(':').tolist())
-        # STAR has second object flipped
-        # flipstr = maketrans("-+", "+-")
-        # df['st2'] = df['st2'].str.translate(flipstr)
+        # STAR has second object flipped for DNA
+        flipstr = maketrans("-+", "+-")
+        df['st2'] = df['st2'].str.translate(flipstr)
         # use 0-based positions from breakpoint cols
         df['c1'], df['s1'], df['st1'] = zip(*df['breakpoint_left'].str.split(':').tolist())
         df['c2'], df['s2'], df['st2'] = zip(*df['breakpoint_right'].str.split(':').tolist())
@@ -195,7 +196,8 @@ def write_vcf(in_bed, out_vcf):
     except (OSError) as o:
         logger.error("Exception: " + str(o))
         logger.error("sv Failed", exc_info=True)
-        sys.exit(1)
+        traceback = sys.exc_info()[2]
+        raise_(ValueError, e, traceback)
     logger.info("VCF creation was successful!")
 
 

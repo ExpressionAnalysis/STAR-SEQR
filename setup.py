@@ -28,7 +28,7 @@ setup(
     install_requires=['six', 'pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
     ext_modules=[libssw_ext],
     package_data={"starseqr_utils": ["resources/*"]},
-    scripts=['starseqr.py', 'scripts/starseqr2bedpe.py'],
+    scripts=['starseqr.py'],
     zip_safe=False,
     test_suite='nose.collector',
     tests_require=['nose'],

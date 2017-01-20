@@ -2,11 +2,14 @@
 # encoding: utf-8
 
 from __future__ import (absolute_import, division, print_function)
+from six import reraise as raise_
+import sys
 import re
 import logging
 import pandas as pd
 import numpy as np
 from collections import OrderedDict
+import pysam
 import starseqr_utils as su
 
 try:
@@ -19,23 +22,30 @@ except AttributeError:
 logger = logging.getLogger('STAR-SEQR')
 
 
-def import_jxns_pandas(jxnFile, args):
+def import_starjxns(jxnFile, keep_dups=False):
+    ''' read star jxns file and optionally remove dups'''
     logger.info('Importing junctions')
-    df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=False, engine='c')
-    df.columns = ['chrom1', 'pos1', 'str1', 'chrom2', 'pos2', 'str2',
-                  'jxntype', 'jxnleft', 'jxnright', 'readid',
-                  'base1', 'cigar1', 'base2', 'cigar2']
-    df['readid'] = df['readid'].astype(str)
-    df['pos1'] = df['pos1'].astype(float).astype(int)  # this bypasses some strange numbers
-    df['pos2'] = df['pos2'].astype(float).astype(int)
-    df['identity'] = df['base1'].astype(str) + ':' + df['cigar1'].astype(str) + ':' + df['base2'].astype(str) + ':' + df['cigar2'].astype(str)
-    df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
-    if args.keep_dups:
-        logger.info("Allowing duplicate reads")
-        return df
-    else:
-        logger.info("Removing duplicate reads")
-        return df.drop_duplicates(subset=['identity'], keep='first')
+    try:
+        df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=False, engine='c')
+        df.columns = ['chrom1', 'pos1', 'str1', 'chrom2', 'pos2', 'str2',
+                      'jxntype', 'jxnleft', 'jxnright', 'readid',
+                      'base1', 'cigar1', 'base2', 'cigar2']
+        df['readid'] = df['readid'].astype(str)
+        df['pos1'] = df['pos1'].astype(float).astype(int)  # this bypasses some strange numbers
+        df['pos2'] = df['pos2'].astype(float).astype(int)
+        df['identity'] = df['base1'].astype(str) + ':' + df['cigar1'].astype(str) + ':' + df['base2'].astype(str) + ':' + df['cigar2'].astype(str)
+        df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
+        if not keep_dups:
+            logger.info("Removing duplicate reads")
+            return df.drop_duplicates(subset=['identity'], keep='first')
+        else:
+            logger.info("Using all reads")
+            return df
+    except Exception as e:
+        logger.error("There was a problem reading your STAR *Chimeric.out.junction file")
+        logger.error("Exception: " + str(e))
+        traceback = sys.exc_info()[2]
+        raise_(ValueError, e, traceback)
 
 
 def choose_order(chrL1, posL1, chrL2, posL2):
@@ -76,14 +86,14 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
     return newid
 
 
-def count_jxns(df, args):
-    ''' aggregate jxn reads into left and right '''
+def count_jxns(df, nucleic_type="RNA"):
+    ''' aggregate jxn reads'''
     grouped_df = df.groupby(['name', 'order'], as_index=True)
     new_df = grouped_df['readid'].agg(OrderedDict([('reads', lambda col: ','.join(col)), ('counts', 'count')]))
     new_df = new_df.reset_index().pivot(index='name', columns='order').reset_index()
-    if args.nucleic_type == "DNA":
+    if nucleic_type == "DNA":
         new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright']
-    elif args.nucleic_type == "RNA":
+    elif nucleic_type == "RNA":
         new_df.columns = ['name', 'jxn_reads', 'jxn_counts']
     return new_df
 
@@ -130,7 +140,6 @@ def get_pairs_func(jxn, dd):
                          (dd[chrom2]['pos2'] >= pos1left) & (dd[chrom2]['pos2'] <= pos1right)]
     npairs = len(forward['readid'].index) + len(reverse['readid'].index)
     reads = ','.join(forward['readid'].tolist()) + ',' + ','.join(reverse['readid'].tolist())
-
     return (npairs, reads)
 
 
@@ -159,13 +168,15 @@ def flip_jxn(jxn, gs1):
     return (newid, flip)
 
 
-def exons2seq(fa, lol_exons, jxn, side, fusion_exons='', decorate=''):
+def exons2seq(fasta_path, lol_exons, jxn, side, fusion_exons='', decorate=''):
     '''
     Given a fasta and a list of exon coordinates, extract sequence.
     exon boundaries can be annotated with a delimiter of somekind
     '''
     clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
+
+    fa = pysam.Fastafile(fasta_path)
 
     ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
     all_seq = []
@@ -260,6 +271,7 @@ def get_minfrag_length(jxn, df):
 
 
 def get_svtype_func(jxn):
+    '''Used for DNA'''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     chrom1 = str(chrom1)
     chrom2 = str(chrom2)
@@ -270,7 +282,7 @@ def get_svtype_func(jxn):
     else:
         # STAR notation is same as other tools after strand2 is flipped.
         if str1 == "+" and str2 == "-":
-            svtype = "INSERTION"
+            svtype = "INVERSION"
         elif str1 == "-" and str2 == "+":
             svtype = "INVERSION"
         elif str1 == "+" and str2 == "+":
@@ -299,3 +311,37 @@ def get_sv_locations(jxn):
     brk1 = str(chrom1) + ":" + str(pos1) + ":" + str(str1)
     brk2 = str(chrom2) + ":" + str(pos2) + ":" + str(str2)
     return (brk1, brk2)
+
+
+def get_fusion_locations(jxn):
+    ''' one base coordinates '''
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    brk1 = str(chrom1) + ":" + str(pos1) + ":" + str(str1)
+    brk2 = str(chrom2) + ":" + str(pos2) + ":" + str(str2)
+    return (brk1, brk2)
+
+
+def write_bedpe(file_in, file_out):
+    with open(file_out, 'w') as file_out_fh:
+        with open(file_in, 'r') as starOutput:
+            for line in starOutput:
+                if not line.startswith(('#','NAME')):
+                    vals = line.strip().split()
+                    fusion_name = vals[0]
+                    valsL = vals[6].split(':')
+                    valsR = vals[7].split(':')
+                    chrL = valsL[0]
+                    posL = int(valsL[1])
+                    strandL = valsL[2]
+                    chrR = valsR[0]
+                    posR = int(valsR[1])
+                    strandR = valsR[2]
+                    total_uniqreads = int(vals[1]) + int(vals[2]) + int(vals[3])
+                    quant = "."
+                    bedpe_line = [chrL, posL, posL + 1,
+                                  chrR, posR, posR + 1,
+                                  fusion_name , total_uniqreads,
+                                  strandL, strandR, quant]
+
+                    bedpe = '\t'.join(list(map(str,bedpe_line)))
+                    print(bedpe, file=file_out_fh)

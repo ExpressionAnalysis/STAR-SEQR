@@ -10,18 +10,24 @@ logger = logging.getLogger("STAR-SEQR")
 
 
 def runp3(seq_id, sequence, target=None):
-    # check input
-    if len(str(sequence)) < 75:
-        return ()
+    ''' can either use ":" in sequence, a base target or choose the middle of a read'''
     # get index of split to design targets
     if target:
+        if (target + 30  > len(sequence)) or (target - 30 < 0 ):
+            # target to close to border for primer generation
+            return ()
         brk_target = [target - 10, 20]
     else:
         if ":" in sequence:
             mybrk = int(sequence.index(":"))
             sequence = sequence.replace(":", "")
+            if (mybrk + 30  > len(sequence)) or (mybrk - 30 < 0 ):
+                # target to close to border for primer generation
+                return ()
             brk_target = [mybrk - 10, 20]
         else:
+            if len(str(sequence)) < 75:
+                return ()
             brk_target = [int(len(sequence) / 2), 1]
     # default values
     mydres = {
@@ -91,7 +97,10 @@ def parsep3(p3output):
 
 
 def wrap_runp3(jxn, cross_fusions):
-    # clean jxn name to write to support folder made previous
+    '''
+    use the breakpoint info stored in the fasta file header.
+    Design primers using known cross fusion transcripts
+    '''
     clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
@@ -101,11 +110,9 @@ def wrap_runp3(jxn, cross_fusions):
     if len(fusions_list) > 0 and len(cross_fusions) > 0:
         for fusion in fusions_list:
             fusion_name, brk = fusion[0].split('|')
+            fus_seq = fusion[1]
             brk = int(brk)
             if cross_fusions[0] == fusion_name:
-                mypad = min(int(len(fusion) / 2), 200)
-                mymin = min(0, brk - mypad)
-                mymax = max(len(fusion[1]), brk + mypad)
-                return runp3(fusion_name, fusion[1][mymin:mymax].upper(), 200)
+                return runp3(fusion_name, fus_seq.upper(), brk)
     else:
         return ()

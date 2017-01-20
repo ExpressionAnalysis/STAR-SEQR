@@ -3,6 +3,7 @@
 
 from __future__ import (absolute_import, division, print_function)
 import six
+from six import reraise as raise_
 import os
 import sys
 import re
@@ -160,44 +161,33 @@ def subset_bam_by_reads(bam, out_bam, read_ids, jxn):
             retcode = sp.call(['bamfilternames', names, index, indexfilename,
                                tmpfile], stdin=f, stdout=bamf, stderr=sp.PIPE)
         bamf.close()
-        if retcode != 0:
-            logger.error('bamfilternames failed on:' + jxn)
     except OSError as o:
+        bamf.close()
         logger.error('bamfilternames Failed', exc_info=True)
         logger.error('Exception: ' + str(o))
-        bamf.close()
-        os._exit(1)
+        traceback = sys.exc_info()[2]
+        raise_(ValueError, e, traceback)
+    return
 
 
-def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
-    '''
-    STAR writes 3 lines in the SAM file for chimeric reads.
-    Custom convert bam2fastq where pair1/2 go into paired.fastq
-    and chimeric only reads go into junctions.fq.
-    Chimeric reads need all seqs/quals while
-    paired must be soft-clipped seqs/quals.
-    '''
-    logger.debug('Converting bam to fastq for ' + in_bam)
+def bam2fastq(in_bam, bam_type, jxn_dir):
+    logger.debug('Converting bams to fastqs')
     if not os.path.exists(in_bam):
         logger.error('BAM file could not be found: ' + in_bam)
         sys.exit(1)
-    pairfqfh = open(pairfq, 'w')
-    junctionfqfh = open(junctionfq, 'w')
-    overhangfqfh = open(overhangfq, 'w')
     try:
-        bam_sort = in_bam[:-4] + '.nsorted'
-        pysam.sort('-n', in_bam, '-o', bam_sort + '.bam')
-        if not os.path.exists(bam_sort + '.bam'):
-            logger.error('name sorted BAM file could not be found: ' + bam_sort + '.bam')
-            sys.exit(1)
+        bam_nsort = in_bam[:-4] + '.nsorted.bam'
+        pysam.sort('-n', in_bam, '-o', bam_nsort, catch_stdout=False)
     except (OSError) as o:
         logger.error('Exception: ' + str(o))
         logger.error('pysam Failed!', exc_info=True)
-        sys.exit(1)
-    bamObject = pysam.Samfile(bam_sort + '.bam', 'rb')
-    for read in bamObject.fetch(until_eof=True):
-        if not read.flag & 256:
-            # print(read.query_alignment_sequence)
+        traceback = sys.exc_info()[2]
+        raise_(ValueError, e, traceback)
+    bamObject = pysam.Samfile(bam_nsort, 'rb')
+
+    if bam_type == "span":
+        out_fq = open(jxn_dir + 'span.fastq', 'w')
+        for read in bamObject.fetch(until_eof=True):
             if read.is_read1:
                 orient = 1
                 if read.is_reverse:
@@ -214,27 +204,34 @@ def bam2fastq(jxn_dir, in_bam, junctionfq, pairfq, overhangfq):
                 else:
                     seq = read.query_alignment_sequence
                     quals = read.query_alignment_qualities
-            pairfqfh.write('@' + read.query_name + '/' + str(orient) + '\n')
-            pairfqfh.write(seq + '\n')
-            pairfqfh.write('+' + '\n')
-            pairfqfh.write(''.join(
+            out_fq.write('@' + read.query_name + '/' + str(orient) + '\n')
+            out_fq.write(seq + '\n')
+            out_fq.write('+' + '\n')
+            out_fq.write(''.join(
                 list(map(chr, [x + 33 for x in quals]))) + '\n')
-        elif read.flag & 256:
-            # use full junction sequence for assembly
-            junctionfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
-            junctionfqfh.write(read.query_sequence + '\n')
-            junctionfqfh.write('+' + '\n')
-            junctionfqfh.write(''.join(
+        out_fq.close()
+        os.remove(bam_nsort)
+    elif bam_type == "split":
+        out_fq = open(jxn_dir + 'split.fastq', 'w')
+        out_fq2 = open(jxn_dir + 'overhang.fastq', 'w')
+        for read in bamObject.fetch(until_eof=True):
+            # use full junction sequence for split reads...accomodates assembly
+            out_fq.write('@' + read.query_name + '_' + str(read.flag) + '\n')
+            out_fq.write(read.query_sequence + '\n')
+            out_fq.write('+' + '\n')
+            out_fq.write(''.join(
                 list(map(chr, [x + 33 for x in read.query_qualities]))) + '\n')
             # write overhang separately
-            overhangfqfh.write('@' + read.query_name + '_' + str(read.flag) + '\n')
-            overhangfqfh.write(read.query_alignment_sequence + '\n')
-            overhangfqfh.write('+' + '\n')
-            overhangfqfh.write(''.join(
-                list(map(chr, [x + 33 for x in read.query_alignment_qualities]))) + '\n')
-    pairfqfh.close()
-    junctionfqfh.close()
-    os.remove(bam_sort + '.bam')
+            if read.flag & 256:
+                out_fq2.write('@' + read.query_name + '_' + str(read.flag) + '\n')
+                out_fq2.write(read.query_alignment_sequence + '\n')
+                out_fq2.write('+' + '\n')
+                out_fq2.write(''.join(
+                    list(map(chr, [x + 33 for x in read.query_alignment_qualities]))) + '\n')
+        out_fq.close()
+        out_fq2.close()
+        os.remove(bam_nsort)
+    return
 
 
 def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
@@ -250,7 +247,8 @@ def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
     logger.debug('Found and extracted reads successfully')
     results = collections.defaultdict(list)
     results['name'] = jxn
-    u_reads = []
+    span_reads = []
+    split_reads = []
     for ktype in extracted:
         for ktuple in extracted[ktype]:
             kstrand, korient = ktuple
@@ -259,7 +257,10 @@ def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
             results[dname + "_reads"] = found_reads
             results[dname] = len(results[dname + "_reads"])
             for kname, val in six.iteritems(extracted[ktype][ktuple]):
-                u_reads.append(kname)
+                if str(ktype).startswith("span"):
+                    span_reads.append(kname)
+                elif str(ktype).startswith("jxn"):
+                    split_reads.append(kname)
                 vun, vas, vmm, vseqlen, vmeanbq = val  # metric values: read flag, AS, nM, length, qualities
                 results[dname + '_AS'].append(vas)
                 results[dname + '_mismatches'].append(vmm)
@@ -272,22 +273,36 @@ def get_rna_support(jxn, tx, s_reads, in_bam, gtree):
             results[dname + '_seqlen'] = ','.join(list(map(str, results[dname + '_seqlen'])))
             results[dname + '_meanBQ'] = ','.join(list(map(str, results[dname + '_meanBQ'])))
 
-    # write unique reads to file
-    read_ids_all = jxn_dir + 'supporting_reads_all.txt'
-    f2 = open(read_ids_all, 'w')
-    for uread in set(u_reads):
-        f2.write(uread + '\n')
-    f2.close()
+
+    # write unique reads to file for subsetting bam later
+    # TODO: Consider making one bam and dividing after.
+    # span reads
+    spanread_path = jxn_dir + 'span_readids.txt'
+    span_fh = open(spanread_path, 'w')
+    for uread in set(span_reads):
+        span_fh.write(uread + '\n')
+    span_fh.close()
+    # split reads
+    splitread_path = jxn_dir + 'split_readids.txt'
+    split_fh = open(splitread_path, 'w')
+    for uread in set(split_reads):
+        split_fh.write(uread + '\n')
+    split_fh.close()
 
     # subset supporting reads to bam
-    support_bam = jxn_dir + 'supporting.bam'
     logger.debug('Subsetting reads from bam')
-    subset_bam_by_reads(in_bam, support_bam, read_ids_all, jxn)
-    pysam.index(support_bam)
-    # convert to fastq
-    pairfq = jxn_dir + 'paired.fastq'
-    junctionfq = jxn_dir + 'junctions.fastq'
-    overhangfq = jxn_dir + 'overhang.fastq'
-    bam2fastq(jxn_dir, support_bam, junctionfq, pairfq, overhangfq)
+    # span
+    spanbam = jxn_dir + 'span.bam'
+    subset_bam_by_reads(in_bam, spanbam, spanread_path, jxn)
+    pysam.index(spanbam)
+    # split
+    splitbam = jxn_dir + 'split.bam'
+    subset_bam_by_reads(in_bam, splitbam, splitread_path, jxn)
+    pysam.index(splitbam)
+
+    # convert bam support to fastqs
+    bam2fastq(spanbam, "span", jxn_dir)
+    bam2fastq(splitbam, "split", jxn_dir) # also produces overhang.fastq
+
     logger.info(jxn + ' support took  %g seconds' % (time.time() - start))
     return results

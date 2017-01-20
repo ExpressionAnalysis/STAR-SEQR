@@ -127,7 +127,70 @@ def get_exons(interval, coding=True, brkpt=False, brkpt_side=1):
     return trimmed_exons
 
 
-def get_jxnside_anno(jxn, gtree, side, only_trx=False):
+def get_jxnside_anno(jxn, gtree, side):
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    if side == 2:
+        chrom1 = chrom2
+        pos1 = pos2
+        flipstr = maketrans("-+", "+-")
+        str1 = str2.translate(flipstr)
+        repleft = repright  # keep to wiggle later
+    if str1 == "+" and side == 1:
+        pos1 = int(pos1) - 1
+    elif str1 == "-" and side == 1:
+        pos1 = int(pos1)
+    elif str1 == "+" and side == 2:
+        pos1 = int(pos1) - 1
+    elif str1 == "-" and side == 2:
+        pos1 = int(pos1)
+
+    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
+    ann = defaultdict(list)
+
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            ann['symbol'].append(resL[idx]['name2'])  # symbol
+            ann['transcript'].append(resL[idx]['name'])
+            ann['strand'].append(resL[idx]['strand'])
+            dist, exon, frame = overlap_exon(resL[idx], pos1, side)
+            ann['exon'].append(exon)
+            ann['dist'].append(dist)
+            ann['frame'].append(frame)
+            ann['cdslen'].append(int(resL[idx]['cdsEnd']) - int(resL[idx]['cdsStart']))
+
+    else:
+        ann['symbol'].append("NA")
+        ann['transcript'].append("NA")
+        ann['strand'].append("NA")
+        ann['exon'].append("NA")
+        ann['dist'].append("NA")
+        ann['frame'].append("NA")
+        ann['cdslen'].append("NA")
+
+    # sort results by dist to exon boundary and then by cdslen and then by transcript for consistency
+    dsdf = pd.DataFrame(ann).sort_values(['dist', 'cdslen', 'transcript'], ascending=[True, False, True]).reset_index()
+    dsdf['dist'] = dsdf['dist'].astype(str)
+    ds = dsdf.to_dict(orient='list')
+
+    ann_string = ','.join([str(a) + ":" + b + ":" + c + ":" +
+                           str(d) + ":" + str(e) + ":" + str(f) + ':' +
+                           str(g) for a, b, c, d, e, f, g in zip(ds['symbol'], ds['transcript'], ds['strand'], ds['exon'], ds['dist'], ds['frame'], ds['cdslen'])])
+    return [ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0] ]  # just the first values for some fields
+
+
+def get_pos_genes(chrom1, pos1, gtree):
+    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
+    genesL = set()
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            Lsymbol = resL[idx]['name2']
+            genesL.add(Lsymbol)
+    else:
+        genesL.add("NA")
+    return list(genesL)
+
+
+def get_all_exons(jxn, gtree, side, exon_type="trx"):
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     if side == 2:
         chrom1 = chrom2
@@ -147,56 +210,20 @@ def get_jxnside_anno(jxn, gtree, side, only_trx=False):
     # From the left
 
     ann = defaultdict(list)
-    if only_trx:
+    if exon_type == "trx":
         if len(resL) > 0:
             for idx, val in enumerate(resL):
                 ann['all_exons'].append(get_exons(resL[idx], coding=False))
         else:
-            ann['all_exons'].append([])
+            ann['all_exons'].append("NA")
         return ann['all_exons']
 
-    else:
+    elif exon_type == "fusion":
         if len(resL) > 0:
             for idx, val in enumerate(resL):
-                ann['symbol'].append(resL[idx]['name2'])  # symbol
-                ann['transcript'].append(resL[idx]['name'])
-                ann['strand'].append(resL[idx]['strand'])
-                dist, exon, frame = overlap_exon(resL[idx], pos1, side)
-                ann['exon'].append(exon)
-                ann['dist'].append(dist)
-                ann['frame'].append(frame)
-                ann['cdslen'].append(int(resL[idx]['cdsEnd']) - int(resL[idx]['cdsStart']))
-                ann['all_exons'].append(get_exons(resL[idx], coding=False, brkpt=pos1, brkpt_side=side))
-
+               ann['all_exons'].append(get_exons(resL[idx], coding=False, brkpt=pos1, brkpt_side=side))
         else:
-            ann['symbol'].append("NA")
-            ann['transcript'].append("NA")
-            ann['strand'].append("NA")
-            ann['exon'].append("NA")
-            ann['dist'].append("NA")
-            ann['frame'].append("NA")
-            ann['cdslen'].append("NA")
             ann['all_exons'].append("NA")
-
-        # sort results by dist to exon boundary and then by cdslen and then by transcript for consistency
-        dsdf = pd.DataFrame(ann).sort_values(['dist', 'cdslen', 'transcript'], ascending=[True, False, True]).reset_index()
-        dsdf['dist'] = dsdf['dist'].astype(str)
-        ds = dsdf.to_dict(orient='list')
-
-        ann_string = ','.join([str(a) + ":" + b + ":" + c + ":" +
-                               str(d) + ":" + str(e) + ":" + str(f) + ':' +
-                               str(g) for a, b, c, d, e, f, g in zip(ds['symbol'], ds['transcript'], ds['strand'], ds['exon'], ds['dist'], ds['frame'], ds['cdslen'])])
-        # print(ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0])
-        return [ds['symbol'][0], ann_string, ds['strand'][0], ds['cdslen'][0], ds['all_exons']]  # just the first values for some fields
-
-
-def get_pos_genes(chrom1, pos1, gtree):
-    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
-    genesL = set()
-    if len(resL) > 0:
-        for idx, val in enumerate(resL):
-            Lsymbol = resL[idx]['name2']
-            genesL.add(Lsymbol)
+        return ann['all_exons']
     else:
-        genesL.add("NA")
-    return list(genesL)
+        raise ValueError("Invalid exon_type. Expected one of [trx, fusion]")
