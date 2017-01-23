@@ -36,3 +36,6 @@ STAR-SEQRv0.3.0:
  * Cross homology checks now use span and overhang reads separately
  * Fixed a primer bug where breakpoints were not being used correctly in some cases
  * Fixed several bugs that were introduced that prevented DNA mode from working.
+
+STAR-SEQRv0.3.1:
+ * Fixed install script and now use sdist and twine for Pypi uploads.

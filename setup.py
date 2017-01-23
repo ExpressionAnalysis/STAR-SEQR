@@ -25,14 +25,32 @@ setup(
     author_email='jasper1918@gmail.com',
     url='https://github.com/ExpressionAnalysis/STAR-SEQR',
     packages=find_packages(),
-    install_requires=['six', 'pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
+    install_requires=['six', 'pandas (>=0.18.0)', 'pysam (>=0.9.0)', 'primer3-py', 'intervaltree_bio'],
     ext_modules=[libssw_ext],
     package_data={"starseqr_utils": ["resources/*"]},
     scripts=['starseqr.py'],
     zip_safe=False,
     test_suite='nose.collector',
     tests_require=['nose'],
-    keywords=['rna', 'rna-seq', 'fusions', 'chimeric', 'star']
+    keywords=['rna', 'rna-seq', 'fusions', 'chimeric', 'star'],
+    CLASSIFIERS = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Environment :: Console",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 2",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.3",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
 )
 
 stderr.write("Installation was successful!\n")
