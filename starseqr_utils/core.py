@@ -248,28 +248,6 @@ def get_fusion_class(jxn, txintersection):
             return "INTERCHROM_INTERSTRAND"
 
 
-def get_minfrag_length(jxn, df):
-    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    if str1 == '+':
-        left_over = [(int(x) if x else 0) for x in str(df['hangleft_rev_first_seqlen']).split(",")]
-        left_jxn = [(int(x) if x else 0) for x in str(df['jxnleft_for_second_seqlen']).split(",")]
-    elif str1 == '-':
-        left_over = [(int(x) if x else 0) for x in str(df['hangleft_for_first_seqlen']).split(",")]
-        left_jxn = [(int(x) if x else 0) for x in str(df['jxnleft_rev_second_seqlen']).split(",")]
-    if str2 == '+':
-        right_over = [(int(x) if x else 0) for x in str(df['hangright_for_second_seqlen']).split(",")]
-        right_jxn = [(int(x) if x else 0) for x in str(df['jxnright_rev_first_seqlen']).split(",")]
-    elif str2 == '-':
-        right_over = [(int(x) if x else 0) for x in str(df['hangright_rev_second_seqlen']).split(",")]
-        right_jxn = [(int(x) if x else 0) for x in str(df['jxnright_for_first_seqlen']).split(",")]
-    all_over = left_over + right_over # order matters
-    all_jxn = right_jxn + left_jxn # order matters
-    all_min = [min(i) for i in list(zip(all_over, all_jxn))] # get the minimum of anchor vs overhang
-    all_min20 = np.sum(i > 20 for i in all_min) # how many of the min fragments are > 20
-    all_min35 = np.sum(i > 35 for i in all_min) # how many of the min fragments are > 35
-    return (all_min20, all_min35)
-
-
 def get_svtype_func(jxn):
     '''Used for DNA'''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
@@ -325,7 +303,7 @@ def write_bedpe(file_in, file_out):
     with open(file_out, 'w') as file_out_fh:
         with open(file_in, 'r') as starOutput:
             for line in starOutput:
-                if not line.startswith(('#','NAME')):
+                if not line.startswith(('#', 'NAME')):
                     vals = line.strip().split()
                     fusion_name = vals[0]
                     valsL = vals[6].split(':')
@@ -340,8 +318,8 @@ def write_bedpe(file_in, file_out):
                     quant = "."
                     bedpe_line = [chrL, posL, posL + 1,
                                   chrR, posR, posR + 1,
-                                  fusion_name , total_uniqreads,
+                                  fusion_name, total_uniqreads,
                                   strandL, strandR, quant]
 
-                    bedpe = '\t'.join(list(map(str,bedpe_line)))
+                    bedpe = '\t'.join(list(map(str, bedpe_line)))
                     print(bedpe, file=file_out_fh)
