@@ -4,24 +4,26 @@
 from __future__ import (absolute_import, division, print_function)
 import logging
 import re
+import numpy as np
 import starseqr_utils as su
 
 logger = logging.getLogger('STAR-SEQR')
 
 
 def find_unique_overhangs(reads_fq):
-    '''get unique reads with flags 321, 337, 385, 401 in context of strand'''
+    '''get unique overhang reads per sam flag'''
     # +/+ = 401/321, +/- = 385/321, -/+ = 401/337, -/- = 385/337
     rfq_gen = su.common.FastqParser(reads_fq)
-    res_left = set()
-    res_right = set()
+    res_seqs = set()
     for rfq in rfq_gen:
-        read_tag = int(float(re.split('_', rfq.header)[-1]))
-        if read_tag in [321, 337]:
-            res_left.add(rfq.sequence)  # reads start from jxnright
-        else:  # 385,401
-            res_right.add(rfq.sequence)  # reads start from jxnleft
-    return len(res_left) + len(res_right) # eventually break these down into separate
+        # read_tag = int(float(re.split('_', rfq.header)[-1]))  # eventually break these down into separate strand
+        res_seqs.add(rfq.sequence)
+
+    # classify overhang lengths
+    res_seq_len = [len(i) for i in res_seqs]
+    all_min20 = np.sum(i > 20 for i in res_seq_len)  # how many of the overhangs are > 20
+    all_min35 = np.sum(i > 35 for i in res_seq_len)  # how many of the overhangs are > 35
+    return (len(res_seqs), all_min20, all_min35)
 
 
 def get_diversity(jxn):
