@@ -3,7 +3,6 @@
 
 from __future__ import (absolute_import, division, print_function)
 import logging
-import re
 import numpy as np
 import starseqr_utils as su
 

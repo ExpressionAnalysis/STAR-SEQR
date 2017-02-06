@@ -13,6 +13,7 @@ This package is tested under Linux using Python 2.7, 3.4, and 3.5.
 
 You can install from Pypi. Please use a recent version of pip and cython:
 ::
+
     pip install -U pip
     pip install -U cython
     pip install starseqr

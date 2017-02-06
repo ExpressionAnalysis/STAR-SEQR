@@ -36,6 +36,12 @@ class CrossHomologyTestCase(unittest.TestCase):
         # print(res1)
         assert(res1 == (0.0, 0.0))
 
+    def test_crosshom_v5(self):
+        """test homology a known FP between PI4KA and TOP3B """
+        res1 = su.cross_homology.get_cross_homology('chr22:22322990:-:chr22:21082153:-:2:3')
+        # print(res1)
+        assert(res1 == (0.0, 0.0))
+
 
 if __name__ == '__main__':
     unittest.main()
