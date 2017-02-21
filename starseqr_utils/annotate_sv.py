@@ -135,6 +135,7 @@ def get_jxnside_anno(jxn, gtree, side):
         flipstr = maketrans("-+", "+-")
         str1 = str2.translate(flipstr)
         repleft = repright  # keep to wiggle later
+    # convert coordinates to normalized 1-base
     if str1 == "+" and side == 1:
         pos1 = int(pos1) - 1
     elif str1 == "-" and side == 1:
@@ -221,9 +222,21 @@ def get_all_exons(jxn, gtree, side, exon_type="trx"):
     elif exon_type == "fusion":
         if len(resL) > 0:
             for idx, val in enumerate(resL):
-               ann['all_exons'].append(get_exons(resL[idx], coding=False, brkpt=pos1, brkpt_side=side))
+                ann['all_exons'].append(get_exons(resL[idx], coding=False, brkpt=pos1, brkpt_side=side))
         else:
             ann['all_exons'].append("NA")
         return ann['all_exons']
     else:
         raise ValueError("Invalid exon_type. Expected one of [trx, fusion]")
+
+
+def get_gene_region(chrom1, pos1, gtree, pad=500):
+    resL = clean_intervals(gtree[six.b(chrom1)].search(int(pos1)))
+    gmin = []
+    gmax = []
+    if len(resL) > 0:
+        for idx, val in enumerate(resL):
+            gmin.append(int(resL[idx]['txStart']))
+            gmax.append(int(resL[idx]['txEnd']))
+    region = str(chrom1) + ':' + str(min(gmin) - pad) + '-' + str(max(gmax) + pad)
+    return region
