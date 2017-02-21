@@ -1,11 +1,12 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 
 MAINTAINER Jeff Jasper jasper1918@gmail.com
 
 # Update System and packages. Clean up to reduce size
 RUN apt-get -y update --fix-missing && \
-    apt-get install -y curl wget gzip bzip2 unzip g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
-    libglib2.0-0 libxext6 libsm6 libxrender1 libxml2-dev libxslt-dev ca-certificates git gcc libdb5.1 libdb5.1-dev libcurl4-openssl-dev && \
+    apt-get install -y curl wget gzip bzip2 unzip git\
+    # g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
+    # libglib2.0-0 libxext6 libsm6 libxrender1 libxml2-dev libxslt-dev ca-certificates git gcc libdb5.1 libdb5.1-dev libcurl4-openssl-dev && \
     apt-get clean && dpkg-reconfigure locales && locale-gen en_US.UTF-8 && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -30,18 +31,28 @@ CMD [ "/bin/bash" ]
 
 # Install dependencies for STAR-SEQR
 WORKDIR /opt
+
+#Install new STAR
+RUN git clone https://github.com/alexdobin/STAR.git /opt/STAR
+ENV PATH "/opt/STAR/bin/Linux_x86_64_static/"
+
 RUN conda config --add channels conda-forge && \
     conda config --add channels defaults && \
     conda config --add channels r && \
     conda config --add channels bioconda && \
-    conda install -y pip nose coverage cython pysam>=0.9.0 pandas>=0.18.1 samtools biobambam star velvet ucsc-gtftogenepred && \
+    conda install -y pip nose coverage cython pysam>=0.9.0 pandas>=0.18.1 samtools biobambamvelvet ucsc-gtftogenepred salmon && \
     conda clean -ilty
 
 # Install STAR-SEQR
-RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.3.0.tar.gz  && \
-    tar -zxvf v0.3.0.tar.gz && \
-    cd STAR-SEQR-0.3.0 && \
+RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.4.0.tar.gz  && \
+    tar -zxvf v0.4.0.tar.gz && \
+    cd STAR-SEQR-0.4.0 && \
     python setup.py build && \
     python setup.py install && \
     python setup.py clean && \
     nosetests --with-coverage --cover-package=starseqr_utils
+
+# Install items for basespace
+RUN pip install awscli
+
+COPY run_basespace.py /opt/
