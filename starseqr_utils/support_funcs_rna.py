@@ -186,6 +186,7 @@ def bam2fastq(in_bam, bam_type, jxn_dir, chimflag):
     if bam_type == "span":
         out_fq = open(jxn_dir + 'span.fastq', 'w')
         for read in bamObject.fetch(until_eof=True):
+            # use aligned sequenc for spanning reads
             if read.is_read1:
                 orient = 1
                 if read.is_reverse:
@@ -214,13 +215,14 @@ def bam2fastq(in_bam, bam_type, jxn_dir, chimflag):
         out_fq2 = open(jxn_dir + 'overhang.fastq', 'w')
         for read in bamObject.fetch(until_eof=True):
             # use full junction sequence for split reads...accomodates assembly
-            out_fq.write('@' + read.query_name + '_' + str(read.flag) + '\n')
-            out_fq.write(read.query_sequence + '\n')
-            out_fq.write('+' + '\n')
-            out_fq.write(''.join(
-                list(map(chr, [x + 33 for x in read.query_qualities]))) + '\n')
+            if not read.flag & chimflag:
+                out_fq.write('@' + read.query_name + '_' + str(read.flag) + '\n')
+                out_fq.write(read.query_sequence + '\n')
+                out_fq.write('+' + '\n')
+                out_fq.write(''.join(
+                    list(map(chr, [x + 33 for x in read.query_qualities]))) + '\n')
             # write overhang separately
-            if read.flag & chimflag:
+            elif read.flag & chimflag:
                 out_fq2.write('@' + read.query_name + '_' + str(read.flag) + '\n')
                 out_fq2.write(read.query_alignment_sequence + '\n')
                 out_fq2.write('+' + '\n')
@@ -232,19 +234,81 @@ def bam2fastq(in_bam, bam_type, jxn_dir, chimflag):
     return
 
 
+def starbam2allsupport(in_bam_path, norm_bam_path, chim_bam_path, region1, region2):
+    # get chimeric reads using ch tag from "WithinBAM method", split into categories
+    # You will have errors if resulting bams are not sorted!
+    infile = pysam.AlignmentFile(in_bam_path, "rb")
+    # norm_out = pysam.AlignmentFile(norm_bam_path + 'unsorted.bam', "wb", template=infile)
+    chim_out = pysam.AlignmentFile(chim_bam_path + 'unsorted.bam', "wb", template=infile)
+    for r in infile.fetch(region=region1):
+        if r.has_tag("ch"):
+            chim_out.write(r)
+        # if not r.flag & 2048:
+        #     norm_out.write(r)
+    for r in infile.fetch(region=region2):
+        if r.has_tag("ch"):
+            chim_out.write(r)
+        # if not r.flag & 2048:
+        #     norm_out.write(r)
+    infile.close()
+    # norm_out.close()
+    chim_out.close()
+    # su.common.sortnindex_bam(norm_bam_path + 'unsorted.bam', norm_bam_path, 1)
+    su.common.sortnindex_bam(chim_bam_path + 'unsorted.bam', chim_bam_path, 1)
+    return
+
+
+def normbamtofastq(bam, jxn_dir):
+    # bamfilternames is sensitive to duplicate read names in the list. Make sure they are unique.
+    logger.debug('Subset bam with supporting reads to fastqs for salmon')
+    filename = 'filename=' + bam
+    f1 = 'F=' + jxn_dir + 'read1.fq'
+    f2 = 'F2=' + jxn_dir + 'read2.fq'
+    o1 = 'O=' + jxn_dir + 'un1.fq'
+    o2 = 'O2=' + jxn_dir + 'un2.fq'
+    cmdargs = ['bamtofastq', filename, 'inputformat=bam', f1, f2, o1, o2]
+    # logger.info("*Command: " + " ".join(cmdargs))
+    try:
+        p = sp.Popen(cmdargs, stdout=sp.PIPE, stderr=sp.PIPE)
+        stdout, stderr = p.communicate()
+        if stdout:
+            pass
+            # logger.info(stdout)
+        if stderr:
+            pass
+            # logger.error(stderr)
+    except OSError as e:
+        logger.error('bamtofastq Failed', exc_info=True)
+        logger.error('Exception: ' + str(e))
+        traceback = sys.exc_info()[2]
+        raise_(ValueError, e, traceback)
+    return
+
+
 def get_rna_support(jxn, tx, s_reads, in_bam, gtree, chimflag):
     ''' Run command to identify read support for a single breakpoint '''
     logger.debug('Getting read support for ' + jxn)
     start = time.time()
+    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
     clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
     su.common.make_new_dir(jxn_dir)
+    # initialize results
+    results = collections.defaultdict(list)
+    results['name'] = jxn
+    # get genes bounds and extract all reads to subset bams
+    if chimflag == 2048:
+        region1 = su.annotate_sv.get_gene_region(chrom1, pos1, gtree)
+        region2 = su.annotate_sv.get_gene_region(chrom2, pos2, gtree)
+        normbam = jxn_dir + 'normal.bam'
+        chimbam = jxn_dir + 'chimeric.bam'
+        starbam2allsupport(in_bam, normbam, chimbam, region1, region2)
+        # normbamtofastq(normbam, jxn_dir)
+        in_bam = chimbam
     # get supporting read counts and other metrics
     s_reads = s_reads.split(',')
     extracted = get_reads_from_bam(in_bam, jxn, tx, s_reads, gtree, chimflag)
     logger.debug('Found and extracted reads successfully')
-    results = collections.defaultdict(list)
-    results['name'] = jxn
     span_reads = []
     split_reads = []
     for ktype in extracted:
