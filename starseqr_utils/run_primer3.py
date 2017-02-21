@@ -13,7 +13,7 @@ def runp3(seq_id, sequence, target=None):
     ''' can either use ":" in sequence, a base target or choose the middle of a read'''
     # get index of split to design targets
     if target:
-        if (target + 30  > len(sequence)) or (target - 30 < 0 ):
+        if (target + 30 > len(sequence)) or (target - 30 < 0):
             # target to close to border for primer generation
             return ()
         brk_target = [target - 10, 20]
@@ -21,7 +21,7 @@ def runp3(seq_id, sequence, target=None):
         if ":" in sequence:
             mybrk = int(sequence.index(":"))
             sequence = sequence.replace(":", "")
-            if (mybrk + 30  > len(sequence)) or (mybrk - 30 < 0 ):
+            if (mybrk + 30 > len(sequence)) or (mybrk - 30 < 0):
                 # target to close to border for primer generation
                 return ()
             brk_target = [mybrk - 10, 20]
@@ -104,12 +104,12 @@ def wrap_runp3(jxn, cross_fusions):
     clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
-    fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
+    fusionfq = jxn_dir + 'transcripts_fusion.fa'
     fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
-    cross_fusions = [x for x in cross_fusions.split(',') if x] # removes empty strings
+    cross_fusions = [x for x in cross_fusions.split(',') if x]  # removes empty strings
     if len(fusions_list) > 0 and len(cross_fusions) > 0:
         for fusion in fusions_list:
-            fusion_name, brk = fusion[0].split('|')
+            jxn, side, fusion_name, brk = fusion[0].split('|')
             fus_seq = fusion[1]
             brk = int(brk)
             if cross_fusions[0] == fusion_name:
