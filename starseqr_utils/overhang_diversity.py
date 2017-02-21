@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 from __future__ import (absolute_import, division, print_function)
+import os
 import logging
 import numpy as np
 import starseqr_utils as su
@@ -27,7 +28,7 @@ def find_unique_overhangs(reads_fq):
 
 def get_diversity(jxn):
     clean_jxn = su.common.safe_jxn(jxn)
-    jxn_dir = 'support' + '/' + clean_jxn + '/'
-    overhang_fq = jxn_dir + 'overhang.fastq'
+    jxn_dir = os.path.join('support', clean_jxn)
+    overhang_fq = os.path.join(jxn_dir, 'overhang.fastq')
     overhang_res = find_unique_overhangs(overhang_fq)
     return overhang_res
