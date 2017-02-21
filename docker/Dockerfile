@@ -2,9 +2,9 @@ FROM ubuntu:16.04
 
 MAINTAINER Jeff Jasper jasper1918@gmail.com
 
-# Update System and packages. Clean up to reduce size
+ENV PATH /opt/conda/bin:$PATHTH=${PATH}:/opt/conda/bin
 RUN apt-get -y update --fix-missing && \
-    apt-get install -y curl wget gzip bzip2 unzip git\
+    apt-get install -y curl wget gzip bzip2 unzip git &&\
     # g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
     # libglib2.0-0 libxext6 libsm6 libxrender1 libxml2-dev libxslt-dev ca-certificates git gcc libdb5.1 libdb5.1-dev libcurl4-openssl-dev && \
     apt-get clean && dpkg-reconfigure locales && locale-gen en_US.UTF-8 && \
@@ -34,13 +34,13 @@ WORKDIR /opt
 
 #Install new STAR
 RUN git clone https://github.com/alexdobin/STAR.git /opt/STAR
-ENV PATH "/opt/STAR/bin/Linux_x86_64_static/"
+ENV PATH /opt/STAR/bin/Linux_x86_64_static/:$PATH
 
 RUN conda config --add channels conda-forge && \
     conda config --add channels defaults && \
     conda config --add channels r && \
     conda config --add channels bioconda && \
-    conda install -y pip nose coverage cython pysam>=0.9.0 pandas>=0.18.1 samtools biobambamvelvet ucsc-gtftogenepred salmon && \
+    conda install -y pip nose coverage cython pysam>=0.9.0 pandas>=0.18.1 samtools biobambam velvet ucsc-gtftogenepred salmon && \
     conda clean -ilty
 
 # Install STAR-SEQR
