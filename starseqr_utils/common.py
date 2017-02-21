@@ -226,5 +226,12 @@ def bam_2_nsort_sam(in_bam, out_sam, nthreads):
     os.remove(bam_sort + ".bam")
 
 
+def sortnindex_bam(in_bam, out_bam, nthreads):
+    pysam.sort("-@", str(nthreads), str(in_bam), "-o", str(out_bam), catch_stdout=False)
+    pysam.index(out_bam, catch_stdout=False)
+    os.remove(in_bam)
+
+
 def index_bam(in_bam):
-    pysam.index(in_bam, catch_stdout=False)
+    if not os.path.isfile(in_bam + ".bai") or os.stat(in_bam).st_mtime >= os.stat(in_bam + ".bai").st_mtime:
+        pysam.index(in_bam, catch_stdout=False)
