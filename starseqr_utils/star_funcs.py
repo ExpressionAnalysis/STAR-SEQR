@@ -51,25 +51,25 @@ def run_star(fq1, fq2, args):
                          '--runThreadN', str(args.threads), '--genomeDir', args.star_index,
                          '--outFileNamePrefix ', args.prefix + ".", '--chimScoreJunctionNonGTAG', -1,
                          # '--outSAMtype', 'None', '--chimOutType', 'SeparateSAMold',
-                         '--outSAMtype', 'BAM', 'SortedByCoordinate', '--chimOutType', 'WithinBam',
-                         '--alignSJDBoverhangMin', 3, '--outFilterMultimapScoreRange', 1,
-                         '--outFilterMultimapNmax', 5, '--outReadsUnmapped', 'Fastx',
+                         '--outSAMtype', 'BAM', 'SortedByCoordinate', '--chimOutType', 'WithinBAM',
+                         '--alignSJDBoverhangMin', 10, '--outFilterMultimapScoreRange', 1,
+                         '--outFilterMultimapNmax', 5,
                          '--outMultimapperOrder', 'Random', '--outSAMattributes', 'NH', 'HI', 'AS', 'nM', 'ch']
             # choose sensitivity mode
             if (args.mode == 0):
-                sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
-                               '--chimScoreMin', 1, '--chimScoreDropMax', 20,
-                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic",
-                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
-                               '--chimMainSegmentMultNmax', 1]
-            elif (args.mode == 1):
                 sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
+                               '--chimScoreMin', 1, '--chimScoreDropMax', 30,
+                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
+                               '--chimFilter', 'None', '--twopassMode', "None",
+                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
+                               '--chimMainSegmentMultNmax', 10]
+            elif (args.mode == 1):
+                sens_params = ['--chimSegmentMin', 8, '--chimJunctionOverhangMin', 8,
                                '--chimScoreMin', 0, '--chimScoreDropMax', 30,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic",
+                               '--chimFilter', 'None', '--twopassMode', "None",
                                '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
-                               '--chimMainSegmentMultNmax', 1]
+                               '--chimMainSegmentMultNmax', 10]
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = list(map(str, STAR_args))
