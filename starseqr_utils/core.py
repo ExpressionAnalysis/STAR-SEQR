@@ -3,11 +3,13 @@
 
 from __future__ import (absolute_import, division, print_function)
 from six import reraise as raise_
+import os
 import sys
 import re
 import logging
 import pandas as pd
 import numpy as np
+import warnings
 from collections import OrderedDict
 import pysam
 import starseqr_utils as su
@@ -34,7 +36,7 @@ def import_starjxns(jxnFile, keep_dups=False):
         df['pos1'] = df['pos1'].astype(float).astype(int)  # this bypasses some strange numbers
         df['pos2'] = df['pos2'].astype(float).astype(int)
         df['identity'] = df['base1'].astype(str) + ':' + df['cigar1'].astype(str) + ':' + df['base2'].astype(str) + ':' + df['cigar2'].astype(str)
-        df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
+        # df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
         if not keep_dups:
             logger.info("Removing duplicate reads")
             return df.drop_duplicates(subset=['identity'], keep='first')
@@ -46,6 +48,29 @@ def import_starjxns(jxnFile, keep_dups=False):
         logger.error("Exception: " + str(e))
         traceback = sys.exc_info()[2]
         raise_(ValueError, e, traceback)
+
+
+cigarPattern = '([0-9]+[MIDNSHP])'
+cigarSearch = re.compile(cigarPattern)
+atomicCigarPattern = '([0-9]+)([MIDNSHP])'
+atomicCigarSearch = re.compile(atomicCigarPattern)
+
+
+def cigar_overhang_matches(cigar1, cigar2):
+    matches = 0
+    cigar = cigar1
+    if "p" in cigar1:
+        cigar = cigar2
+    if (cigar == "*"):
+        return matches
+    else:
+        cigarsfound = cigarSearch.findall(cigar)
+        for opString in cigarsfound:
+            cigar_len, cigar_class = atomicCigarSearch.findall(opString)[0]
+            cigar_len = int(cigar_len)
+            if cigar_class == "M" and cigar_len > matches:
+                matches = cigar_len
+    return matches
 
 
 def choose_order(chrL1, posL1, chrL2, posL2):
@@ -89,12 +114,13 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
 def count_jxns(df, nucleic_type="RNA"):
     ''' aggregate jxn reads'''
     grouped_df = df.groupby(['name', 'order'], as_index=True)
-    new_df = grouped_df['readid'].agg(OrderedDict([('reads', lambda col: ','.join(col)), ('counts', 'count')]))
-    new_df = new_df.reset_index().pivot(index='name', columns='order').reset_index()
+    new_df = grouped_df.agg(OrderedDict([('readid', OrderedDict([('reads', lambda col: ','.join(
+        col)), ('counts', 'count')])), ('overhang_len', 'max')])).reset_index()
+    new_df = new_df.pivot(index='name', columns='order').reset_index()
     if nucleic_type == "DNA":
-        new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright']
+        new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright', 'max_overhang']
     elif nucleic_type == "RNA":
-        new_df.columns = ['name', 'jxn_reads', 'jxn_counts']
+        new_df.columns = ['name', 'jxn_reads', 'jxn_counts', 'max_overhang']
     return new_df
 
 
@@ -168,22 +194,32 @@ def flip_jxn(jxn, gs1):
     return (newid, flip)
 
 
-def exons2seq(fasta_path, lol_exons, jxn, side, fusion_exons='', decorate=''):
+def exons2seq(fasta_path, lol_exons, jxn, side, fusion_exons='', decorate='', out_dir='support'):
     '''
     Given a fasta and a list of exon coordinates, extract sequence.
     exon boundaries can be annotated with a delimiter of somekind
+    header contains: jxn|side|transcripts|pos
     '''
     clean_jxn = su.common.safe_jxn(jxn)
-    jxn_dir = 'support' + '/' + clean_jxn + '/'
+    if out_dir == "support":  # default to support folders
+        out_dir = os.path.join('support', clean_jxn)
+        out_fa = os.path.join(out_dir, 'transcripts_' + str(side) + ".fa")
+    else:
+        su.common.make_new_dir(out_dir)
+        out_fa = os.path.join(out_dir, 'transcripts_' + str(side) + '_' + clean_jxn + ".fa")
 
     fa = pysam.Fastafile(fasta_path)
+    ofile = open(out_fa, "w")
 
-    ofile = open(jxn_dir + 'transcripts_' + str(side) + ".fa", "w")
     all_seq = []
     if sum(1 for x in lol_exons if isinstance(x, list)) == 0:
         ofile.close()
-        return  # avoid errors if no exons..
+        return  # avoid errors if no exons.
+
     if fusion_exons:
+        if sum(1 for x in fusion_exons if isinstance(x, list)) == 0:
+            ofile.close()
+            return  # avoid errors if no exons..
         strand = ''
         fus_strand = ''
         for trx_exons in lol_exons:
@@ -204,7 +240,7 @@ def exons2seq(fasta_path, lol_exons, jxn, side, fusion_exons='', decorate=''):
                         fus_seq_str = decorate.join(fus_seq)
                         if fus_strand == '-':
                             fus_seq_str = su.common.rc(fus_seq_str)
-                        new_trx = str(trx) + "--" + (fus_trx) + "|" + str(len(seq_str))
+                        new_trx = str(jxn) + '|' + str(side) + '|' + str(trx) + "--" + (fus_trx) + "|" + str(len(seq_str))
                         all_seq.append((new_trx, seq_str + fus_seq_str))
                         ofile.write(">" + new_trx + "\n" + seq_str.lower() + fus_seq_str.upper() + "\n")
     else:
@@ -220,10 +256,32 @@ def exons2seq(fasta_path, lol_exons, jxn, side, fusion_exons='', decorate=''):
                 nseq_str = decorate.join(nseq)
                 if nstrand == '-':
                     nseq_str = su.common.rc(nseq_str)
-                ofile.write(">" + ntrx + "\n" + nseq_str + "\n")
+                ofile.write(">" + str(jxn) + '|' + str(side) + '|' + ntrx + "\n" + nseq_str + "\n")
             all_seq.append((ntrx, nseq_str))  # need empty if no seq found
     ofile.close()
-    return pd.Series([[all_seq]])
+    return
+
+
+def mean_from_cols(df, col_regexkey):
+    '''
+    Function to get mean across a row of specific cols for a df.
+    Useful when cols have a comma-sep string of values.
+    '''
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        id_cols = df.filter(regex=col_regexkey, axis=1).columns.tolist()
+        res_val = df[id_cols].apply(lambda x: np.nanmean([(float(i) if i else np.nan) for i in ','.join(x.dropna().astype(str)).split(',')]), axis=1)
+    return res_val
+
+
+def minvalcnts_from_cols(df, col_regexkey, minval):
+    '''
+    Function to get counts greater than a min val across a row of specific cols for a df.
+    Useful when cols have a comma-sep string of values.
+    '''
+    id_cols = df.filter(regex=col_regexkey, axis=1).columns.tolist()
+    res_val = df[id_cols].apply(lambda x: np.sum([(float(i) >= minval if i else 0) for i in ','.join(x.dropna().astype(str)).split(',')]), axis=1)
+    return res_val
 
 
 def get_fusion_class(jxn, txintersection):
@@ -292,8 +350,25 @@ def get_sv_locations(jxn):
 
 
 def get_fusion_locations(jxn):
-    ''' one base coordinates '''
+    '''
+    STAR junction file reports the first base in the introns, 1-based coordinates
+    Returns 0-base coordinates
+    '''
     chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
+    pos1 = int(pos1) - 1
+    pos2 = int(pos2) - 1
+    if str(str1) == "+" and str(str2) == "+":
+        pos1 -= 1
+        pos2 += 1
+    elif str(str1) == "-" and str(str2) == "-":
+        pos1 += 1
+        pos2 -= 1
+    elif str(str1) == "+" and str(str2) == "-":
+        pos1 -= 1
+        pos2 -= 1
+    elif str(str1) == "-" and str(str2) == "+":
+        pos1 += 1
+        pos2 += 1
     brk1 = str(chrom1) + ":" + str(pos1) + ":" + str(str1)
     brk2 = str(chrom2) + ":" + str(pos2) + ":" + str(str2)
     return (brk1, brk2)
@@ -304,7 +379,7 @@ def write_bedpe(file_in, file_out):
         with open(file_in, 'r') as starOutput:
             for line in starOutput:
                 if not line.startswith(('#', 'NAME')):
-                    vals = line.strip().split()
+                    vals = line.split('\t')
                     fusion_name = vals[0]
                     valsL = vals[6].split(':')
                     valsR = vals[7].split(':')
@@ -315,7 +390,7 @@ def write_bedpe(file_in, file_out):
                     posR = int(valsR[1])
                     strandR = valsR[2]
                     total_uniqreads = int(vals[1]) + int(vals[2]) + int(vals[3])
-                    quant = "."
+                    quant = vals[23]
                     bedpe_line = [chrL, posL, posL + 1,
                                   chrR, posR, posR + 1,
                                   fusion_name, total_uniqreads,
@@ -323,3 +398,14 @@ def write_bedpe(file_in, file_out):
 
                     bedpe = '\t'.join(list(map(str, bedpe_line)))
                     print(bedpe, file=file_out_fh)
+
+
+def rna_closeout(prefix, stats_res, breakpoints_fh):
+    # Write stats to file
+    stats_fh = open(prefix + "_STAR-SEQR.stats", 'w')
+    for key, value in stats_res.items():
+        stats_fh.write(key + "\t" + str(value) + "\n")
+    breakpoints_fh.close()
+    brkpt_path = prefix + "_STAR-SEQR_breakpoints.txt"
+    bedpe_path = prefix + "_STAR-SEQR_breakpoints.bedpe"
+    write_bedpe(brkpt_path, bedpe_path)
