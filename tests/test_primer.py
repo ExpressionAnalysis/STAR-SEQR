@@ -51,9 +51,10 @@ class PrimerTestCase(unittest.TestCase):
 
     def test_wrap_runp3_v1(self):
         """test wrapper for runp3"""
-        fusions = 'ENST00000372201.4--ENST00000432496.6,ENST00000372201.4--ENST00000394708.6,ENST00000372201.4--ENST00000273980.9,ENST00000372201.4--ENST00000361687.8,ENST00000372201.4--ENST00000394706.7'
+        fusions = 'ENST00000372201.4_1--ENST00000510927.5_1'
         res1 = su.run_primer3.wrap_runp3('chr1:45268528:+:chr4:107152937:-:0:2', fusions)
         assert(res1 == ('CCTGAGGCGGATGTATGGTC', 'ACATACATGCATAAGCCAAGGC'))
+
 
     def test_wrap_runp3_v2(self):
         """test wrapper for runp3. Empty fusion list"""
