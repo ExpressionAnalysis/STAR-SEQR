@@ -1,0 +1,231 @@
+Thu Feb 16 18:26:46 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Thu Feb 16 18:26:46 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:46:44 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:46:44 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:47:32 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:47:32 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:48:55 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:48:55 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:51:49 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:51:50 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:52:28 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:52:28 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:53:10 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:53:10 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:53:38 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:53:38 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 15:53:57 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 15:53:57 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 16:04:34 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 16:04:34 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
+Tue Feb 21 16:49:53 2017
+ velveth support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair 17 -short -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/split.fastq -shortPaired -fastq support/chr1_45268528_pos_chr4_107152937_neg_0_2/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 21 16:49:53 2017
+ velvetg support/chr1_45268528_pos_chr4_107152937_neg_0_2/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 1 nodes and n50 of 214, max 214, total 214, using 0/24 reads
