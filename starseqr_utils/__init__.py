@@ -1,5 +1,6 @@
 import starseqr_utils.common
 import starseqr_utils.core
+import starseqr_utils.salmon_quant
 import starseqr_utils.gtf_convert
 import starseqr_utils.annotate_sv
 import starseqr_utils.support_funcs_rna
@@ -11,4 +12,4 @@ import starseqr_utils.run_assembly
 import starseqr_utils.annotate_db
 import starseqr_utils.sv2bedpe
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"

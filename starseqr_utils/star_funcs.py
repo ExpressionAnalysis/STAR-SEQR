@@ -45,29 +45,31 @@ def run_star(fq1, fq2, args):
             # outFilterMultimapNmax does not have any effect on chimeric alignments
             # chimSegmentReadGapMax allows for variation at breakpoints
             # chimScoreDropMax is the difference in aligned read length and total read length due to clipping
-            # chimMainSegmentMultNmax - new parameter >2.5b.
+            # chimMainSegmentMultNmax - new parameter >2.5b to remove chimeric multimappers
             # mismatches at sj: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif.
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
                          '--runThreadN', str(args.threads), '--genomeDir', args.star_index,
-                         '--outFileNamePrefix ', args.prefix + ".", '--outSAMtype', 'None',
-                         '--chimOutType', 'SeparateSAMold', '--chimScoreJunctionNonGTAG', -1,
-                         '--alignSJDBoverhangMin', 3, '--outFilterMultimapScoreRange', 1,
-                         '--outFilterMultimapNmax', 5]
+                         '--outFileNamePrefix ', args.prefix + ".", '--chimScoreJunctionNonGTAG', -1,
+                         # '--outSAMtype', 'None', '--chimOutType', 'SeparateSAMold',
+                         '--outSAMtype', 'BAM', 'SortedByCoordinate', '--chimOutType', 'WithinBAM',
+                         '--alignSJDBoverhangMin', 10, '--outFilterMultimapScoreRange', 1,
+                         '--outFilterMultimapNmax', 5,
+                         '--outMultimapperOrder', 'Random', '--outSAMattributes', 'NH', 'HI', 'AS', 'nM', 'ch']
             # choose sensitivity mode
             if (args.mode == 0):
-                sens_params = ['--chimSegmentMin', 12, '--chimJunctionOverhangMin', 12,
-                               '--chimScoreMin', 1, '--chimScoreDropMax', 20,
-                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic",
-                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5]  # ,
-                               # '--chimMainSegmentMultNmax', 1]
-            elif (args.mode == 1):
                 sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
+                               '--chimScoreMin', 1, '--chimScoreDropMax', 30,
+                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
+                               '--chimFilter', 'None', '--twopassMode', "None",
+                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
+                               '--chimMainSegmentMultNmax', 10]
+            elif (args.mode == 1):
+                sens_params = ['--chimSegmentMin', 8, '--chimJunctionOverhangMin', 8,
                                '--chimScoreMin', 0, '--chimScoreDropMax', 30,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
-                               '--chimFilter', 'None', '--twopassMode', "Basic",
-                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5]  # ,
-                               # '--chimMainSegmentMultNmax', 1]
+                               '--chimFilter', 'None', '--twopassMode', "None",
+                               '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
+                               '--chimMainSegmentMultNmax', 10]
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = list(map(str, STAR_args))

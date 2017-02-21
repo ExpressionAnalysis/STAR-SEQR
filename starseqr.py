@@ -23,10 +23,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description="STAR-SEQR Parameters:", epilog=usage)
     # create STAR alignment
     group1 = parser.add_argument_group('Do Alignment', '')
-    group1.add_argument('-1', '--fastq1', type=str, required=False, action = FullPaths,
-                        help='fastq.gz 1')
-    group1.add_argument('-2', '--fastq2', type=str, required=False, action = FullPaths,
-                        help='fastq.gz 2')
+    group1.add_argument('-1', '--fastq1', type=str, required=True, action=FullPaths,
+                        help='fastq.gz 1(.gz)')
+    group1.add_argument('-2', '--fastq2', type=str, required=True, action=FullPaths,
+                        help='fastq.gz 2(.gz)')
     group1.add_argument('-i', '--star_index', type=str, required=False, action=FullPaths,
                         help='path to STAR index folder')
     group1.add_argument('-m', '--mode', type=int, required=False,
@@ -36,10 +36,12 @@ def parse_args():
 
     # existing STAR alignment
     group2 = parser.add_argument_group('Use Existing Alignment', '')
-    group2.add_argument('-sj', '--star_jxns', type=str, required=False, action = FullPaths,
+    group2.add_argument('-sj', '--star_jxns', type=str, required=False, action=FullPaths,
                         help='chimeric junctions file produce by STAR')
-    group2.add_argument('-ss', '--star_sam', type=str, required=False, action = FullPaths,
-                        help='chimeric sam file produced by STAR')
+    group2.add_argument('-ss', '--star_sam', type=str, required=False, action=FullPaths,
+                        help='Chimeric.out.sam file produced by STAR. Either use this or -sb')
+    group2.add_argument('-sb', '--star_bam', type=str, required=False, action=FullPaths,
+                        help='Aligned.sortedByCoord.out.bam file produced by STAR. Must contain chimeric reads with ch tag.')
 
     # DNA Parameters
     group3 = parser.add_argument_group('DNA Parameters', '')
@@ -56,18 +58,23 @@ def parse_args():
     # shared args
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
-    parser.add_argument('-r', '--fasta', type=str, required=True, action = FullPaths,
+    parser.add_argument('-r', '--fasta', type=str, required=True, action=FullPaths,
                         help='indexed fasta (.fa|.fa.gz)')
-    parser.add_argument('-g', '--gtf', type=str, required=True, action = FullPaths,
+    parser.add_argument('-g', '--gtf', type=str, required=True, action=FullPaths,
                         help='gtf file. (.gtf|.gtf.gz)')
+    parser.add_argument('-x', '--transcripts', type=str, required=False, action=FullPaths,
+                        help='transcript fasta (.fa|.fa.gz). Additiona transcripts to get TPM values for in addition to fusions.')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
                         choices=["RNA", "DNA"])
+    parser.add_argument('-l', '--library', type=str, required=False,
+                        default="ISF",
+                        help='salmon library type')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=8,
                         help='Number of threads to use for STAR and STAR-SEQR. 4-8 recommended.')
-    parser.add_argument('-b', '--bed_file', type=str, required=False, action = FullPaths,
+    parser.add_argument('-b', '--bed_file', type=str, required=False, action=FullPaths,
                         help='Bed file to subset analysis')
     parser.add_argument('--subset_type', type=str, required=False,
                         default="either",
@@ -75,7 +82,7 @@ def parse_args():
                         choices=["either", "both"])
     parser.add_argument('-a', '--as_type', type=str, required=False,
                         default="velvet",
-                        help='nucleic acid type',
+                        help='assembler to use',
                         choices=["velvet"])
     parser.add_argument('--keep_dups', action='store_true',
                         help='keep read duplicates. Use for PCR data or with molecular tags')
@@ -88,16 +95,21 @@ def parse_args():
     args = parser.parse_args()
 
     # check that the correct args have been specified
-    align = [args.fastq1, args.fastq2, args.star_index]
-    call = [args.star_jxns, args.star_sam]
+    align = [args.star_index]
+    call = [args.star_jxns, args.star_sam, args.star_bam]
+    fqs = [args.fastq1, args.fastq2]
+    star_reads = [args.star_sam, args.star_bam]
     if any(align) and any(call):
-        print("Error: Please choose either fastqs or STAR existing files as input!")
+        print("Error: Please specify either a STAR Index or STAR existing files as input!")
         sys.exit(1)
-    if any(align) and None in align:
+    if any(align) and None in fqs:
         print("Error: Fastq1, Fastq2, and the STAR index must be specified if doing alignment")
         sys.exit(1)
-    if any(call) and None in call:
-        print("Error: The STAR .junctions and .sam file must be specified if using existing alignment")
+    if any(call) and not any(star_reads):
+        print("Error: The STAR .junctions and .sam|.bam file must be specified if using existing alignment")
+        sys.exit(1)
+    if all(star_reads):
+        print("Error: Please specify only one of -sb/-ss.")
         sys.exit(1)
     return args
 
@@ -113,6 +125,12 @@ def set_log_level_from_verbose(ch, args):
         ch.setLevel('DEBUG')
 
 
+# Wrap function to apply single functions to chunks of a df in parallel.
+def apply_cigar_overhang(df):
+    df['overhang_len'] = df.apply(lambda x: su.core.cigar_overhang_matches(x['cigar1'], x['cigar2']), axis=1)
+    return df
+
+
 def apply_choose_order(df):
     df['order'] = df.apply(lambda x: su.core.choose_order(x['chrom1'], x['pos1'], x['chrom2'], x['pos2']), axis=1)
     return df
@@ -123,12 +141,6 @@ def apply_normalize_jxns(df):
                                                            x['str1'], x['str2'], x['jxnleft'], x['jxnright'],
                                                            x['order']), axis=1)
     return df
-
-
-def apply_count_vals(df):
-    new_df = df.groupby(['name', 'order'], as_index=True).agg({'readid': {'reads': lambda col: ','.join(
-        col), 'counts': 'count'}}).reset_index().pivot(index='name', columns='order').reset_index()
-    return new_df
 
 
 def apply_pairs_func(args):
@@ -172,23 +184,27 @@ def wrap_jxn_info(df):
 
 
 def apply_get_rna_support(args):
-    df, in_bam = args
-    dict_res = list(df.apply(lambda x: su.support_funcs_rna.get_rna_support(x['name'], x['txunion'], x['supporting_reads'], in_bam, gtree), axis=1))
+    df, dbargs = args
+    in_bam, chimflag = dbargs
+    dict_res = list(df.apply(lambda x: su.support_funcs_rna.get_rna_support(x['name'], x['txunion'], x['supporting_reads'], in_bam, gtree, chimflag), axis=1))
     newdf = pd.DataFrame.from_records(dict_res, index='name')
     return newdf  # not passed back in same df
 
 
 def wrap_exons2seq(args):
-    df, fa_object = args
-    df['left_trx_exons'] = df.apply(lambda x: su.annotate_sv.get_all_exons(x['name'], gtree, 1, exon_type="trx"), axis=1)
-    df['right_trx_exons'] = df.apply(lambda x: su.annotate_sv.get_all_exons(x['name'], gtree, 2, exon_type="trx"), axis=1)
-    df['left_fusion_exons'] = df.apply(lambda x: su.annotate_sv.get_all_exons(x['name'], gtree, 1, exon_type="fusion"), axis=1)
-    df['right_fusion_exons'] = df.apply(lambda x: su.annotate_sv.get_all_exons(x['name'], gtree, 2, exon_type="fusion"), axis=1)
-    df.apply(lambda x: su.core.exons2seq(fa_object, x['left_trx_exons'], x['name'], "left"), axis=1)
-    df.apply(lambda x: su.core.exons2seq(fa_object, x['right_trx_exons'], x['name'], "right"), axis=1)
-    df.apply(lambda x: su.core.exons2seq(fa_object, x['left_fusion_exons'], x['name'], "all_fusions", x['right_fusion_exons']), axis=1)
+    df, vargs = args
+    fa_object, fa_dir = vargs
+    # get exon bounds
+    df['left_trx_exons'] = df['name'].apply(lambda x: su.annotate_sv.get_all_exons(x, gtree, 1, exon_type="trx"))
+    df['right_trx_exons'] = df['name'].apply(lambda x: su.annotate_sv.get_all_exons(x, gtree, 2, exon_type="trx"))
+    df['left_fusion_exons'] = df['name'].apply(lambda x: su.annotate_sv.get_all_exons(x, gtree, 1, exon_type="fusion"))
+    df['right_fusion_exons'] = df['name'].apply(lambda x: su.annotate_sv.get_all_exons(x, gtree, 2, exon_type="fusion"))
+    # write to file
+    df.apply(lambda x: su.core.exons2seq(fa_object, x['left_trx_exons'], x['name'], "left", out_dir=fa_dir), axis=1)
+    df.apply(lambda x: su.core.exons2seq(fa_object, x['right_trx_exons'], x['name'], "right", out_dir=fa_dir), axis=1)
+    df.apply(lambda x: su.core.exons2seq(fa_object, x['left_fusion_exons'], x['name'], "fusion", x['right_fusion_exons'], out_dir=fa_dir), axis=1)
     df['write_seq'] = "Finished"
-    return df['write_seq'] # sequences are written to fasta not passed, but need to pass something
+    return df['write_seq']  # sequences are written to fasta not passed, but need to pass something
 
 
 def apply_primers_func(df):
@@ -202,12 +218,8 @@ def apply_get_cross_homology(df):
 
 
 def apply_get_diversity(df):
-    df['overhang_diversity'] = df.apply(lambda x: su.overhang_diversity.get_diversity(x['name']), axis=1)
-    return df
-
-
-def apply_get_minfrag_length(df):
-    df['minfrag20'], df['minfrag35'] = zip(*df.apply(lambda x: su.core.get_minfrag_length(x['name'], x), axis=1))
+    div_res = df.apply(lambda x: su.overhang_diversity.get_diversity(x['name']), axis=1)
+    df['overhang_diversity'], df['minfrag20'], df['minfrag35'] = zip(*div_res)
     return df
 
 
@@ -229,17 +241,6 @@ def apply_get_annot_db(args):
     df['ChimerDB_ann'] = df.apply(lambda x: su.annotate_db.get_chimerdb(x['name'], chimerdb3), axis=1)
     df['FusionCancer_ann'] = df.apply(lambda x: su.annotate_db.get_fusioncancerdb(x['name'], fuca), axis=1)
     return df
-
-
-def rna_closeout(prefix, stats_res, breakpoints_fh):
-    # Write stats to file
-    stats_fh = open(prefix + "_STAR-SEQR.stats", 'w')
-    for key, value in stats_res.items():
-        stats_fh.write(key + "\t" + str(value) + "\n")
-    breakpoints_fh.close()
-    brkpt_path = prefix + "_STAR-SEQR_breakpoints.txt"
-    bedpe_path = prefix + "_STAR-SEQR_breakpoints.bedpe"
-    su.core.write_bedpe(brkpt_path, bedpe_path)
 
 
 def main():
@@ -266,14 +267,18 @@ def main():
 
     # check dependent software can be found
     depend_tools = ['samtools', 'bamfilternames', 'velveth', 'gtfToGenePred']
+    if args.star_index:
+        depend_tools.extend(['STAR'])
+    if args.nucleic_type == "RNA":
+        depend_tools.extend(['salmon'])
     for tool in depend_tools:
         if not su.common.which(tool):
             logger.error(tool + "exe not found on path! Quitting.")
             sys.exit(1)
 
     # check files exist and get abs paths. Necessary since we switch folders.
-    depend_paths = [args.fasta, args.gtf, args.fastq1, args.fastq2,
-                    args.bed_file, args.star_jxns, args.star_sam]
+    depend_paths = [args.fastq1, args.fastq2, args.fasta, args.gtf, args.transcripts,
+                    args.bed_file, args.star_jxns, args.star_sam, args.star_bam]
     for f_item in depend_paths:
         if f_item:
             su.common.check_file_exists(f_item)
@@ -285,37 +290,43 @@ def main():
     os.chdir(args.prefix + "_STAR-SEQR")
 
     # Do alignment if fastqs
-    if args.fastq1:
+    if not args.star_jxns:
         su.star_funcs.run_star(args.fastq1, args.fastq2, args)
-    elif args.star_jxns:  # symlink existing files into folder if provided
+    else:  # symlink existing files into folder if provided
         su.common.force_symlink(args.star_jxns, args.prefix + ".Chimeric.out.junction")
-        su.common.force_symlink(args.star_sam, args.prefix + ".Chimeric.out.sam")
+        if args.star_sam:
+            su.common.force_symlink(args.star_sam, args.prefix + ".Chimeric.out.sam")
+        elif args.star_bam:
+            su.common.force_symlink(args.star_bam, args.prefix + ".Chimeric.out.bam")
 
     # import all jxns
     rawdf = su.core.import_starjxns(args.prefix + ".Chimeric.out.junction", args.keep_dups)
+
+    # get overhang match len
+    rawdf = su.common.pandas_parallel(rawdf, apply_cigar_overhang, args.threads)
 
     # get jxns only
     jxns = rawdf[rawdf['jxntype'] >= 0].reset_index()  # junctions can be either 0, 1, 2
 
     # Prepare Annotation
-    global gtree # necessary to make global for multiprocessing at the moment
+    global gtree  # necessary to make global for multiprocessing at the moment
     gtree = su.gtf_convert.gtf2tree(args.gtf)
 
     if args.nucleic_type == "RNA":
         # start output files
         breakpoints_fh = open(args.prefix + "_STAR-SEQR_breakpoints.txt", 'w')
         breakpoint_cols = ["ann", "span_first", "jxn_left", "jxn_right",
-                               "Fusion_Class", "splice_type", "breakpoint_left", "breakpoint_right",
-                               "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
-                               "dist", "assembly", "assembly_cross_disp", "primers", "name",
-                               "span_homology_score", "jxn_homology_score", "overhang_diversity",
-                               "minfrag20", "minfrag35", "disposition"]
+                           "Fusion_Class", "splice_type", "breakpoint_left", "breakpoint_right",
+                           "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
+                           "dist", "assembly", "assembly_cross_disp", "primers", "name",
+                           "span_homology_score", "jxn_homology_score", "overhang_diversity",
+                           "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right", "disposition"]
         breakpoint_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
-                             "DISTANCE", "ASSEMBLED_CONTIGS", "ASSEMBLY_CROSS_JXN","PRIMERS", "ID",
+                             "DISTANCE", "ASSEMBLED_CONTIGS", "ASSEMBLY_CROSS_JXN", "PRIMERS", "ID",
                              "SPAN_CROSSHOM_SCORE", "JXN_CROSSHOM_SCORE", "OVERHANG_DIVERSITY",
-                             "MINFRAG20", "MINFRAG35", "DISPOSITION"]
+                             "MINFRAG20", "MINFRAG35", "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT", "DISPOSITION"]
         print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
         # stats dict
@@ -323,7 +334,7 @@ def main():
 
         if len(jxns.index) == 0:
             logger.info("No junctions found in the input file")
-            rna_closeout(args.prefix, stats_res, breakpoints_fh)
+            su.core.rna_closeout(args.prefix, stats_res, breakpoints_fh)
             sys.exit(0)
 
         # Order, Normalize and Aggregate
@@ -339,7 +350,7 @@ def main():
 
         # write stats
         stats_res['All_Breakpoints'] = len(jxn_summary.index)
-        logger.info('Total Breakpoints:' + str(stats_res['All_Breakpoints']))
+        logger.info('Raw Breakpoints:' + str(stats_res['All_Breakpoints']))
 
         # Get discordant pairs
         logger.info('Getting pair info')
@@ -349,11 +360,15 @@ def main():
             dd[chrom] = rawdf[(rawdf['chrom1'] == chrom) & (rawdf['jxntype'] == -1)]
         jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, dd)
 
-        # Require at least two reads for processing in order to reduce run time
+        # TODO: # Get spans without junctions and do special processing
+
+        # Require at least two reads for processing in order to reduce run time or 1 read with sufficient overhang
         logger.info('Filtering junctions')
         before_remove = len(jxn_filt.index)
-        jxn_filt = jxn_filt[(jxn_filt["spans"].astype(int) + jxn_filt["jxn_counts"].astype(int)) >= 2]
-        logger.info("Number of candidates removed due to total read support less than 2: " + str(before_remove - len(jxn_filt.index)))
+        jxn_filt = jxn_filt[(((jxn_filt['spans'].astype(int) + jxn_filt['jxn_counts'].astype(int)) >= 2) |
+                             (jxn_filt['max_overhang'].astype(int) >= 30))]  # reads with 1 jxn but sufficient overhang
+        logger.info('Number of candidates removed due to read support less than 2 or just 1 with short overhang: ' +
+                    str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
             # Get Annotation info for each junction
@@ -384,8 +399,8 @@ def main():
             # remove novel genes unless otherwise requested
             # if not args.keep_novel:
             before_remove = len(jxn_filt.index)
-            jxn_filt = jxn_filt[((jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA"))] # No Gene Symbol
-            jxn_filt = jxn_filt[((jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") & # No Exon number
+            jxn_filt = jxn_filt[((jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA"))]  # No Gene Symbol
+            jxn_filt = jxn_filt[((jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") &  # No Exon number
                                 (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA"))]
             logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
@@ -393,13 +408,15 @@ def main():
             # remove mitochondria unless otherwise requested
             if not args.keep_mito:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|M")]
+                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|MT")]
                 logger.info("Number of candidates removed due to Mitochondria filter: " + str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
             # remove non-canonical jxns with less than 3 reads here to reduce run time
+            before_remove = len(jxn_filt.index)
             jxn_filt = jxn_filt[~((jxn_filt['splice_type'] == "NON-CANONICAL_SPLICING") &
-                                   ((jxn_filt["jxn_counts"].astype(int)) < 3))]
+                                  ((jxn_filt["jxn_counts"].astype(int)) < 3))]
+            logger.info("Number of candidates removed due to NON-CANONICAL splicing with low support: " + str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
             # combine all supporting reads together.
@@ -410,17 +427,47 @@ def main():
 
         # Process candidates
         if len(jxn_filt.index) >= 1:
-            # Convert sam to bam
-            su.common.sam_2_coord_bam(args.prefix + ".Chimeric.out.sam", args.prefix + ".Chimeric.out.bam", args.threads)
-            su.common.check_file_exists(args.prefix + ".Chimeric.out.bam")
+            # Get potential fusion transcripts
+            logger.info('Writing chimeric transcripts')
+            chim_trx_dir = "chim_transcripts"
+            su.common.pandas_parallel(jxn_filt, wrap_exons2seq, args.threads, args.fasta, chim_trx_dir)
+
+            # Get salmon quant for left, right, fusion transcripts
+            if args.transcripts:
+                salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads, args.transcripts)
+            else:
+                salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads)
+
+            # merge salmon results
+            logger.info("Merging salmon results with other metrics")
+            jxn_filt = pd.merge(jxn_filt, salmon_df, how='left', left_on="name", right_on="Jxn", left_index=False,
+                                right_index=False, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
+
+            logger.info("Preparing BAM to identify read support")
+            if args.star_sam:
+                logger.info("Converting Alignment to ChimericOnly.bam")
+                chimflag = 256
+                star_bam_local = args.prefix + ".Chimeric.out.bam"
+                su.common.sam_2_coord_bam(args.prefix + ".Chimeric.out.sam", star_bam_local, args.threads)
+            elif args.star_bam:
+                chimflag = 2048
+                star_bam_local = args.prefix + ".Chimeric.out.bam"
+                su.common.sam_2_coord_bam(args.prefix + ".Chimeric.out.sam", star_bam_local, args.threads)
+            else:  # alignment
+                chimflag = 256
+                star_bam_local = args.prefix + ".Chimeric.out.bam"
+                su.common.sam_2_coord_bam(args.prefix + ".Chimeric.out.sam", star_bam_local, args.threads)
+            su.common.check_file_exists(star_bam_local)
+            su.common.index_bam(star_bam_local)
 
             # Gather unique read support
-            logger.info("Getting read support.")
+            logger.info("Getting read support from BAM for each candidate junction:")
             su.common.make_new_dir('support')
-            in_bam = args.prefix + ".Chimeric.out.bam"
-            support_df = su.common.pandas_parallel(jxn_filt, apply_get_rna_support, args.threads, in_bam)
+            support_df = su.common.pandas_parallel(jxn_filt, apply_get_rna_support, args.threads, star_bam_local, chimflag)
+
             finaldf = pd.merge(jxn_filt, support_df, how='inner', left_on="name", right_on="name", left_index=False,
                                right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
+
             # collapse read info for brevity but keep here in case useful later on
             finaldf['jxn_left'] = finaldf["jxnleft_for_first"] + finaldf["jxnleft_rev_first"]
             finaldf['jxn_right'] = finaldf["jxnright_for_first"] + finaldf["jxnright_rev_first"]
@@ -435,7 +482,8 @@ def main():
             finaldf['spans_disc'] = finaldf['span_first']
 
             # Get all overlapping transcript seqs into one fasta per side
-            su.common.pandas_parallel(finaldf, wrap_exons2seq, args.threads, args.fasta)  # writes fasta for each transcript per side in support folder
+            # writes fasta for each transcript per side(left, right, fusion) in support folder
+            su.common.pandas_parallel(finaldf, wrap_exons2seq, args.threads, args.fasta, "support")
 
             # get homology mapping scores
             logger.info("Getting read homology mapping scores")
@@ -444,10 +492,6 @@ def main():
             # get overhang read diversity
             logger.info("Getting overhang read diversity")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_diversity, args.threads)
-
-            # get min frag lengths for anchor/overhang
-            logger.info("Getting min frag length support")
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_minfrag_length, args.threads)
 
             # get assembly seq and confirm breakpoint
             logger.info("doing assembly")
@@ -466,37 +510,46 @@ def main():
             logger.info("Getting read homology mapping scores")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_fusion_class, args.threads)
 
-            # Get annotations for known fusions
-            logger.info("Getting annotation")
-            chimerdb3_path = su.common.find_resource('ChimerDB3.0_ChimerSeq.bedpe')
-            fuca_path = su.common.find_resource('FusionCancer.bedpe')
-            chimerdb3 = pd.read_csv(chimerdb3_path, sep="\t", header=None, low_memory=False, engine='c')
-            chimerdb3.columns = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'Fusion_pair', 'Counts',
-                                 'strand1', 'strand2', 'Source', 'Cancer', 'Features']
-            fuca = pd.read_csv(fuca_path, sep="\t", header=None, low_memory=False, engine='c')
-            fuca.columns = ['c1', 's1', 'e1', 'c2', 's2', 'e2', 'Database_ID', 'Rate',
-                            'strand1', 'strand2', 'Methods', 'Cancers', 'Fusion_name']
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_annot_db, args.threads, chimerdb3, fuca)
+            # Extract BaseQualities
+            finaldf['overhang_meanBQ'] = su.core.mean_from_cols(finaldf, '^hang.*meanBQ')
+            finaldf['jxn_meanBQ'] = su.core.mean_from_cols(finaldf, '^jxn.*meanBQ')
+            finaldf['span_meanBQ'] = su.core.mean_from_cols(finaldf, '^span.*meanBQ')
+            # get bq thresh counts
+            finaldf['overhang_BQ'] = su.core.minvalcnts_from_cols(finaldf, '^hang.*meanBQ', 15)
+            finaldf['jxn_BQ'] = su.core.minvalcnts_from_cols(finaldf, '^jxn.*meanBQ', 15)
+            finaldf['span_BQ'] = su.core.minvalcnts_from_cols(finaldf, '^span.*meanBQ', 15)
+            # Extract mean mismatches
+            finaldf['overhang_mm'] = su.core.mean_from_cols(finaldf, '^hang.*mismatches')
+            finaldf['jxn_mm'] = su.core.mean_from_cols(finaldf, '^jxn.*mismatches')
+            finaldf['span_mm'] = su.core.mean_from_cols(finaldf, '^span.*mismatches')
+            # Extract mean read len
+            finaldf['overhang_meanlen'] = su.core.mean_from_cols(finaldf, '^hang.*seqlen')
+            finaldf['jxn_meanlen'] = su.core.mean_from_cols(finaldf, '^jxn.*seqlen')
+            finaldf['span_meanlen'] = su.core.mean_from_cols(finaldf, '^span.*seqlen')
 
-            # TODO: probabilistic module to assign quality score
+            # Get chimeric counts
+            finaldf['Chimeric_Counts'] = finaldf['jxn_left'] + finaldf['jxn_right'] + finaldf['spans_disc']
 
             # HARD FILTERING - Change this once a probabilistic module is ready.
             # Hard filter on read counts after accounting for transcript info.
-            finaldf['filter_minreads'] = (((finaldf["jxn_first"] >= 2) |  # most robust cases
-                                   ((finaldf["span_first"] >= 1) & (finaldf["jxn_left"] >= 1)) |  # read diversity
-                                   ((finaldf["span_first"] >= 1) & (finaldf["jxn_right"] >= 1)) |
-                                   ((finaldf["jxn_right"] >= 1) & (finaldf["jxn_left"] >= 1))))
+            finaldf['filter_minreads'] = (finaldf["jxn_right"] >= 1) | (finaldf["jxn_left"] >= 1)
             finaldf['filter_minreads'].replace(to_replace=[False], value='minreads', inplace=True, method=None)
 
-            # Hard filter on homology for discordant pairs and jxn. Junctions sequences are usually smaller. Consider a ratio of score to read len?
+            # Hard filter on homology for discordant pairs and jxn.
             finaldf['filter_homology'] = ((finaldf['span_homology_score'] < .40) &
                                           (finaldf['jxn_homology_score'] < .40))
             finaldf['filter_homology'].replace(to_replace=[False], value='homology', inplace=True, method=None)
 
-
-            # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique
-            finaldf['filter_diversity'] = ((finaldf['overhang_diversity'] >= finaldf['jxn_first'] * .2))
+            # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique if less than 10
+            finaldf['filter_diversity'] = ((finaldf['overhang_diversity'] >= finaldf['jxn_first'] * .2) |
+                                           (finaldf['overhang_diversity'] >= 10))
             finaldf['filter_diversity'].replace(to_replace=[False], value='diversity', inplace=True, method=None)
+
+            # Hard filter on basequalities. Require 20% and at least 1 of reads to have meanbq>10.
+            finaldf['filter_BQ'] = (((finaldf['overhang_BQ'] >= finaldf['jxn_first'] * .2) & (finaldf['overhang_BQ'] >= 1)) &
+                                      ((finaldf['jxn_BQ'] >= finaldf['jxn_first'] * .2) & (finaldf['jxn_BQ'] >= 1)) &
+                                      (finaldf['span_BQ'] >= finaldf['spans_disc'] * .2))
+            finaldf['filter_BQ'].replace(to_replace=[False], value='bq10', inplace=True, method=None)
 
             # Hard filter to require non-canonical splicing events to have greater read support and at least 10% with minfrag35
             noncan_mask = finaldf[finaldf['splice_type'] == "NON-CANONICAL_SPLICING"]
@@ -506,7 +559,8 @@ def main():
 
             # Hard filter to require at least 10% of reads to pass minfrag20 if span reads == 0
             nospan_mask = finaldf[finaldf["span_first"] == 0]
-            finaldf['filter_nospanminfrag'] = (nospan_mask['minfrag20'] >= nospan_mask['jxn_first'] * .1)
+            finaldf['filter_nospanminfrag'] = ((nospan_mask['minfrag20'] >= nospan_mask['jxn_first'] * .1) &
+                                               (nospan_mask['minfrag20'] >= 1))
             finaldf['filter_nospanminfrag'].replace(to_replace=[False], value='nospan_minfrag', inplace=True, method=None)
 
             # Hard filter to require at least 10% of reads to pass minfrag20 if jxn reads > 10
@@ -514,8 +568,22 @@ def main():
             finaldf['filter_minfrag'] = (highjxn_mask['minfrag20'] >= highjxn_mask['jxn_first'] * .1)
             finaldf['filter_minfrag'].replace(to_replace=[False], value='minfrag', inplace=True, method=None)
 
+            # Hard filter to require a > 0 TPM value for the fusion
+            finaldf['filter_expression'] = (finaldf['TPM_Fusion'] > 0)
+            finaldf['filter_expression'].replace(to_replace=[False], value='expression', inplace=True, method=None)
+
+            # Filter expression ratio with low reads to have minimal 1% abundance among left/right/chimeric.
+            finaldf['TPM_Ratio'] = finaldf['TPM_Fusion'] / (finaldf['TPM_Right'] + finaldf['TPM_Left'] + 1e-9)
+            lowcount_mask = finaldf[finaldf['Chimeric_Counts'] == 1]
+            finaldf['filter_ExpressionRatio'] = (lowcount_mask['TPM_Ratio'] >= .01)  # Require > 1% of fusion transcript
+            finaldf['filter_ExpressionRatio'].replace(to_replace=[False], value='ExpressionRatio', inplace=True, method=None)
+
             # Get the final disposition of filtering
-            finaldf['filter_all'] = finaldf[['filter_minreads', 'filter_homology', 'filter_diversity', 'filter_noncanonical', 'filter_nospanminfrag', 'filter_minfrag']].values.tolist()
+            finaldf['filter_all'] = finaldf[['filter_minreads', 'filter_homology',
+                                             'filter_diversity', 'filter_noncanonical',
+                                             'filter_nospanminfrag', 'filter_minfrag',
+                                             'filter_expression', 'filter_ExpressionRatio',
+                                             'filter_BQ']].values.tolist()
             finaldf['disposition'] = finaldf['filter_all'].apply(lambda x: ','.join(x for x in list(map(str, x)) if x not in ['True', 'nan']))
             finaldf['disposition'].replace('', 'PASS', inplace=True)
 
@@ -524,6 +592,9 @@ def main():
             print('\t'.join(map(str, breakpoint_header)), file=candid_fh)
             finaldf.to_csv(path_or_buf=candid_fh, header=False, sep="\t", columns=breakpoint_cols, mode='w', index=False)
             candid_fh.close()
+
+            # dump all values
+            # finaldf.to_csv(path_or_buf="data_dump.txt", header=True, sep="\t", mode='w', index=False)  # DEBUG
 
             resultsdf = finaldf[finaldf['disposition'] == 'PASS'].sort_values(['jxn_first', "span_first"], ascending=[False, False])
 
@@ -536,13 +607,12 @@ def main():
             logger.info('Passing Breakpoints:' + str(stats_res['Passing_Breakpoints']))
 
             # closeout
-            rna_closeout(args.prefix, stats_res, breakpoints_fh)
+            su.core.rna_closeout(args.prefix, stats_res, breakpoints_fh)
 
-        else: # there were no candidates to process but still want result files produced
+        else:  # there were no candidates to process but still want result files produced
             # closeout
             logger.info('No candidates left to process.')
-            rna_closeout(args.prefix, stats_res, breakpoints_fh)
-
+            su.core.rna_closeout(args.prefix, stats_res, breakpoints_fh)
 
     elif args.nucleic_type == "DNA":
         # start output files
@@ -566,7 +636,7 @@ def main():
         logger.info('Normalizing junctions')
         jxns = su.common.pandas_parallel(jxns, apply_normalize_jxns, args.threads)
         logger.info("Aggregating junctions")
-        jxn_summary = su.core.count_jxns(jxns, nucleic_type = "DNA")
+        jxn_summary = su.core.count_jxns(jxns, nucleic_type="DNA")
         # get distance
         jxn_summary['dist'] = jxn_summary.apply(lambda x: su.core.get_distance(x['name']), axis=1)
 
@@ -574,7 +644,7 @@ def main():
         if args.bed_file:
             start_bed = time.time()
             logger.info('Subsetting junctions using the supplied bed file')
-            targets_tree = su.common.bed_to_tree(bed_file)
+            targets_tree = su.common.bed_to_tree(args.bed_file)
             jxn_summary['subset'] = jxn_summary.apply(lambda x: su.common.subset_bed_func(x['name'], targets_tree), axis=1)
             jxn_summary = jxn_summary[jxn_summary['subset'] >= 1]
             logger.info("Time to subset junction from bed took %g seconds" % (time.time() - start_bed))
@@ -603,7 +673,7 @@ def main():
             # Get gene info and remove internal gene dups
             if not args.keep_gene_dups:
                 before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[jxn_filt['common'].astype(str).str.len() < 3] # [] counts as two
+                jxn_filt = jxn_filt[jxn_filt['common'].astype(str).str.len() < 3]  # [] counts as two
                 logger.info("Number of candidates removed due to internal gene duplication filter: " + str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:

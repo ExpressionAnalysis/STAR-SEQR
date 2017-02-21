@@ -59,7 +59,7 @@ def get_assembly_info(jxn, as_type):
     clean_jxn = su.common.safe_jxn(jxn)
     jxn_dir = 'support' + '/' + clean_jxn + '/'
 
-    fusionfq = jxn_dir + 'transcripts_all_fusions.fa'
+    fusionfq = jxn_dir + 'transcripts_fusion.fa'
     fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
 
     pairfq = jxn_dir + 'span.fastq'
@@ -87,7 +87,7 @@ def get_assembly_info(jxn, as_type):
             as_crossing_fusions = []
             if len(fusions_list) > 0:
                 for fusion in fusions_list:
-                    fusion_name, brk = fusion[0].split('|')
+                    fjxn, fside, fusion_name, brk = fusion[0].split('|')
                     brk = int(brk)
                     fusion_seq = fusion[1][brk - 10:brk + 10].upper()
                     # print(fusion_name, brk, fusion_seq)
