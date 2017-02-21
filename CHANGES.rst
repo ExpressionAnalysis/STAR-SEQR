@@ -39,3 +39,12 @@ STAR-SEQRv0.3.0:
 
 STAR-SEQRv0.3.1:
  * Fixed install script and now use sdist and twine for Pypi uploads.
+
+STAR-SEQRv0.4.0:
+ * Updates to STAR functions to use the new chimMainSegmentMultNmax parameter.
+ * Allow more ways to run STAR-SEQR from different STAR outputs.
+ * Salmon is now used to quantify candidate fusions and partner transcripts.
+ * Additional parameter (-x) to pass in a transcript reference for more stable counts.
+ * Greater sensitivity. Now rescues reads with 1 read support as long as all other filters and expression metrics are met.
+ * Uses more filtering approaches including basequalities, expression of transcripts relative to fusion,
+ * Fixed a bug so fusion junctions are now normalized to 0-base genomic coordinates.
