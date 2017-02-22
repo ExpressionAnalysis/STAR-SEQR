@@ -4,9 +4,9 @@ MAINTAINER Jeff Jasper jasper1918@gmail.com
 
 ENV PATH /opt/conda/bin:$PATHTH=${PATH}:/opt/conda/bin
 RUN apt-get -y update --fix-missing && \
-    apt-get install -y curl wget gzip bzip2 unzip git &&\
-    # g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
-    # libglib2.0-0 libxext6 libsm6 libxrender1 libxml2-dev libxslt-dev ca-certificates git gcc libdb5.1 libdb5.1-dev libcurl4-openssl-dev && \
+    apt-get install -y curl wget gzip bzip2 unzip git \
+    g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
+    libglib2.0-0 libxext6 libsm6 libxrender1 libxml2-dev libxslt-dev ca-certificates git gcc libdb5.3 libdb5.3-dev libcurl4-openssl-dev && \
     apt-get clean && dpkg-reconfigure locales && locale-gen en_US.UTF-8 && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
