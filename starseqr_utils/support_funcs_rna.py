@@ -234,7 +234,7 @@ def bam2fastq(in_bam, bam_type, jxn_dir, chimflag):
     return
 
 
-def starbam2allsupport(in_bam_path, norm_bam_path, chim_bam_path, region1, region2):
+def starbam2genesupport(in_bam_path, norm_bam_path, chim_bam_path, region1, region2):
     # get chimeric reads using ch tag from "WithinBAM method", split into categories
     # You will have errors if resulting bams are not sorted!
     infile = pysam.AlignmentFile(in_bam_path, "rb")
@@ -302,7 +302,7 @@ def get_rna_support(jxn, tx, s_reads, in_bam, gtree, chimflag):
         region2 = su.annotate_sv.get_gene_region(chrom2, pos2, gtree)
         normbam = jxn_dir + 'normal.bam'
         chimbam = jxn_dir + 'chimeric.bam'
-        starbam2allsupport(in_bam, normbam, chimbam, region1, region2)
+        starbam2genesupport(in_bam, normbam, chimbam, region1, region2)
         # normbamtofastq(normbam, jxn_dir)
         in_bam = chimbam
     # get supporting read counts and other metrics
