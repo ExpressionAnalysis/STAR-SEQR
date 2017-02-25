@@ -63,17 +63,17 @@ def parse_args():
     parser.add_argument('-g', '--gtf', type=str, required=True, action=FullPaths,
                         help='gtf file. (.gtf|.gtf.gz)')
     parser.add_argument('-x', '--transcripts', type=str, required=False, action=FullPaths,
-                        help='transcript fasta (.fa|.fa.gz). Additiona transcripts to get TPM values for in addition to fusions.')
+                        help='transcript fasta (.fa|.fa.gz). Additional transcripts to consider when obtaining TPM values for fusions.')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
                         choices=["RNA", "DNA"])
     parser.add_argument('-l', '--library', type=str, required=False,
                         default="ISF",
-                        help='salmon library type')
+                        help='salmon library type(ISF, ISR, etc)')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=8,
-                        help='Number of threads to use for STAR and STAR-SEQR. 4-8 recommended.')
+                        help='Number of threads to use for STAR and STAR-SEQR. 4-12 recommended.')
     parser.add_argument('-b', '--bed_file', type=str, required=False, action=FullPaths,
                         help='Bed file to subset analysis')
     parser.add_argument('--subset_type', type=str, required=False,
@@ -502,7 +502,7 @@ def main():
             logger.info("Generating primers using indexed fasta")
             finaldf = su.common.pandas_parallel(finaldf, apply_primers_func, args.threads)
 
-            # Get breakpoint locations
+            # Get normalized breakpoint locations
             logger.info("Getting normalized breakpoint locations")
             finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: su.core.get_fusion_locations(x['name']), axis=1))
 
@@ -527,7 +527,7 @@ def main():
             finaldf['jxn_meanlen'] = su.core.mean_from_cols(finaldf, '^jxn.*seqlen')
             finaldf['span_meanlen'] = su.core.mean_from_cols(finaldf, '^span.*seqlen')
 
-            # Get chimeric counts
+            # Get total chimeric counts
             finaldf['Chimeric_Counts'] = finaldf['jxn_left'] + finaldf['jxn_right'] + finaldf['spans_disc']
 
             # HARD FILTERING - Change this once a probabilistic module is ready.
