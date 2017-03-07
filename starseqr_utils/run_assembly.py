@@ -3,6 +3,7 @@
 
 from __future__ import (absolute_import, division, print_function)
 import sys
+import os
 import logging
 import subprocess as sp
 import re
@@ -57,19 +58,19 @@ def do_velvet(assemdir, fastq, kmer, errlog, *args):
 def get_assembly_info(jxn, as_type):
     # clean jxn name to write to support folder made previous
     clean_jxn = su.common.safe_jxn(jxn)
-    jxn_dir = 'support' + '/' + clean_jxn + '/'
+    jxn_dir = os.path.join('support', clean_jxn)
 
-    fusionfq = jxn_dir + 'transcripts_fusion.fa'
+    fusionfq = os.path.join(jxn_dir, 'transcripts-fusion.fa')
     fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
 
-    pairfq = jxn_dir + 'span.fastq'
-    junctionfq = jxn_dir + 'split.fastq'
+    pairfq = os.path.join(jxn_dir, 'span.fastq')
+    junctionfq = os.path.join(jxn_dir, 'split.fastq')
 
     # velvet
     assembly_list = []
     if as_type == 'velvet':
-        errlog = open(jxn_dir + 'assembly_log.txt', 'w')
-        assembly_list = list(do_velvet(jxn_dir + 'assem_pair', junctionfq, 17, errlog, pairfq))
+        errlog = open(os.path.join(jxn_dir, 'assembly_log.txt'), 'w')
+        assembly_list = list(do_velvet(os.path.join(jxn_dir, 'assem_pair'), junctionfq, 17, errlog, pairfq))
         errlog.close()
 
     # confirm assembly crosses breakpoint
