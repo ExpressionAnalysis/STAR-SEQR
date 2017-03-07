@@ -70,7 +70,7 @@ def run_star(fq1, fq2, args):
                                '--chimScoreSeparation', 7, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "None",
                                '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
-                               '--chimMainSegmentMultNmax', 5]
+                               '--chimMainSegmentMultNmax', 10]
             STAR_args.extend(sens_params)
             # Need to convert all to string
             STAR_args = list(map(str, STAR_args))
