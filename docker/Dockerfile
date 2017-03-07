@@ -2,7 +2,6 @@ FROM ubuntu:16.04
 
 MAINTAINER Jeff Jasper jasper1918@gmail.com
 
-ENV PATH /opt/conda/bin:$PATHTH=${PATH}:/opt/conda/bin
 RUN apt-get -y update --fix-missing && \
     apt-get install -y curl wget gzip bzip2 unzip git \
     g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
@@ -40,13 +39,13 @@ RUN conda config --add channels conda-forge && \
     conda config --add channels defaults && \
     conda config --add channels r && \
     conda config --add channels bioconda && \
-    conda install -y pip nose coverage cython pysam>=0.9.0 pandas>=0.18.1 samtools biobambam velvet ucsc-gtftogenepred salmon && \
+    conda install -y pip nose coverage cython pysam pandas samtools biobambam velvet ucsc-gtftogenepred salmon && \
     conda clean -ilty
 
 # Install STAR-SEQR
-RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.4.0.tar.gz  && \
-    tar -zxvf v0.4.0.tar.gz && \
-    cd STAR-SEQR-0.4.0 && \
+RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.5.0.tar.gz  && \
+    tar -zxvf v0.5.0.tar.gz && \
+    cd STAR-SEQR-0.5.0 && \
     python setup.py build && \
     python setup.py install && \
     python setup.py clean && \
@@ -56,3 +55,5 @@ RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.4.0.tar.gz  
 RUN pip install awscli
 
 COPY run_basespace.py /opt/
+
+ENV PATH /opt/run_basespace.py:$PATH
