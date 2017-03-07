@@ -16,7 +16,7 @@ import starseqr_utils as su
 logger = logging.getLogger('STAR-SEQR')
 
 
-def cat_fa_files(rootDir, out_file, trx_fa=''):
+def cat_all_fa_files(rootDir, out_file, trx_fa=''):
     logger.info("Joining transcript models for salmon")
     fileSet = set()
     for dir_, _, files in os.walk(rootDir):
@@ -101,16 +101,15 @@ def read_salmon_quant(in_file, all_trx=False):
     if all_trx:
         df = df[df['Name'].str.contains("fusion|left|right")]
     df['Jxn'], df['Side'], df['Transcript'] = df['Name'].str.split('|', 2).str
-    grouped_df = df.groupby(['Jxn', 'Side'], as_index=True)
-    new_df = grouped_df.agg(OrderedDict([('TPM', 'max')])).reset_index()
-    new_df = new_df.pivot(index='Jxn', columns='Side').reset_index()
-    new_df.columns = ['Jxn', 'TPM_Fusion', 'TPM_Left', 'TPM_Right']
+    max_df = df.ix[df.groupby(['Jxn', 'Side'], sort=False)['TPM'].idxmax()][['Jxn', 'TPM', 'Side', 'Transcript']].sort_values('Jxn')
+    new_df = max_df.pivot(index='Jxn', columns='Side').reset_index()
+    new_df.columns = ['Jxn', 'TPM_Fusion', 'TPM_Left', 'TPM_Right', 'Max_Trx_Fusion', 'Max_Trx_Left', 'Max_Trx_Right']
     return new_df
 
 
 def wrap_salmon(chim_trx_dir, fq1, fq2, library, nthreads, trx_fa=''):
     start = time.time()
-    cat_fa_files(chim_trx_dir, "candidate_trx_models.fa", trx_fa)
+    cat_all_fa_files(chim_trx_dir, "candidate_trx_models.fa", trx_fa)
     create_salmon_index("candidate_trx_models.fa", "salmon_index")
     run_salmon_quant("salmon_index", fq1, fq2, library, "salmon_quant", nthreads)
     salmon_df = read_salmon_quant("salmon_quant/quant.sf", all_trx=True)
