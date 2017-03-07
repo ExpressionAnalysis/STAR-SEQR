@@ -203,10 +203,10 @@ def exons2seq(fasta_path, lol_exons, jxn, side, fusion_exons='', decorate='', ou
     clean_jxn = su.common.safe_jxn(jxn)
     if out_dir == "support":  # default to support folders
         out_dir = os.path.join('support', clean_jxn)
-        out_fa = os.path.join(out_dir, 'transcripts_' + str(side) + ".fa")
+        out_fa = os.path.join(out_dir, 'transcripts-' + str(side) + ".fa")
     else:
         su.common.make_new_dir(out_dir)
-        out_fa = os.path.join(out_dir, 'transcripts_' + str(side) + '_' + clean_jxn + ".fa")
+        out_fa = os.path.join(out_dir, 'transcripts-' + str(side) + '-' + clean_jxn + ".fa")
 
     fa = pysam.Fastafile(fasta_path)
     ofile = open(out_fa, "w")
