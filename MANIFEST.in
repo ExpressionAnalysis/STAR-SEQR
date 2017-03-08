@@ -1,4 +1,4 @@
 include LICENSE
 include README.rst
-recursive-include starseqr_utils/resources *
+recursive-include starseqr_utils *
 include ssw/src/*

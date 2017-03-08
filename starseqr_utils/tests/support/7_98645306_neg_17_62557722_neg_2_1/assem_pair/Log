@@ -1,0 +1,42 @@
+Fri Feb 24 21:03:59 2017
+ velveth support/7_98645306_neg_17_62557722_neg_2_1/assem_pair 17 -short -fastq support/7_98645306_neg_17_62557722_neg_2_1/split.fastq -shortPaired -fastq support/7_98645306_neg_17_62557722_neg_2_1/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Fri Feb 24 21:03:59 2017
+ velvetg support/7_98645306_neg_17_62557722_neg_2_1/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 0 nodes and n50 of 0, max 0, total 0, using 0/2 reads
+Mon Feb 27 15:39:42 2017
+ velveth support/7_98645306_neg_17_62557722_neg_2_1/assem_pair 17 -short -fastq support/7_98645306_neg_17_62557722_neg_2_1/split.fastq -shortPaired -fastq support/7_98645306_neg_17_62557722_neg_2_1/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Mon Feb 27 15:39:42 2017
+ velvetg support/7_98645306_neg_17_62557722_neg_2_1/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 0 nodes and n50 of 0, max 0, total 0, using 0/2 reads

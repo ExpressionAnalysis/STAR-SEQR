@@ -1,0 +1,63 @@
+Fri Feb 24 20:18:27 2017
+ velveth support/chr6_26936302_pos_chr15_74623003_pos_2_0/assem_pair 17 -short -fastq support/chr6_26936302_pos_chr15_74623003_pos_2_0/split.fastq -shortPaired -fastq support/chr6_26936302_pos_chr15_74623003_pos_2_0/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Fri Feb 24 20:18:27 2017
+ velvetg support/chr6_26936302_pos_chr15_74623003_pos_2_0/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 0 nodes and n50 of 0, max 0, total 0, using 0/4 reads
+Tue Feb 28 14:40:01 2017
+ velveth support/chr6_26936302_pos_chr15_74623003_pos_2_0/assem_pair 17 -short -fastq support/chr6_26936302_pos_chr15_74623003_pos_2_0/split.fastq -shortPaired -fastq support/chr6_26936302_pos_chr15_74623003_pos_2_0/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 28 14:40:01 2017
+ velvetg support/chr6_26936302_pos_chr15_74623003_pos_2_0/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 0 nodes and n50 of 0, max 0, total 0, using 0/4 reads
+Tue Feb 28 14:43:29 2017
+ velveth support/chr6_26936302_pos_chr15_74623003_pos_2_0/assem_pair 17 -short -fastq support/chr6_26936302_pos_chr15_74623003_pos_2_0/split.fastq -shortPaired -fastq support/chr6_26936302_pos_chr15_74623003_pos_2_0/span.fastq
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Tue Feb 28 14:43:29 2017
+ velvetg support/chr6_26936302_pos_chr15_74623003_pos_2_0/assem_pair -cov_cutoff 2
+Version 1.2.07
+Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Compilation settings:
+CATEGORIES = 2
+MAXKMERLENGTH = 64
+
+Final graph has 0 nodes and n50 of 0, max 0, total 0, using 0/4 reads

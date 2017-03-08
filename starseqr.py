@@ -59,21 +59,19 @@ def parse_args():
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
     parser.add_argument('-r', '--fasta', type=str, required=True, action=FullPaths,
-                        help='indexed fasta (.fa|.fa.gz)')
+                        help='indexed fasta (.fa)')
     parser.add_argument('-g', '--gtf', type=str, required=True, action=FullPaths,
-                        help='gtf file. (.gtf|.gtf.gz)')
-    parser.add_argument('-x', '--transcripts', type=str, required=False, action=FullPaths,
-                        help='transcript fasta (.fa|.fa.gz). Additiona transcripts to get TPM values for in addition to fusions.')
+                        help='gtf file. (.gtf)')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
                         choices=["RNA", "DNA"])
     parser.add_argument('-l', '--library', type=str, required=False,
                         default="ISF",
-                        help='salmon library type')
+                        help='salmon library type(ISF, ISR, etc)')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=8,
-                        help='Number of threads to use for STAR and STAR-SEQR. 4-8 recommended.')
+                        help='Number of threads to use for STAR and STAR-SEQR. 4-12 recommended.')
     parser.add_argument('-b', '--bed_file', type=str, required=False, action=FullPaths,
                         help='Bed file to subset analysis')
     parser.add_argument('--subset_type', type=str, required=False,
@@ -110,6 +108,12 @@ def parse_args():
         sys.exit(1)
     if all(star_reads):
         print("Error: Please specify only one of -sb/-ss.")
+        sys.exit(1)
+    if args.fasta.endswith(".gz"):
+        print("Error: The genome fasta cannot be compressed!")
+        sys.exit(1)
+    if args.gtf.endswith(".gz"):
+        print("Error: The GTF cannot be compressed!")
         sys.exit(1)
     return args
 
@@ -207,13 +211,15 @@ def wrap_exons2seq(args):
     return df['write_seq']  # sequences are written to fasta not passed, but need to pass something
 
 
-def apply_primers_func(df):
-    df['primers'] = df.apply(lambda x: su.run_primer3.wrap_runp3(x['name'], x['assembly_cross_fusions']), axis=1).apply(lambda x: ",".join(x))
+def apply_primers_func(args):
+    df, chim_dir = args
+    df['primers'] = df.apply(lambda x: su.run_primer3.wrap_runp3(x['name'], x['Max_Trx_Fusion'], chim_dir), axis=1).apply(lambda x: ",".join(x))
     return df
 
 
-def apply_get_cross_homology(df):
-    df['span_homology_score'], df['jxn_homology_score'] = zip(*df.apply(lambda x: su.cross_homology.get_cross_homology(x['name']), axis=1))
+def apply_get_cross_homology(args):
+    df, chim_dir = args
+    df['span_homology_score'], df['jxn_homology_score'] = zip(*df.apply(lambda x: su.cross_homology.get_cross_homology(x['name'], chim_dir), axis=1))
     return df
 
 
@@ -270,14 +276,14 @@ def main():
     if args.star_index:
         depend_tools.extend(['STAR'])
     if args.nucleic_type == "RNA":
-        depend_tools.extend(['salmon'])
+        depend_tools.extend(['salmon', 'gffread'])
     for tool in depend_tools:
         if not su.common.which(tool):
             logger.error(tool + "exe not found on path! Quitting.")
             sys.exit(1)
 
     # check files exist and get abs paths. Necessary since we switch folders.
-    depend_paths = [args.fastq1, args.fastq2, args.fasta, args.gtf, args.transcripts,
+    depend_paths = [args.fastq1, args.fastq2, args.fasta, args.gtf,
                     args.bed_file, args.star_jxns, args.star_sam, args.star_bam]
     for f_item in depend_paths:
         if f_item:
@@ -320,13 +326,15 @@ def main():
                            "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
                            "dist", "assembly", "assembly_cross_disp", "primers", "name",
                            "span_homology_score", "jxn_homology_score", "overhang_diversity",
-                           "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right", "disposition"]
+                           "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right",
+                           "Max_Trx_Fusion","disposition"]
         breakpoint_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
                              "DISTANCE", "ASSEMBLED_CONTIGS", "ASSEMBLY_CROSS_JXN", "PRIMERS", "ID",
                              "SPAN_CROSSHOM_SCORE", "JXN_CROSSHOM_SCORE", "OVERHANG_DIVERSITY",
-                             "MINFRAG20", "MINFRAG35", "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT", "DISPOSITION"]
+                             "MINFRAG20", "MINFRAG35", "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT",
+                             "MAX_TRX_FUSION", "DISPOSITION"]
         print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
         # stats dict
@@ -433,10 +441,9 @@ def main():
             su.common.pandas_parallel(jxn_filt, wrap_exons2seq, args.threads, args.fasta, chim_trx_dir)
 
             # Get salmon quant for left, right, fusion transcripts
-            if args.transcripts:
-                salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads, args.transcripts)
-            else:
-                salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads)
+            ref_transcripts = "ref_transcripts.fa"
+            su.gtf_convert.gtf2trxfasta(args.gtf, args.fasta, ref_transcripts, cds=False)
+            salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads, ref_transcripts)
 
             # merge salmon results
             logger.info("Merging salmon results with other metrics")
@@ -487,7 +494,11 @@ def main():
 
             # get homology mapping scores
             logger.info("Getting read homology mapping scores")
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_cross_homology, args.threads)
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_cross_homology, args.threads, chim_trx_dir)
+
+            # get multimapping homologous names to mark
+            logger.info("Getting fusions homology mapping scores")
+            homologous_remove = su.homology_graph.prune_homology_graph(finaldf, chim_trx_dir)
 
             # get overhang read diversity
             logger.info("Getting overhang read diversity")
@@ -500,14 +511,14 @@ def main():
 
             # Generate Primers
             logger.info("Generating primers using indexed fasta")
-            finaldf = su.common.pandas_parallel(finaldf, apply_primers_func, args.threads)
+            finaldf = su.common.pandas_parallel(finaldf, apply_primers_func, args.threads, chim_trx_dir)
 
-            # Get breakpoint locations
+            # Get normalized breakpoint locations
             logger.info("Getting normalized breakpoint locations")
             finaldf['breakpoint_left'], finaldf['breakpoint_right'] = zip(*finaldf.apply(lambda x: su.core.get_fusion_locations(x['name']), axis=1))
 
-            # get homology mapping scores
-            logger.info("Getting read homology mapping scores")
+            # get fusion class
+            logger.info("Getting fusion classes")
             finaldf = su.common.pandas_parallel(finaldf, apply_get_fusion_class, args.threads)
 
             # Extract BaseQualities
@@ -527,8 +538,14 @@ def main():
             finaldf['jxn_meanlen'] = su.core.mean_from_cols(finaldf, '^jxn.*seqlen')
             finaldf['span_meanlen'] = su.core.mean_from_cols(finaldf, '^span.*seqlen')
 
-            # Get chimeric counts
+            # Get total chimeric counts
             finaldf['Chimeric_Counts'] = finaldf['jxn_left'] + finaldf['jxn_right'] + finaldf['spans_disc']
+
+            # Get number of breakpoints partners per junction
+            finaldf['breakpoint_left_rep'] = finaldf['breakpoint_left'].apply(lambda x: finaldf['breakpoint_left'].value_counts()[x])
+            finaldf['breakpoint_right_rep'] = finaldf['breakpoint_right'].apply(lambda x: finaldf['breakpoint_right'].value_counts()[x])
+
+
 
             # HARD FILTERING - Change this once a probabilistic module is ready.
             # Hard filter on read counts after accounting for transcript info.
@@ -536,9 +553,13 @@ def main():
             finaldf['filter_minreads'].replace(to_replace=[False], value='minreads', inplace=True, method=None)
 
             # Hard filter on homology for discordant pairs and jxn.
-            finaldf['filter_homology'] = ((finaldf['span_homology_score'] < .40) &
-                                          (finaldf['jxn_homology_score'] < .40))
+            finaldf['filter_homology'] = ((finaldf['span_homology_score'] <= .50) &
+                                          (finaldf['jxn_homology_score'] <= .50))
             finaldf['filter_homology'].replace(to_replace=[False], value='homology', inplace=True, method=None)
+
+            # Hard filter on multimapping-homologus duplicate fusions
+            finaldf['homology_collapse'] = (~finaldf['name'].isin(homologous_remove))
+            finaldf['homology_collapse'].replace(to_replace=[False], value='homology_collapse', inplace=True, method=None)
 
             # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique if less than 10
             finaldf['filter_diversity'] = ((finaldf['overhang_diversity'] >= finaldf['jxn_first'] * .2) |
@@ -573,16 +594,16 @@ def main():
             finaldf['filter_expression'].replace(to_replace=[False], value='expression', inplace=True, method=None)
 
             # Filter expression ratio with low reads to have minimal 1% abundance among left/right/chimeric.
-            finaldf['TPM_Ratio'] = finaldf['TPM_Fusion'] / (finaldf['TPM_Right'] + finaldf['TPM_Left'] + 1e-9)
-            lowcount_mask = finaldf[finaldf['Chimeric_Counts'] == 1]
-            finaldf['filter_ExpressionRatio'] = (lowcount_mask['TPM_Ratio'] >= .01)  # Require > 1% of fusion transcript
-            finaldf['filter_ExpressionRatio'].replace(to_replace=[False], value='ExpressionRatio', inplace=True, method=None)
+            # finaldf['TPM_Ratio'] = finaldf['TPM_Fusion'] / (finaldf['TPM_Right'] + finaldf['TPM_Left'] + 1e-9)
+            # lowcount_mask = finaldf[finaldf['Chimeric_Counts'] == 1]
+            # finaldf['filter_ExpressionRatio'] = (lowcount_mask['TPM_Ratio'] >= .01)  # Require > 1% of fusion transcript
+            # finaldf['filter_ExpressionRatio'].replace(to_replace=[False], value='ExpressionRatio', inplace=True, method=None)
 
             # Get the final disposition of filtering
             finaldf['filter_all'] = finaldf[['filter_minreads', 'filter_homology',
                                              'filter_diversity', 'filter_noncanonical',
                                              'filter_nospanminfrag', 'filter_minfrag',
-                                             'filter_expression', 'filter_ExpressionRatio',
+                                             'filter_expression', 'homology_collapse',
                                              'filter_BQ']].values.tolist()
             finaldf['disposition'] = finaldf['filter_all'].apply(lambda x: ','.join(x for x in list(map(str, x)) if x not in ['True', 'nan']))
             finaldf['disposition'].replace('', 'PASS', inplace=True)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 from setuptools import setup, find_packages, Extension
 from io import open
 from sys import stderr
@@ -13,6 +14,16 @@ def get_version(string):
     return version_str
 
 
+def package_files(directory):
+    paths = []
+    for (path, directories, filenames) in os.walk(directory):
+        for filename in filenames:
+            paths.append(os.path.join('..', path, filename))
+    return paths
+
+
+su_tests = package_files('starseqr_utils/tests')
+
 libssw_ext = Extension('_libssw_ext', sources=['ssw/src/ssw.c'], include_dirs=['ssw/src/'])
 
 setup(
@@ -25,15 +36,15 @@ setup(
     author_email='jasper1918@gmail.com',
     url='https://github.com/ExpressionAnalysis/STAR-SEQR',
     packages=find_packages(),
-    install_requires=['six', 'pandas>=0.18.0', 'pysam>=0.9.0', 'primer3-py', 'intervaltree_bio'],
+    install_requires=['cython', 'six', 'networkx','pandas >= 0.18.0', 'pysam >= 0.9.0', 'primer3-py', 'intervaltree_bio'],
     ext_modules=[libssw_ext],
-    package_data={"starseqr_utils": ["resources/*"]},
+    package_data={"starseqr_utils": ["resources/*"], '': su_tests},
     scripts=['starseqr.py'],
     zip_safe=False,
     test_suite='nose.collector',
     tests_require=['nose'],
     keywords=['rna', 'rna-seq', 'fusions', 'chimeric', 'star'],
-    CLASSIFIERS=[
+    classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",
         "Natural Language :: English",
@@ -49,7 +60,7 @@ setup(
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: Implementation :: CPython",
         "Intended Audience :: Science/Research",
-        "Topic :: Scientific/Engineering :: Bio-Informatics"
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
     ]
 )
 

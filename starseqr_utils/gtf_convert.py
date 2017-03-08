@@ -3,7 +3,8 @@
 
 from __future__ import (absolute_import, division, print_function)
 import os
-import subprocess
+import sys
+import subprocess as sp
 import logging
 import gzip
 from intervaltree_bio import GenomeIntervalTree, UCSCTable
@@ -26,7 +27,7 @@ def gtf_to_genepred(gtf, out_file):
         logger.warning("Skipping gtf_to_genepred as files already exist!")
         return out_file
     cmd = "gtfToGenePred -allErrors -ignoreGroupsWithoutExons -genePredExt -geneNameAsName2 {gtf} {out_file}"
-    subprocess.check_call(cmd.format(**locals()), shell=True)
+    sp.check_call(cmd.format(**locals()), shell=True)
     return out_file
 
 
@@ -59,3 +60,33 @@ def gtf2tree(gtf_path):
     kg = gzip.open(ucsc_annot)
     gtree = GenomeIntervalTree.from_table(fileobj=kg, mode='tx', parser=UCSCTable.ENS_GENE)
     return gtree
+
+
+def gtf2trxfasta(gtf_path, ref_fasta, txfa_out, cds=False):
+    if file_exists(txfa_out):
+        logger.warning("Skipping gtf to transcript fasta conversion as files already exist!")
+        return
+
+    if cds:
+        cmd = ["gffread", "-g", ref_fasta, "-x", txfa_out, gtf_path]
+    else:
+        cmd = ["gffread", "-g", ref_fasta, "-w", txfa_out, gtf_path]
+    cmd_args = list(map(str, cmd))
+    logger.info("*Command: " + " ".join(cmd_args))
+    try:
+        p = sp.Popen(cmd_args, stdout=sp.PIPE, stderr=sp.PIPE)
+        stdout, stderr = p.communicate()
+        if stdout:
+            pass
+            logger.debug(stdout)
+        if stderr:
+            pass
+            # logger.error(stderr) Too many warnings
+        if p.returncode != 0:
+            logger.error("Error: gffread failed", exc_info=True)
+            sys.exit(1)
+    except (OSError) as o:
+        logger.error("Exception: " + str(o))
+        logger.error("gffread Failed", exc_info=True)
+        sys.exit(1)
+    return

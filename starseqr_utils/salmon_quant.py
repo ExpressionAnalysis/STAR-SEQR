@@ -8,7 +8,6 @@ import gzip
 import time
 import logging
 import pandas as pd
-from collections import OrderedDict
 import shutil
 import subprocess as sp
 import starseqr_utils as su
@@ -16,7 +15,7 @@ import starseqr_utils as su
 logger = logging.getLogger('STAR-SEQR')
 
 
-def cat_fa_files(rootDir, out_file, trx_fa=''):
+def cat_all_fa_files(rootDir, out_file, trx_fa=''):
     logger.info("Joining transcript models for salmon")
     fileSet = set()
     for dir_, _, files in os.walk(rootDir):
@@ -39,13 +38,13 @@ def cat_fa_files(rootDir, out_file, trx_fa=''):
     return
 
 
-def create_salmon_index(fasta, outdir):
+def create_salmon_index(fasta, outdir, nthreads):
     logger.info("Creating an index for salmon")
     su.common.check_file_exists(fasta)
     if os.path.isfile(os.path.join(outdir, "sa.bin")):
         logger.warn("Skipping salmon index as files already exist!")
         return
-    cmd = ['salmon', 'index', '-t', fasta, '-i', outdir]
+    cmd = ['salmon', 'index', '-t', fasta, '-i', outdir, '-p', nthreads]
     cmd_args = list(map(str, cmd))
     logger.info("*Command: " + " ".join(cmd_args))
     try:
@@ -73,7 +72,7 @@ def run_salmon_quant(index, read1, read2, library, outdir, nthreads):
         logger.warn("Skipping salmon quant as files already exist!")
         return
     cmd = ['salmon', 'quant', '-i', index, '-l', library, '-1', read1, '-2', read2,
-           '-o', outdir, '-p', nthreads, '-m', 400, '-w', 200]
+           '-o', outdir, '-p', nthreads, '-m', 400, '-w', 200, '-q']
     cmd_args = list(map(str, cmd))
     logger.info("*Command: " + " ".join(cmd_args))
     try:
@@ -81,7 +80,7 @@ def run_salmon_quant(index, read1, read2, library, outdir, nthreads):
         stdout, stderr = p.communicate()
         if stdout:
             pass
-            # logger.info(stdout)
+            # logger.debug(stdout)
         if stderr:
             pass
             # logger.error(stderr)
@@ -101,17 +100,16 @@ def read_salmon_quant(in_file, all_trx=False):
     if all_trx:
         df = df[df['Name'].str.contains("fusion|left|right")]
     df['Jxn'], df['Side'], df['Transcript'] = df['Name'].str.split('|', 2).str
-    grouped_df = df.groupby(['Jxn', 'Side'], as_index=True)
-    new_df = grouped_df.agg(OrderedDict([('TPM', 'max')])).reset_index()
-    new_df = new_df.pivot(index='Jxn', columns='Side').reset_index()
-    new_df.columns = ['Jxn', 'TPM_Fusion', 'TPM_Left', 'TPM_Right']
+    max_df = df.ix[df.groupby(['Jxn', 'Side'], sort=False)['TPM'].idxmax()][['Jxn', 'TPM', 'Side', 'Transcript']].sort_values('Jxn')
+    new_df = max_df.pivot(index='Jxn', columns='Side').reset_index()
+    new_df.columns = ['Jxn', 'TPM_Fusion', 'TPM_Left', 'TPM_Right', 'Max_Trx_Fusion', 'Max_Trx_Left', 'Max_Trx_Right']
     return new_df
 
 
 def wrap_salmon(chim_trx_dir, fq1, fq2, library, nthreads, trx_fa=''):
     start = time.time()
-    cat_fa_files(chim_trx_dir, "candidate_trx_models.fa", trx_fa)
-    create_salmon_index("candidate_trx_models.fa", "salmon_index")
+    cat_all_fa_files(chim_trx_dir, "candidate_trx_models.fa", trx_fa)
+    create_salmon_index("candidate_trx_models.fa", "salmon_index", nthreads)
     run_salmon_quant("salmon_index", fq1, fq2, library, "salmon_quant", nthreads)
     salmon_df = read_salmon_quant("salmon_quant/quant.sf", all_trx=True)
     logger.info('Salmon took  %g seconds' % (time.time() - start))

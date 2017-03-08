@@ -46,27 +46,28 @@ def run_star(fq1, fq2, args):
             # chimSegmentReadGapMax allows for variation at breakpoints
             # chimScoreDropMax is the difference in aligned read length and total read length due to clipping
             # chimMainSegmentMultNmax - new parameter >2.5b to remove chimeric multimappers
+            # withinBam and SeparateSAMold give equivalent results
             # mismatches at sj: (1) non-canonical motifs, (2) GT/AG and CT/AC motif, (3) GC/AG and CT/GC motif, (4) AT/AC and GT/AT motif.
             STAR_args = ['STAR', '--readFilesIn', fq1, fq2, '--readFilesCommand', 'zcat',
                          '--runThreadN', str(args.threads), '--genomeDir', args.star_index,
                          '--outFileNamePrefix ', args.prefix + ".", '--chimScoreJunctionNonGTAG', -1,
-                         # '--outSAMtype', 'None', '--chimOutType', 'SeparateSAMold',
-                         '--outSAMtype', 'BAM', 'SortedByCoordinate', '--chimOutType', 'WithinBAM',
-                         '--alignSJDBoverhangMin', 10, '--outFilterMultimapScoreRange', 1,
+                         '--outSAMtype', 'None', '--chimOutType', 'SeparateSAMold',
+                         # '--outSAMtype', 'BAM', 'SortedByCoordinate', '--chimOutType', 'WithinBAM',
+                         '--alignSJDBoverhangMin', 5, '--outFilterMultimapScoreRange', 1,
                          '--outFilterMultimapNmax', 5,
                          '--outMultimapperOrder', 'Random', '--outSAMattributes', 'NH', 'HI', 'AS', 'nM', 'ch']
             # choose sensitivity mode
             if (args.mode == 0):
                 sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
-                               '--chimScoreMin', 1, '--chimScoreDropMax', 30,
+                               '--chimScoreMin', 1, '--chimScoreDropMax', 20,
                                '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "None",
                                '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
-                               '--chimMainSegmentMultNmax', 10]
+                               '--chimMainSegmentMultNmax', 1]
             elif (args.mode == 1):
-                sens_params = ['--chimSegmentMin', 8, '--chimJunctionOverhangMin', 8,
-                               '--chimScoreMin', 0, '--chimScoreDropMax', 30,
-                               '--chimScoreSeparation', 10, '--chimSegmentReadGapMax', 3,
+                sens_params = ['--chimSegmentMin', 10, '--chimJunctionOverhangMin', 10,
+                               '--chimScoreMin', 1, '--chimScoreDropMax', 30,
+                               '--chimScoreSeparation', 7, '--chimSegmentReadGapMax', 3,
                                '--chimFilter', 'None', '--twopassMode', "None",
                                '--alignSJstitchMismatchNmax', 5, -1, 5, 5,
                                '--chimMainSegmentMultNmax', 10]
