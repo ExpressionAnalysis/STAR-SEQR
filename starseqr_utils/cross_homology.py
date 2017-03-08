@@ -6,7 +6,6 @@ import os
 import logging
 import ssw
 import numpy as np
-import itertools
 import starseqr_utils as su
 
 logger = logging.getLogger('STAR-SEQR')
