@@ -100,19 +100,16 @@ def parsep3(p3output):
 def wrap_runp3(jxn, cross_fusion, chim_dir):
     '''
     use the breakpoint info stored in the fasta file header.
-    Design primers using known cross fusion transcripts
+    Design primers using predicted fusion transcripts from expression
     '''
     clean_jxn = su.common.safe_jxn(jxn)
-    fusionfq = os.path.join(chim_dir, 'transcripts-fusion-' + clean_jxn + '.fa')
-    fusions_list = list(su.common.fasta_iter(fusionfq))  # list of tuples containing name, seq
+    fusionfa = os.path.join(chim_dir, 'transcripts-fusion-' + clean_jxn + '.fa')
+    fusions_list = list(su.common.fasta_iter(fusionfa))  # list of tuples containing name, seq
     if len(fusions_list) > 0 and len(cross_fusion) > 0:
-        for fusion in fusions_list:
-            jxn, side, fusion_name, brk = fusion[0].split('|')
-            fus_seq = fusion[1]
+        for fusion_name, fus_seq in fusions_list:
+            jxn, side, fusion_name, brk = fusion_name.split('|')
             brk = int(brk)
             if fusion_name in cross_fusion:
                 return runp3(fusion_name, fus_seq.upper(), brk)
-            else:
-                return ()
     else:
         return ()
