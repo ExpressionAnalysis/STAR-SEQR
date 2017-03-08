@@ -59,11 +59,9 @@ def parse_args():
     parser.add_argument('-p', '--prefix', type=str, required=True,
                         help='prefix to name files')
     parser.add_argument('-r', '--fasta', type=str, required=True, action=FullPaths,
-                        help='indexed fasta (.fa|.fa.gz)')
+                        help='indexed fasta (.fa)')
     parser.add_argument('-g', '--gtf', type=str, required=True, action=FullPaths,
-                        help='gtf file. (.gtf|.gtf.gz)')
-    parser.add_argument('-x', '--transcripts', type=str, required=False, action=FullPaths,
-                        help='transcript fasta (.fa|.fa.gz). Additional transcripts to consider when obtaining TPM values for fusions.')
+                        help='gtf file. (.gtf)')
     parser.add_argument('-n', '--nucleic_type', type=str, required=False,
                         default="RNA",
                         help='nucleic acid type',
@@ -110,6 +108,12 @@ def parse_args():
         sys.exit(1)
     if all(star_reads):
         print("Error: Please specify only one of -sb/-ss.")
+        sys.exit(1)
+    if args.fasta.endswith(".gz"):
+        print("Error: The genome fasta cannot be compressed!")
+        sys.exit(1)
+    if args.gtf.endswith(".gz"):
+        print("Error: The GTF cannot be compressed!")
         sys.exit(1)
     return args
 
@@ -272,14 +276,14 @@ def main():
     if args.star_index:
         depend_tools.extend(['STAR'])
     if args.nucleic_type == "RNA":
-        depend_tools.extend(['salmon'])
+        depend_tools.extend(['salmon', 'gffread'])
     for tool in depend_tools:
         if not su.common.which(tool):
             logger.error(tool + "exe not found on path! Quitting.")
             sys.exit(1)
 
     # check files exist and get abs paths. Necessary since we switch folders.
-    depend_paths = [args.fastq1, args.fastq2, args.fasta, args.gtf, args.transcripts,
+    depend_paths = [args.fastq1, args.fastq2, args.fasta, args.gtf,
                     args.bed_file, args.star_jxns, args.star_sam, args.star_bam]
     for f_item in depend_paths:
         if f_item:
@@ -322,13 +326,15 @@ def main():
                            "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
                            "dist", "assembly", "assembly_cross_disp", "primers", "name",
                            "span_homology_score", "jxn_homology_score", "overhang_diversity",
-                           "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right", "disposition"]
+                           "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right",
+                           "Max_Trx_Fusion","disposition"]
         breakpoint_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
                              "DISTANCE", "ASSEMBLED_CONTIGS", "ASSEMBLY_CROSS_JXN", "PRIMERS", "ID",
                              "SPAN_CROSSHOM_SCORE", "JXN_CROSSHOM_SCORE", "OVERHANG_DIVERSITY",
-                             "MINFRAG20", "MINFRAG35", "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT", "DISPOSITION"]
+                             "MINFRAG20", "MINFRAG35", "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT",
+                             "MAX_TRX_FUSION", "DISPOSITION"]
         print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
         # stats dict
@@ -435,10 +441,9 @@ def main():
             su.common.pandas_parallel(jxn_filt, wrap_exons2seq, args.threads, args.fasta, chim_trx_dir)
 
             # Get salmon quant for left, right, fusion transcripts
-            if args.transcripts:
-                salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads, args.transcripts)
-            else:
-                salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads)
+            ref_transcripts = "ref_transcripts.fa"
+            su.gtf_convert.gtf2trxfasta(args.gtf, args.fasta, ref_transcripts, cds=False)
+            salmon_df = su.salmon_quant.wrap_salmon(chim_trx_dir, args.fastq1, args.fastq2, args.library, args.threads, ref_transcripts)
 
             # merge salmon results
             logger.info("Merging salmon results with other metrics")
