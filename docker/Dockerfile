@@ -35,6 +35,10 @@ WORKDIR /opt
 RUN git clone https://github.com/alexdobin/STAR.git /opt/STAR
 ENV PATH /opt/STAR/bin/Linux_x86_64_static/:$PATH
 
+RUN wget http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.Linux_x86_64.tar.gz && \
+    tar -zxvf gffread-0.9.8c.Linux_x86_64.tar.gz
+ENV PATH /opt/gffread-0.9.8c.Linux_x86_64/:$PATH
+
 RUN conda config --add channels conda-forge && \
     conda config --add channels defaults && \
     conda config --add channels r && \
