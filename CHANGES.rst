@@ -52,5 +52,7 @@ STAR-SEQRv0.4.0:
 STAR-SEQRv0.5.0:
  * Creates a central folder "chimeric_transcripts" for all fasta files.
  * Functions now pull fastas from central chimeric transcript folder
+ * Reference transcripts are now extracted directly from the GTF. The (-x) parameter is no longer in use.
  * Multimapping homologous fusions are considered through a network graph approach where homology and expression are used to prune clusters. If homologous the highest expressing homolog passes the filter. If they share a breakpoint but are not considered homologoues, then all partners pass the filter.
+ * The highest expressing fusion transcript is now part of the output
  * Primers are now generated from the highest expressing transcript.
