@@ -51,6 +51,6 @@ RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.5.1.tar.gz  
 # Install items for basespace
 RUN pip install awscli
 
-COPY ../devtools/run_basespace.py /opt/
+COPY run_basespace.py /opt/
 
 ENV PATH /opt/run_basespace.py:$PATH
