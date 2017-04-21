@@ -327,7 +327,7 @@ def main():
                            "dist", "assembly", "assembly_cross_disp", "primers", "name",
                            "span_homology_score", "jxn_homology_score", "overhang_diversity",
                            "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right",
-                           "Max_Trx_Fusion","disposition"]
+                           "Max_Trx_Fusion", "disposition"]
         breakpoint_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
@@ -369,6 +369,7 @@ def main():
         jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, dd)
 
         # TODO: # Get spans without junctions and do special processing
+        # jxn_filt.to_csv(path_or_buf="All_breakpoints.txt", header=True, sep="\t", mode='w', index=False)
 
         # Require at least two reads for processing in order to reduce run time or 1 read with sufficient overhang
         logger.info('Filtering junctions')
@@ -568,8 +569,8 @@ def main():
 
             # Hard filter on basequalities. Require 20% and at least 1 of reads to have meanbq>10.
             finaldf['filter_BQ'] = (((finaldf['overhang_BQ'] >= finaldf['jxn_first'] * .2) & (finaldf['overhang_BQ'] >= 1)) &
-                                      ((finaldf['jxn_BQ'] >= finaldf['jxn_first'] * .2) & (finaldf['jxn_BQ'] >= 1)) &
-                                      (finaldf['span_BQ'] >= finaldf['spans_disc'] * .2))
+                                    ((finaldf['jxn_BQ'] >= finaldf['jxn_first'] * .2) & (finaldf['jxn_BQ'] >= 1)) &
+                                    (finaldf['span_BQ'] >= finaldf['spans_disc'] * .2))
             finaldf['filter_BQ'].replace(to_replace=[False], value='bq10', inplace=True, method=None)
 
             # Hard filter to require non-canonical splicing events to have greater read support and at least 10% with minfrag35
@@ -584,9 +585,9 @@ def main():
                                                (nospan_mask['minfrag20'] >= 1))
             finaldf['filter_nospanminfrag'].replace(to_replace=[False], value='nospan_minfrag', inplace=True, method=None)
 
-            # Hard filter to require at least 10% of reads to pass minfrag20 if jxn reads > 10
-            highjxn_mask = finaldf[finaldf["jxn_first"] >= 10]
-            finaldf['filter_minfrag'] = (highjxn_mask['minfrag20'] >= highjxn_mask['jxn_first'] * .1)
+            # Hard filter to require at least 1% of reads to pass minfrag20 if jxn reads > 100
+            highjxn_mask = finaldf[finaldf["jxn_first"] >= 100]
+            finaldf['filter_minfrag'] = (highjxn_mask['minfrag20'] >= highjxn_mask['jxn_first'] * .01)
             finaldf['filter_minfrag'].replace(to_replace=[False], value='minfrag', inplace=True, method=None)
 
             # Hard filter to require a > 0 TPM value for the fusion
