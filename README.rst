@@ -1,4 +1,4 @@
-|Travis| |Pypi|
+|Travis| |Pypi| |Conda|
 
 =========
 STAR-SEQR
@@ -33,17 +33,17 @@ Or from Docker:
 Or from Bioconda:
 ::
 
-    **pending approval**
+    conda install starseqr
 
 
 **Additional Requirements**
  - biobambam2(https://github.com/gt1/biobambam2) or conda install biobambam
- - STAR(https://github.com/alexdobin/STAR). Must use master branch currently
+ - STAR(https://github.com/alexdobin/STAR). Must use >2.5.3a. conda install star
  - Velvet(https://github.com/dzerbino/velvet) or conda install velvet
  - samtools(https://github.com/samtools/samtools) or conda install samtools
  - Salmon(https://combine-lab.github.io/salmon/) or conda install salmon
  - UCSC utils(http://hgdownload.soe.ucsc.edu/admin/exe/) or conda install ucsc-gtftogenepred
- - gffread(http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.tar.gz)
+ - gffread(http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.tar.gz) or conda install gffread
 
 
 Build a STAR Index
@@ -157,3 +157,5 @@ This project builds of the groundwork of other public contributions. Namely:
 .. |Pypi| image:: https://badge.fury.io/py/starseqr.svg
     :target: https://badge.fury.io/py/starseqr
 
+.. |Conda| image:: https://anaconda.org/bioconda/starseqr/badges/installer/conda.svg
+    :target: https://bioconda.github.io/recipes/starseqr/README.html
