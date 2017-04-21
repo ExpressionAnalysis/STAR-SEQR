@@ -56,3 +56,8 @@ STAR-SEQRv0.5.0:
  * Multimapping homologous fusions are considered through a network graph approach where homology and expression are used to prune clusters. If homologous the highest expressing homolog passes the filter. If they share a breakpoint but are not considered homologoues, then all partners pass the filter.
  * The highest expressing fusion transcript is now part of the output
  * Primers are now generated from the highest expressing transcript.
+
+STAR-SEQRv0.5.1:
+ * Added bioconda recipe
+ * Updated basespace script
+ * Modified threshold for num of jxns to minfrag20 ratio from 10% to 1%. This filter was removing TPs in some datasets and other filters are catching FPs in our training datasets.
