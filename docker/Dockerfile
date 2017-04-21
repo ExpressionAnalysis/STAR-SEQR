@@ -32,24 +32,17 @@ CMD [ "/bin/bash" ]
 WORKDIR /opt
 
 #Install new STAR
-RUN git clone https://github.com/alexdobin/STAR.git /opt/STAR
-ENV PATH /opt/STAR/bin/Linux_x86_64_static/:$PATH
-
-RUN wget http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.Linux_x86_64.tar.gz && \
-    tar -zxvf gffread-0.9.8c.Linux_x86_64.tar.gz
-ENV PATH /opt/gffread-0.9.8c.Linux_x86_64/:$PATH
-
 RUN conda config --add channels conda-forge && \
     conda config --add channels defaults && \
     conda config --add channels r && \
     conda config --add channels bioconda && \
-    conda install -y pip nose coverage cython pysam pandas samtools biobambam velvet ucsc-gtftogenepred salmon && \
+    conda install -y pip nose coverage cython pysam pandas samtools biobambam velvet ucsc-gtftogenepred salmon star gffread && \
     conda clean -ilty
 
 # Install STAR-SEQR
-RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.5.0.tar.gz  && \
-    tar -zxvf v0.5.0.tar.gz && \
-    cd STAR-SEQR-0.5.0 && \
+RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.5.1.tar.gz  && \
+    tar -zxvf v0.5.1.tar.gz && \
+    cd STAR-SEQR-0.5.1 && \
     python setup.py build && \
     python setup.py install && \
     python setup.py clean && \
@@ -58,6 +51,6 @@ RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v0.5.0.tar.gz  
 # Install items for basespace
 RUN pip install awscli
 
-COPY run_basespace.py /opt/
+COPY ../devtools/run_basespace.py /opt/
 
 ENV PATH /opt/run_basespace.py:$PATH

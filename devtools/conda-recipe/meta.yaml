@@ -1,11 +1,11 @@
 package:
   name: starseqr
-  version: "0.5.0"
+  version: "0.5.1"
 
 source:
-  fn: starseqr-0.5.0.tar.gz
-  url: https://pypi.python.org/packages/b1/88/af89ea23d199ec6a614226c1d53dd1003110c67efa3f4f35952e5dc13ec4/starseqr-0.5.0.tar.gz
-  md5: 20dfef835d705703476510c9b1be9c7e
+  fn: starseqr-0.5.1.tar.gz
+  url: https://pypi.python.org/packages/9b/ec/94454022bd6fb7b198d335914ec3d43a9f322e63e29fb46f4b937bb37f49/starseqr-0.5.1.tar.gz
+  md5: 58b7190543f93482a47d16bd79b2e88f
 
 build:
   number: 0
@@ -53,5 +53,5 @@ test:
 
 about:
   home: https://github.com/ExpressionAnalysis/STAR-SEQR
-  license: ../../LICENSE
+  license: https://github.com/ExpressionAnalysis/STAR-SEQR/blob/master/LICENSE
   summary: RNA Fusion Detection and Quantification
