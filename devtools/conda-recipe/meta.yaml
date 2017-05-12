@@ -26,6 +26,11 @@ requirements:
     - pysam >=0.9.1.4
     - primer3-py
     - intervaltree_bio
+    - biobambam # [linux]
+    - star
+    - velvet
+    - ucsc-gtftogenepred
+    - salmon
 
   run:
     - python
@@ -38,6 +43,12 @@ requirements:
     - pysam >=0.9.1.4
     - primer3-py
     - intervaltree_bio
+    - biobambam # [linux]
+    - star
+    - velvet
+    - ucsc-gtftogenepred
+    - salmon
+
 
 test:
   imports:
