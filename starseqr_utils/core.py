@@ -390,7 +390,7 @@ def write_bedpe(file_in, file_out):
                     posR = int(valsR[1])
                     strandR = valsR[2]
                     total_uniqreads = int(vals[1]) + int(vals[2]) + int(vals[3])
-                    quant = vals[23]
+                    quant = vals[34]
                     bedpe_line = [chrL, posL, posL + 1,
                                   chrR, posR, posR + 1,
                                   fusion_name, total_uniqreads,
