@@ -326,14 +326,24 @@ def main():
                            "left_symbol", "right_symbol", "ann_format", "left_annot", "right_annot",
                            "dist", "assembly", "assembly_cross_disp", "primers", "name",
                            "span_homology_score", "jxn_homology_score", "overhang_diversity",
-                           "minfrag20", "minfrag35", "TPM_Fusion", "TPM_Left", "TPM_Right",
+                           "minfrag20", "minfrag35",
+                           "avg_overhang_BQ", "avg_span_BQ", "avg_jxn_BQ",
+                           "overhang_BQ", "span_BQ", "jxn_BQ",
+                           "overhang_mm", "span_mm", "jxn_mm",
+                           "overhang_meanlen", "span_meanlen", "jxn_meanlen",
+                           "TPM_Fusion", "TPM_Left", "TPM_Right",
                            "Max_Trx_Fusion", "disposition"]
         breakpoint_header = ["NAME", "NREAD_SPANS", "NREAD_JXNLEFT", "NREAD_JXNRIGHT",
                              "FUSION_CLASS", "SPLICE_TYPE", "BRKPT_LEFT", "BRKPT_RIGHT",
                              "LEFT_SYMBOL", "RIGHT_SYMBOL", "ANNOT_FORMAT", "LEFT_ANNOT", "RIGHT_ANNOT",
                              "DISTANCE", "ASSEMBLED_CONTIGS", "ASSEMBLY_CROSS_JXN", "PRIMERS", "ID",
                              "SPAN_CROSSHOM_SCORE", "JXN_CROSSHOM_SCORE", "OVERHANG_DIVERSITY",
-                             "MINFRAG20", "MINFRAG35", "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT",
+                             "MINFRAG20", "MINFRAG35",
+                             "OVERHANG_MEANBQ", "SPAN_MEANBQ", "JXN_MEANBQ",
+                             "OVERHANG_BQ15", "SPAN_BQ15", "JXN_BQ15",
+                             "OVERHANG_MM", "SPAN_MM", "JXN_MM",
+                             "OVERHANG_MEANLEN", "SPAN_MEANLEN", "JXN_MEANLEN",
+                             "TPM_FUSION", "TPM_LEFT", "TPM_RIGHT",
                              "MAX_TRX_FUSION", "DISPOSITION"]
         print('\t'.join(map(str, breakpoint_header)), file=breakpoints_fh)
 
@@ -374,9 +384,9 @@ def main():
         # Require at least two reads for processing in order to reduce run time or 1 read with sufficient overhang
         logger.info('Filtering junctions')
         before_remove = len(jxn_filt.index)
-        jxn_filt = jxn_filt[(((jxn_filt['spans'].astype(int) + jxn_filt['jxn_counts'].astype(int)) >= 2) |
-                             (jxn_filt['max_overhang'].astype(int) >= 30))]  # reads with 1 jxn but sufficient overhang
-        logger.info('Number of candidates removed due to read support less than 2 or just 1 with short overhang: ' +
+        jxn_filt = jxn_filt[(((jxn_filt['spans'].astype(int) + jxn_filt['jxn_counts'].astype(int)) >= 2))]
+        #                     (jxn_filt['max_overhang'].astype(int) >= 30))]  # reads with 1 jxn but sufficient overhang
+        logger.info('Number of candidates removed due to read support less than 2: ' +
                     str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
@@ -523,9 +533,9 @@ def main():
             finaldf = su.common.pandas_parallel(finaldf, apply_get_fusion_class, args.threads)
 
             # Extract BaseQualities
-            finaldf['overhang_meanBQ'] = su.core.mean_from_cols(finaldf, '^hang.*meanBQ')
-            finaldf['jxn_meanBQ'] = su.core.mean_from_cols(finaldf, '^jxn.*meanBQ')
-            finaldf['span_meanBQ'] = su.core.mean_from_cols(finaldf, '^span.*meanBQ')
+            finaldf['avg_overhang_BQ'] = su.core.mean_from_cols(finaldf, '^hang.*meanBQ')
+            finaldf['avg_jxn_BQ'] = su.core.mean_from_cols(finaldf, '^jxn.*meanBQ')
+            finaldf['avg_span_BQ'] = su.core.mean_from_cols(finaldf, '^span.*meanBQ')
             # get bq thresh counts
             finaldf['overhang_BQ'] = su.core.minvalcnts_from_cols(finaldf, '^hang.*meanBQ', 15)
             finaldf['jxn_BQ'] = su.core.minvalcnts_from_cols(finaldf, '^jxn.*meanBQ', 15)
@@ -563,8 +573,10 @@ def main():
             finaldf['homology_collapse'].replace(to_replace=[False], value='homology_collapse', inplace=True, method=None)
 
             # Hard filter on unique overhangs. Requre at least 20% of overhangs to be unique if less than 10
-            finaldf['filter_diversity'] = ((finaldf['overhang_diversity'] >= finaldf['jxn_first'] * .2) |
-                                           (finaldf['overhang_diversity'] >= 10))
+            finaldf['diversity1'] = (finaldf['jxn_left'] + 1) / (finaldf['overhang_diversity'] + 1)
+            finaldf['diversity2'] = (finaldf['jxn_left'] + 1) / (finaldf['overhang_diversity'] + 1) ** 2
+            finaldf['filter_diversity'] = (((finaldf['diversity1'] <= 4) | (finaldf['overhang_diversity'] >= 15)) &
+                                           ((finaldf['diversity2'] < .75) | (finaldf['overhang_diversity'] >= 15)))
             finaldf['filter_diversity'].replace(to_replace=[False], value='diversity', inplace=True, method=None)
 
             # Hard filter on basequalities. Require 20% and at least 1 of reads to have meanbq>10.
@@ -585,20 +597,14 @@ def main():
                                                (nospan_mask['minfrag20'] >= 1))
             finaldf['filter_nospanminfrag'].replace(to_replace=[False], value='nospan_minfrag', inplace=True, method=None)
 
-            # Hard filter to require at least 1% of reads to pass minfrag20 if jxn reads > 100
-            highjxn_mask = finaldf[finaldf["jxn_first"] >= 100]
-            finaldf['filter_minfrag'] = (highjxn_mask['minfrag20'] >= highjxn_mask['jxn_first'] * .01)
+            # Hard filter to require ratio of  minfrag20 of jxn reads
+            finaldf['jxnminfragratio'] = (finaldf['jxn_left'] + 1) / (finaldf['minfrag20'] + 1)
+            finaldf['filter_minfrag'] = ((finaldf['jxnminfragratio'] < 4) | (finaldf['overhang_diversity'] >= 5))
             finaldf['filter_minfrag'].replace(to_replace=[False], value='minfrag', inplace=True, method=None)
 
             # Hard filter to require a > 0 TPM value for the fusion
             finaldf['filter_expression'] = (finaldf['TPM_Fusion'] > 0)
             finaldf['filter_expression'].replace(to_replace=[False], value='expression', inplace=True, method=None)
-
-            # Filter expression ratio with low reads to have minimal 1% abundance among left/right/chimeric.
-            # finaldf['TPM_Ratio'] = finaldf['TPM_Fusion'] / (finaldf['TPM_Right'] + finaldf['TPM_Left'] + 1e-9)
-            # lowcount_mask = finaldf[finaldf['Chimeric_Counts'] == 1]
-            # finaldf['filter_ExpressionRatio'] = (lowcount_mask['TPM_Ratio'] >= .01)  # Require > 1% of fusion transcript
-            # finaldf['filter_ExpressionRatio'].replace(to_replace=[False], value='ExpressionRatio', inplace=True, method=None)
 
             # Get the final disposition of filtering
             finaldf['filter_all'] = finaldf[['filter_minreads', 'filter_homology',
