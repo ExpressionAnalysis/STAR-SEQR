@@ -16,6 +16,12 @@ Contributing:
  * Please add updates to **CHANGES.rst** which will be used for release notes
 
 
+Local Tests:
+ * python setup.py build
+ * python setup.py install
+ * nosetests
+ * check py2 and py3 environments if possible
+
 Deployment
 ----------
 
@@ -28,12 +34,12 @@ PypI Release:
       pypitest
 
     [pypi]
-    repository=https://pypi.python.org/pypi
+    repository=https://upload.pypi.org/legacy/
     username=<NAME>
     password=<PASS>
 
     [pypitest]
-    repository=https://testpypi.python.org/pypi
+    repository=https://test.pypi.org/legacy/
     username=<NAME>
     password=<PASS>
 
@@ -42,7 +48,7 @@ PypI Release:
         # test
         python setup.py sdist
         twine upload dist/* -r pypitest
-        pip install -U --pre -i https://testpypi.python.org/pypi  starseqr
+        pip install -U --pre -i https://test.pypi.org/legacy/  starseqr
 
         # final
         python setup.py sdist

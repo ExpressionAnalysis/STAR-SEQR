@@ -23,9 +23,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="STAR-SEQR Parameters:", epilog=usage)
     # create STAR alignment
     group1 = parser.add_argument_group('Do Alignment', '')
-    group1.add_argument('-1', '--fastq1', type=str, required=True, action=FullPaths,
+    group1.add_argument('-1', '--fastq1', type=str, required=False, action=FullPaths,
                         help='fastq.gz 1(.gz)')
-    group1.add_argument('-2', '--fastq2', type=str, required=True, action=FullPaths,
+    group1.add_argument('-2', '--fastq2', type=str, required=False, action=FullPaths,
                         help='fastq.gz 2(.gz)')
     group1.add_argument('-i', '--star_index', type=str, required=False, action=FullPaths,
                         help='path to STAR index folder')
