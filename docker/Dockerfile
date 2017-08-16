@@ -4,7 +4,7 @@ MAINTAINER Jeff Jasper jasper1918@gmail.com
 
 RUN apt-get -y update --fix-missing && \
     apt-get install -y curl wget gzip bzip2 unzip git \
-    g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev \
+    g++ make libboost-dev libboost-thread-dev libboost-system-dev zlib1g-dev ncurses-dev locales\
     libglib2.0-0 libxext6 libsm6 libxrender1 libxml2-dev libxslt-dev ca-certificates git gcc libdb5.3 libdb5.3-dev libcurl4-openssl-dev && \
     apt-get clean && dpkg-reconfigure locales && locale-gen en_US.UTF-8 && \
     apt-get autoremove && \
