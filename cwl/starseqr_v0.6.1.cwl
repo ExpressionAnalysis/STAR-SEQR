@@ -23,10 +23,7 @@ baseCommand: ['starseqr.py']
 
 inputs:
   star_index_dir:
-    type: Directory
-    inputBinding:
-      prefix: -i
-      position: 3
+    type: Directory?
 
   fq1:
     type: File?
@@ -59,16 +56,10 @@ inputs:
       position: 2
 
   genome_fasta:
-    type: File
-    inputBinding:
-      prefix: -r
-      position: 3
+    type: File?
 
   transcript_gtf:
-    type: File
-    inputBinding:
-      prefix: -g
-      position: 3
+    type: File?
 
   name_prefix:
     type: string
@@ -95,3 +86,16 @@ outputs:
     type: File
     outputBinding:
       glob: $(inputs.name_prefix + '_STAR-SEQR' + '/' + inputs.name_prefix + '_STAR-SEQR_breakpoints.bedpe')
+  starseqr_text:
+    type: File
+    outputBinding:
+      glob: $(inputs.name_prefix + '_STAR-SEQR' + '/' + inputs.name_prefix + '_STAR-SEQR_breakpoints.txt')
+
+arguments:
+  - valueFrom: $(inputs.transcript_gtf.basename)
+    position: 3
+    prefix: '-g'
+
+  - valueFrom: $(inputs.genome_fasta.basename)
+    position: 3
+    prefix: '-r'

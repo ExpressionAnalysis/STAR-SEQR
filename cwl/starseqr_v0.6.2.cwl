@@ -26,13 +26,13 @@ inputs:
     type: Directory?
 
   fq1:
-    type: File?
+    type: File
     inputBinding:
       prefix: '-1'
       position: 1
 
   fq2:
-    type: File?
+    type: File
     inputBinding:
       prefix: '-2'
       position: 2
