@@ -23,9 +23,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="STAR-SEQR Parameters:", epilog=usage)
     # create STAR alignment
     group1 = parser.add_argument_group('Do Alignment', '')
-    group1.add_argument('-1', '--fastq1', type=str, required=False, action=FullPaths,
+    group1.add_argument('-1', '--fastq1', type=str, required=True, action=FullPaths,
                         help='fastq.gz 1(.gz)')
-    group1.add_argument('-2', '--fastq2', type=str, required=False, action=FullPaths,
+    group1.add_argument('-2', '--fastq2', type=str, required=True, action=FullPaths,
                         help='fastq.gz 2(.gz)')
     group1.add_argument('-i', '--star_index', type=str, required=False, action=FullPaths,
                         help='path to STAR index folder')
@@ -67,8 +67,8 @@ def parse_args():
                         help='nucleic acid type',
                         choices=["RNA", "DNA"])
     parser.add_argument('-l', '--library', type=str, required=False,
-                        default="ISF",
-                        help='salmon library type(ISF, ISR, etc)')
+                        default="A",
+                        help='salmon library type(A, ISF, ISR, etc)')
     parser.add_argument('-t', '--threads', type=int, required=False,
                         default=8,
                         help='Number of threads to use for STAR and STAR-SEQR. 4-12 recommended.')
@@ -306,17 +306,19 @@ def main():
             su.common.force_symlink(args.star_bam, args.prefix + ".Chimeric.out.bam")
 
     # import all jxns
-    rawdf = su.core.import_starjxns(args.prefix + ".Chimeric.out.junction", args.keep_dups)
+    rawdf = su.core.import_starjxns(args.prefix + ".Chimeric.out.junction", args.keep_dups, args.keep_mito)
 
     # get overhang match len
-    rawdf = su.common.pandas_parallel(rawdf, apply_cigar_overhang, args.threads)
+    rawdf = su.common.pandas_parallel(rawdf, apply_cigar_overhang, args.threads, "map_async", "")
 
     # get jxns only
     jxns = rawdf[rawdf['jxntype'] >= 0].reset_index()  # junctions can be either 0, 1, 2
 
     # Prepare Annotation
     global gtree  # necessary to make global for multiprocessing at the moment
-    gtree = su.gtf_convert.gtf2tree(args.gtf)
+    # symlink gtf locally to get around staging issues
+    su.common.force_symlink(args.gtf, os.path.basename(args.gtf))
+    gtree = su.gtf_convert.gtf2tree(os.path.basename(args.gtf))
 
     if args.nucleic_type == "RNA":
         # start output files
@@ -359,10 +361,10 @@ def main():
         logger.info("Ordering junctions")
         jxns['order'] = 1
         logger.info('Normalizing junctions')
-        jxns = su.common.pandas_parallel(jxns, apply_normalize_jxns, args.threads)
+        jxns = su.common.pandas_parallel(jxns, apply_normalize_jxns, args.threads, "map_async", "")
         logger.info("Getting gene strand and flipping info as necessary")
-        jxns = su.common.pandas_parallel(jxns, apply_jxn_strand, args.threads)
-        jxns = su.common.pandas_parallel(jxns, apply_flip_func, args.threads)
+        jxns = su.common.pandas_parallel(jxns, apply_jxn_strand, args.threads, "map_async", "")
+        jxns = su.common.pandas_parallel(jxns, apply_flip_func, args.threads, "map_async", "")
         logger.info("Aggregating junctions")
         jxn_summary = su.core.count_jxns(jxns, args.nucleic_type)
 
@@ -376,7 +378,7 @@ def main():
         dd = {}
         for chrom in set(rawdf['chrom1'].unique()) | set(rawdf['chrom2'].unique()):
             dd[chrom] = rawdf[(rawdf['chrom1'] == chrom) & (rawdf['jxntype'] == -1)]
-        jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, dd)
+        jxn_filt = su.common.pandas_parallel(jxn_summary, apply_pairs_func, args.threads, "map_async", "", dd)
 
         # TODO: # Get spans without junctions and do special processing
         # jxn_filt.to_csv(path_or_buf="All_breakpoints.txt", header=True, sep="\t", mode='w', index=False)
@@ -392,11 +394,11 @@ def main():
         if len(jxn_filt.index) >= 1:
             # Get Annotation info for each junction
             logger.info('Annotating junctions')
-            jxn_filt = su.common.pandas_parallel(jxn_filt, wrap_annotate_junctions, args.threads)
+            jxn_filt = su.common.pandas_parallel(jxn_filt, wrap_annotate_junctions, args.threads, "map_async", "")
 
             # determine if junction follows canonical splicing at exon junction
             logger.info('Getting junction info')
-            jxn_filt = su.common.pandas_parallel(jxn_filt, wrap_jxn_info, args.threads)
+            jxn_filt = su.common.pandas_parallel(jxn_filt, wrap_jxn_info, args.threads, "map_async", "")
 
             # subset to ROI using bed file if it exists
             if args.bed_file:
@@ -423,12 +425,6 @@ def main():
                                 (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA"))]
             logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
-        if len(jxn_filt.index) >= 1:
-            # remove mitochondria unless otherwise requested
-            if not args.keep_mito:
-                before_remove = len(jxn_filt.index)
-                jxn_filt = jxn_filt[~jxn_filt['name'].str.contains("chrM|MT")]
-                logger.info("Number of candidates removed due to Mitochondria filter: " + str(before_remove - len(jxn_filt.index)))
 
         if len(jxn_filt.index) >= 1:
             # remove non-canonical jxns with less than 3 reads here to reduce run time
@@ -449,7 +445,7 @@ def main():
             # Get potential fusion transcripts
             logger.info('Writing chimeric transcripts')
             chim_trx_dir = "chim_transcripts"
-            su.common.pandas_parallel(jxn_filt, wrap_exons2seq, args.threads, args.fasta, chim_trx_dir)
+            su.common.pandas_parallel(jxn_filt, wrap_exons2seq, args.threads, "map_async", "", args.fasta, chim_trx_dir)
 
             # Get salmon quant for left, right, fusion transcripts
             ref_transcripts = "ref_transcripts.fa"
@@ -481,7 +477,7 @@ def main():
             # Gather unique read support
             logger.info("Getting read support from BAM for each candidate junction:")
             su.common.make_new_dir('support')
-            support_df = su.common.pandas_parallel(jxn_filt, apply_get_rna_support, args.threads, star_bam_local, chimflag)
+            support_df = su.common.pandas_parallel(jxn_filt, apply_get_rna_support, args.threads, "map_async", "", star_bam_local, chimflag)
 
             finaldf = pd.merge(jxn_filt, support_df, how='inner', left_on="name", right_on="name", left_index=False,
                                right_index=True, sort=True, suffixes=('_x', '_y'), copy=True, indicator=False)
@@ -501,11 +497,11 @@ def main():
 
             # Get all overlapping transcript seqs into one fasta per side
             # writes fasta for each transcript per side(left, right, fusion) in support folder
-            su.common.pandas_parallel(finaldf, wrap_exons2seq, args.threads, args.fasta, "support")
+            su.common.pandas_parallel(finaldf, wrap_exons2seq, args.threads, "map_async", "", args.fasta, "support")
 
             # get homology mapping scores
             logger.info("Getting read homology mapping scores")
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_cross_homology, args.threads, chim_trx_dir)
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_cross_homology, args.threads, "map_async", "", chim_trx_dir)
 
             # get multimapping homologous names to mark
             logger.info("Getting fusions homology mapping scores")
@@ -513,16 +509,16 @@ def main():
 
             # get overhang read diversity
             logger.info("Getting overhang read diversity")
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_diversity, args.threads)
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_diversity, args.threads, "map_async", "")
 
             # get assembly seq and confirm breakpoint
             logger.info("doing assembly")
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_assembly_info, args.threads, args.as_type)
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_assembly_info, args.threads, "map_async", "", args.as_type)
             finaldf['assembly_cross_disp'] = finaldf['assembly_cross_fusions'].apply(lambda x: True if len(str(x)) > 1 else False)
 
             # Generate Primers
             logger.info("Generating primers using indexed fasta")
-            finaldf = su.common.pandas_parallel(finaldf, apply_primers_func, args.threads, chim_trx_dir)
+            finaldf = su.common.pandas_parallel(finaldf, apply_primers_func, args.threads, "map_async", "", chim_trx_dir)
 
             # Get normalized breakpoint locations
             logger.info("Getting normalized breakpoint locations")
@@ -530,7 +526,7 @@ def main():
 
             # get fusion class
             logger.info("Getting fusion classes")
-            finaldf = su.common.pandas_parallel(finaldf, apply_get_fusion_class, args.threads)
+            finaldf = su.common.pandas_parallel(finaldf, apply_get_fusion_class, args.threads, "map_async", "")
 
             # Extract BaseQualities
             finaldf['avg_overhang_BQ'] = su.core.mean_from_cols(finaldf, '^hang.*meanBQ')
@@ -660,9 +656,9 @@ def main():
 
         # Order, Normalize and Aggregate
         logger.info("Ordering junctions")
-        jxns = su.common.pandas_parallel(jxns, apply_choose_order, args.threads)
+        jxns = su.common.pandas_parallel(jxns, apply_choose_order, args.threads, "map_async", "")
         logger.info('Normalizing junctions')
-        jxns = su.common.pandas_parallel(jxns, apply_normalize_jxns, args.threads)
+        jxns = su.common.pandas_parallel(jxns, apply_normalize_jxns, args.threads, "map_async", "")
         logger.info("Aggregating junctions")
         jxn_summary = su.core.count_jxns(jxns, nucleic_type="DNA")
         # get distance
@@ -710,7 +706,7 @@ def main():
             dd = {}
             for chrom in set(rawdf['chrom1'].unique()) | set(rawdf['chrom2'].unique()):
                 dd[chrom] = rawdf[(rawdf['chrom1'] == chrom) & (rawdf['jxntype'] == -1)]
-            jxn_filt = su.common.pandas_parallel(jxn_filt, apply_pairs_func, args.threads, dd)
+            jxn_filt = su.common.pandas_parallel(jxn_filt, apply_pairs_func, args.threads, "map_async", "", dd)
             logger.info('Filtering junctions based on pairs')
             jxn_filt = jxn_filt[(jxn_filt['spans'] >= args.span_reads)]
 
