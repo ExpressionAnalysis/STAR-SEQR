@@ -66,6 +66,13 @@ STAR-SEQRv0.5.1:
  * With a compendia of training data tweaked thresholds to keep FP from exploding in especially noisy samples such as FFPE.
  * Added more info columns to the output
 
-  STAR-SEQRv0.6.1:
+STAR-SEQRv0.6.1:
  * Fixed a bug where fastq input was marked required but would break when run using existing alignments
  * Added cwl for starseqr
+
+STAR-SEQRv0.6.2:
+ * Changed map multiprocessing to map_async which leads to overall better performance
+ * Filters mitochondria junctions earlier in the process which also imporoves performance
+ * symlink gtf into folder and make table locally rather than externally. Helpful for CWL
+ * changed memory to low requirement for pandas read_csv to avoid segfaults on large inputs
+ * use salmon "A" library type
