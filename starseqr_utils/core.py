@@ -24,11 +24,11 @@ except AttributeError:
 logger = logging.getLogger('STAR-SEQR')
 
 
-def import_starjxns(jxnFile, keep_dups=False):
-    ''' read star jxns file and optionally remove dups'''
+def import_starjxns(jxnFile, keep_dups=False, keep_mt=False):
+    ''' read star jxns file and optionally remove dups and MT'''
     logger.info('Importing junctions')
     try:
-        df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=False, engine='c')
+        df = pd.read_csv(jxnFile, sep="\t", header=None, usecols=range(0, 14), low_memory=True, engine='c')
         df.columns = ['chrom1', 'pos1', 'str1', 'chrom2', 'pos2', 'str2',
                       'jxntype', 'jxnleft', 'jxnright', 'readid',
                       'base1', 'cigar1', 'base2', 'cigar2']
@@ -37,6 +37,11 @@ def import_starjxns(jxnFile, keep_dups=False):
         df['pos2'] = df['pos2'].astype(float).astype(int)
         df['identity'] = df['base1'].astype(str) + ':' + df['cigar1'].astype(str) + ':' + df['base2'].astype(str) + ':' + df['cigar2'].astype(str)
         # df.drop(['base1', 'cigar1', 'base2', 'cigar2'], axis=1, inplace=True)
+        if not keep_mt:
+            before_remove = len(df.index)
+            df = df[~df['chrom1'].str.contains("chrM|MT")]
+            df = df[~df['chrom2'].str.contains("chrM|MT")]
+            logger.info("Number of candidates removed due to Mitochondria filter: " + str(before_remove - len(df.index)))
         if not keep_dups:
             logger.info("Removing duplicate reads")
             return df.drop_duplicates(subset=['identity'], keep='first')
