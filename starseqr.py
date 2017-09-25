@@ -420,9 +420,11 @@ def main():
             # remove novel genes unless otherwise requested
             # if not args.keep_novel:
             before_remove = len(jxn_filt.index)
-            jxn_filt = jxn_filt[((jxn_filt['left_symbol'] != "NA") & (jxn_filt['right_symbol'] != "NA"))]  # No Gene Symbol
-            jxn_filt = jxn_filt[((jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") &  # No Exon number
-                                (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA"))]
+            jxn_filt.to_csv(path_or_buf="test_debug.txt", header=True, sep="\t", mode='w', index=False)
+            jxn_filt = jxn_filt[((jxn_filt['left_symbol'] != "NA") &
+                                 (jxn_filt['right_symbol'] != "NA") &
+                                 (jxn_filt['left_annot'].str.split(':', expand=True)[3] != "NA") &  # No Exon number
+                                 (jxn_filt['right_annot'].str.split(':', expand=True)[3] != "NA"))]
             logger.info("Number of candidates removed due to novel gene filter: " + str(before_remove - len(jxn_filt.index)))
 
 
