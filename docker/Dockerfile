@@ -40,7 +40,7 @@ RUN conda config --add channels conda-forge && \
     conda clean -ilty
 
 # Install STAR-SEQR
-ENV STARSEQR_VERSION  0.6.2
+ENV STARSEQR_VERSION  0.6.3
 RUN wget https://github.com/ExpressionAnalysis/STAR-SEQR/archive/v${STARSEQR_VERSION}.tar.gz  && \
     tar -zxvf v${STARSEQR_VERSION}.tar.gz && \
     cd STAR-SEQR-${STARSEQR_VERSION} && \
