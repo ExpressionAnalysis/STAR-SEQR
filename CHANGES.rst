@@ -76,3 +76,7 @@ STAR-SEQRv0.6.2:
  * symlink gtf into folder and make table locally rather than externally. Helpful for CWL
  * changed memory to low requirement for pandas read_csv to avoid segfaults on large inputs
  * use salmon "A" library type
+
+STAR-SEQRv0.6.3:
+ * fixed a filtering step that would die if all junctions were based on previous filtering
+ *
