@@ -11,7 +11,7 @@ Post-alignment run times are typically <20 minutes using 4 threads.  Development
 Installation
 ------------
 
-This package is tested under Linux using Python 2.7, 3.4, and 3.5.
+This package is tested under Linux using Python 2.7, 3.4, 3.5, and 3.6.
 
 You can install from Pypi. Please use a recent version of pip and cython:
 ::
