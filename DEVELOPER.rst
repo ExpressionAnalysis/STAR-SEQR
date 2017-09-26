@@ -55,6 +55,10 @@ PypI Release:
         twine upload dist/* -r pypi
         pip install -U starseqr
 
+* Draft a release in github
+    * tag v0.x.x
+    * name STAR-SEQRv0.x.x
+    * add changes from CHANGES.rst
 
 Docker:
  * Update release in docker/Dockerfile

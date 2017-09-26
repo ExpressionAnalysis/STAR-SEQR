@@ -79,4 +79,3 @@ STAR-SEQRv0.6.2:
 
 STAR-SEQRv0.6.3:
  * fixed a filtering step that would die if all junctions were based on previous filtering
- *
