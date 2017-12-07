@@ -2,7 +2,7 @@
 
 ## This file is intended to be run using sudo
 
-VERSION=$(grep version ../starseqr_utils/__init__.py | cut -d "=" -f2 | tr -d " \t\n\r\"\'"s)
+VERSION=$(grep version ../../starseqr_utils/__init__.py | cut -d "=" -f2 | tr -d " \t\n\r\"\'"s)
 
 cmd0='service docker start'
 echo $cmd0
