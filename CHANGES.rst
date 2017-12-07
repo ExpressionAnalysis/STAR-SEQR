@@ -79,3 +79,7 @@ STAR-SEQRv0.6.2:
 
 STAR-SEQRv0.6.3:
  * fixed a filtering step that would die if all junctions were based on previous filtering
+
+STAR-SEQRv0.6.4:
+ * Allow prefix to be a string or a full path. Helpful for writing outside of current working directory.
+ * Removed DNA functions as this has been deprecated for some time.
