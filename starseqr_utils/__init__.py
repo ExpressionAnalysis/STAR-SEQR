@@ -11,6 +11,5 @@ import starseqr_utils.homology_graph
 import starseqr_utils.overhang_diversity
 import starseqr_utils.run_assembly
 import starseqr_utils.annotate_db
-import starseqr_utils.sv2bedpe
 
 __version__ = "0.6.4"
