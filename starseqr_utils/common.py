@@ -30,6 +30,41 @@ except AttributeError:
     from string import maketrans
 
 
+def init_log(name="STAR-SEQR", logfile=None, fileLevel=logging.DEBUG, consoleLevel=logging.INFO):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(module)s - %(levelname)s - %(message)s', "%Y-%m-%d %H:%M:%S")
+    trivialformatter = logging.Formatter('%(asctime)-15s - %(levelname)-4s - %(message)s', "%Y-%m-%d %H:%M")
+
+    # create file handler and set level to INFO
+    if logfile is None:
+        logfile =  sys.exit("No log file defined")
+    fh = logging.FileHandler(logfile)
+    fh.setLevel(fileLevel)
+    fh.setFormatter(trivialformatter)
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(consoleLevel)
+    ch.setFormatter(trivialformatter)
+
+    # add fh to logger
+    logger.addHandler(fh)
+
+    # Show full date time only in header,
+    logger.info('\n')
+    logger.info('#'*80)
+    logger.info('#{0:^78s}#'.format(os.getenv('USER') + time.strftime(" %x  %X")))
+    logger.info('#'*80)
+
+    # Now set to normal format
+    fh.setFormatter(formatter)
+    logger.addHandler(ch)
+    return logger
+
+
 def check_file_exists(path):
     if (os.stat(os.path.realpath(path)).st_size == 0):
         logger.error("Exiting. Cannot find file: " + os.path.abspath(path))
