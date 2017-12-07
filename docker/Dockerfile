@@ -55,3 +55,6 @@ RUN pip install awscli
 COPY run_basespace.py /opt/
 
 ENV PATH /opt/run_basespace.py:$PATH
+
+WORKDIR /data
+RUN chmod 777 /data
