@@ -56,7 +56,10 @@ def init_log(name="STAR-SEQR", logfile=None, fileLevel=logging.DEBUG, consoleLev
     # Show full date time only in header,
     logger.info('\n')
     logger.info('#'*80)
-    logger.info('#{0:^78s}#'.format(os.geteuid() + time.strftime(" %x  %X")))
+    this_user = str(os.geteuid())
+    if not this_user:
+        this_user = "USER"
+    logger.info('#{0:^78s}#'.format(this_user) + time.strftime(" %x  %X"))
     logger.info('#'*80)
 
     # Now set to normal format
