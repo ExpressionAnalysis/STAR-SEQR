@@ -116,16 +116,13 @@ def normalize_jxns(chrom1, chrom2, pos1, pos2, strand1, strand2, repleft, reprig
     return newid
 
 
-def count_jxns(df, nucleic_type="RNA"):
+def count_jxns(df):
     ''' aggregate jxn reads'''
     grouped_df = df.groupby(['name', 'order'], as_index=True)
     new_df = grouped_df.agg(OrderedDict([('readid', OrderedDict([('reads', lambda col: ','.join(
         col)), ('counts', 'count')])), ('overhang_len', 'max')])).reset_index()
     new_df = new_df.pivot(index='name', columns='order').reset_index()
-    if nucleic_type == "DNA":
-        new_df.columns = ['name', 'jxnreadsleft', 'jxnreadsright', 'jxnleft', 'jxnright', 'max_overhang']
-    elif nucleic_type == "RNA":
-        new_df.columns = ['name', 'jxn_reads', 'jxn_counts', 'max_overhang']
+    new_df.columns = ['name', 'jxn_reads', 'jxn_counts', 'max_overhang']
     return new_df
 
 
@@ -309,49 +306,6 @@ def get_fusion_class(jxn, txintersection):
             return "INTERCHROM_INVERTED"
         elif str1 != str2:
             return "INTERCHROM_INTERSTRAND"
-
-
-def get_svtype_func(jxn):
-    '''Used for DNA'''
-    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    chrom1 = str(chrom1)
-    chrom2 = str(chrom2)
-    str1 = str(str1)
-    str2 = str(str2)
-    if chrom1 != chrom2:
-        svtype = "TRANSLOCATION"
-    else:
-        # STAR notation is same as other tools after strand2 is flipped.
-        if str1 == "+" and str2 == "-":
-            svtype = "INVERSION"
-        elif str1 == "-" and str2 == "+":
-            svtype = "INVERSION"
-        elif str1 == "+" and str2 == "+":
-            svtype = "DELETION"
-        elif str1 == "-" and str2 == "-":
-            svtype = "DUPLICATION"
-    return svtype
-
-
-def get_sv_locations(jxn):
-    chrom1, pos1, str1, chrom2, pos2, str2, repleft, repright = re.split(':', jxn)
-    pos1 = int(pos1) - int(repright)
-    pos2 = int(pos2)
-    if str(str1) == "+" and str(str2) == "+":
-        pos1 -= 1
-        pos2 += 1
-    elif str(str1) == "-" and str(str2) == "-":
-        pos1 += 1
-        pos2 -= 1
-    elif str(str1) == "+" and str(str2) == "-":
-        pos1 -= 1
-        pos2 -= 1
-    elif str(str1) == "-" and str(str2) == "+":
-        pos1 += 1
-        pos2 += 1
-    brk1 = str(chrom1) + ":" + str(pos1) + ":" + str(str1)
-    brk2 = str(chrom2) + ":" + str(pos2) + ":" + str(str2)
-    return (brk1, brk2)
 
 
 def get_fusion_locations(jxn):
