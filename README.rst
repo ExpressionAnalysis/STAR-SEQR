@@ -145,7 +145,6 @@ Contributions
 This project builds of the groundwork of other public contributions. Namely:
 
 - https://github.com/pysam-developers/pysam
-- https://github.com/hall-lab/svtools
 - https://github.com/vishnubob/ssw
 - https://github.com/libnano/primer3-py
 
