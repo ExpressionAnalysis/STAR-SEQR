@@ -24,6 +24,9 @@ baseCommand: ['starseqr.py']
 inputs:
   star_index_dir:
     type: Directory?
+    inputBinding:
+      prefix: -i
+      position: 3
 
   fq1:
     type: File?

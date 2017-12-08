@@ -43,7 +43,7 @@ PypI Release:
     username=<NAME>
     password=<PASS>
 
- * All releases are uploaded to PyPI using twine::
+ * All releases are uploaded to PyPI using twine(python3)::
 
         # test
         python setup.py sdist

@@ -63,14 +63,27 @@ Run STAR-SEQR
 STAR-SEQR can perform alignment or utilize existing outputs from STAR. Note- STAR-SEQR alignment parameters have been tuned for fusion calling.
 
 
-**Align and Call**
+**Python on OS**
 ::
 
      starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 1 -p RNA_test -n RNA -t 12 -i path/STAR_INDEX -g gencode.gtf -r hg19.fa -vv
 
+**CWL**
+
+Note that `--name_prefix` must be a string basename in this case.
+::
+     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.4.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
+
+**DOCKER**
+
+Note that `-p` must be a fully qualified path in this case.
+::
+     docker run -it -v /mounts:/mounts eagenomics/starseqr:0.6.4 starseqr.py -1 /mounts/path/UHRR_1_2_5m_L4_1.clipped.fastq.gz -2 /mounts/path/UHRR_1_2_5m_L4_2.clipped.fastq.gz -p /mounts/path/test_docker  -i /mounts/path/gencodev25lift37/STAR_INDEX -g /mounts/path/gencodev25/gencode.v25lift37.annotation.gtf  -r /mounts/path/gencodev25/GRCh37.primary_assembly.genome.fa -m 1 -vv
+
 
 Outputs
 -------
+A BEDPE file is produced and is compatible with SMC-RNA Dream Challenge.
 
 Breakpoints.txt and Candidates.txt have the following columns:
 
