@@ -1,0 +1,24 @@
+--alignSJDBoverhangMin 3
+--alignSJoverhangMin 8
+--alignSJstitchMismatchNmax 5 -1 5 5
+--chimFilter None
+--chimJunctionOverhangMin 10
+--chimMainSegmentMultNmax 10
+--chimOutType SeparateSAMold
+--chimScoreJunctionNonGTAG -1
+--chimScoreDropMax 30
+--chimScoreMin 1
+--chimScoreSeparation 7
+--chimSegmentMin 10
+--chimSegmentReadGapMax 3
+--outFilterIntronMotifs RemoveNoncanonicalUnannotated
+--outFilterMultimapNmax 5
+--outFilterMultimapScoreRange 1
+--outMultimapperOrder Random
+--outSAMattributes NH HI AS nM ch
+--outSAMunmapped Within
+--outSAMstrandField intronMotif
+--outSAMtype BAM SortedByCoordinate
+--quantMode TranscriptomeSAM
+--sjdbOverhang 100
+--sjdbScore 3

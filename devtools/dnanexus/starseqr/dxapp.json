@@ -1,0 +1,153 @@
+{
+  "name": "starseqr",
+  "title": "STAR-SEQR",
+  "summary": "RNA Fusion Detection and Quantification v0.6.4",
+  "dxapi": "1.0.0",
+  "version": "0.0.1",
+  "inputSpec": [
+    {
+      "name": "fastq1",
+      "label": "FASTQ 1",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*fastq.gz", "fq.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "fastq2",
+      "label": "FASTQ 2",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*fastq.gz", "fq.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "chimeric_juncs",
+      "label": "STAR Chimeric junction file",
+      "class": "file",
+      "optional": true,
+      "patterns": [
+        "*junction", "*junction.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "chimeric_sam",
+      "label": "STAR Chimeric sam file",
+      "class": "file",
+      "optional": true,
+      "patterns": [
+        "*sam", "*sam.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "chimeric_bam",
+      "label": "STAR Chimeric bam file",
+      "class": "file",
+      "optional": true,
+      "patterns": [
+        "*bam"
+      ],
+      "help": ""
+    },
+    {
+      "name": "star_index",
+      "label": "STAR index in gzipped tar format",
+      "class": "file",
+      "optional": true,
+      "patterns": [
+        "*tar.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "mode",
+      "label": "sensitivity mode 0=default, 1=sensitive",
+      "class": "int",
+      "optional": true,
+      "default": 1,
+      "help": ""
+    },
+    {
+      "name": "prefix",
+      "label": "prefix to name files",
+      "class": "string",
+      "optional": false,
+      "help": ""
+    },
+    {
+      "name": "genome_fasta",
+      "label": "genome fasta with an index",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*fa", "*fa.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "transcript_gtf",
+      "label": "gtf for the transcriptome",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*gtf", "*gtf.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "threads",
+      "label": "number of threads",
+      "class": "int",
+      "optional": true,
+      "default": 8,
+      "help": ""
+    }
+  ],
+  "outputSpec": [
+    {
+      "name": "breakpoint_bedpe",
+      "label": "breakpoint bedpe file",
+      "class": "file",
+      "patterns": [
+        "*bedpe"
+      ],
+      "help": ""
+    },
+    {
+      "name": "breakpoint_text",
+      "label": "breakpoint text file",
+      "class": "file",
+      "patterns": [
+        "*txt"
+      ],
+      "help": ""
+    }
+  ],
+  "runSpec": {
+    "timeoutPolicy": {
+      "*": {
+        "hours": 24
+      }
+    },
+    "interpreter": "python2.7",
+    "file": "src/dx-starseqr.py",
+    "systemRequirements": {
+      "*": {
+        "instanceType": "mem3_ssd1_x8"
+      }
+    },
+    "distribution": "Ubuntu",
+    "release": "14.04"
+  },
+  "access": {
+    "network": [
+      "*"
+    ]
+  }
+}
