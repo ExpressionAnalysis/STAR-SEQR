@@ -68,7 +68,12 @@ Docker:
         sudo bash push_docker.sh
 
 
-
+DNANEXUS:
+* Make any updates to /devtools/dnanexus/dxapp.json and /devtools/dnanexus/src/starseqr.py
+* cd devtools/dnanexus
+* dx source `env`
+* dx login
+* dx build starseqr
 
 
 Bioconda:
