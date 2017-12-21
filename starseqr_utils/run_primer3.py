@@ -66,8 +66,7 @@ def runp3(seq_id, sequence, target=None):
         'PRIMER_PAIR_MAX_COMPL_ANY': 12,
         'PRIMER_PAIR_MAX_COMPL_END': 8,
         'PRIMER_PAIR_MAX_DIFF_TM': 6,
-        'PRIMER_PRODUCT_SIZE_RANGE': [[75, 125], [125, 150],
-                                      [150, 200], [200, 300]],
+        'PRIMER_PRODUCT_SIZE_RANGE': [[75, 200]],
     }
     try:
         p3output = primer3.bindings.designPrimers(mydres, mypres)
@@ -108,8 +107,17 @@ def wrap_runp3(jxn, max_trx_fusion, chim_dir):
     if len(fusions_list) > 0 and len(max_trx_fusion) > 0:
         for fusion_name, fus_seq in fusions_list:
             jxn, side, fusion_name, brk = fusion_name.split('|')
-            brk = int(brk)
             if fusion_name in max_trx_fusion:
-                return runp3(fusion_name, fus_seq.upper(), brk)
+                try:
+                    brk = int(brk)
+                    seq_len = len(fus_seq)
+                    min_brk = brk - 200 if brk - 200 > 0 else 0
+                    max_brk = brk + 200 if brk + 200 < seq_len else seq_len
+                    sub_seq = fus_seq[min_brk:max_brk]
+                    sub_brk = brk - min_brk
+                    p3res = runp3(fusion_name, sub_seq.upper(), sub_brk)
+                    return p3res
+                except:
+                    return ()
     else:
         return ()

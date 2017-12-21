@@ -83,7 +83,7 @@ def starseqr_docker(*args):
 	"""Run docker"""
 	docker_prefix = ["dx-docker", "run",
 					 "-v", "/home/dnanexus:/data", "-w", "/data",
-					 "eagenomics/starseqr:0.6.4", "starseqr.py"]
+					 "eagenomics/starseqr:0.6.5", "starseqr.py"]
 	docker_cmd = docker_prefix + list(args)
 	print(" ".join(map(str, docker_cmd)))
 	sh(*(docker_cmd))
@@ -93,7 +93,7 @@ def starseqr_docker_index(*args):
 	"""Run docker"""
 	docker_prefix = ["dx-docker", "run",
 					 "-v", "/home/dnanexus:/data", "-w", "/data",
-					 "eagenomics/starseqr:0.6.4", "samtools", "faidx"]
+					 "eagenomics/starseqr:0.6.5", "samtools", "faidx"]
 	docker_cmd = docker_prefix + list(args)
 	print(" ".join(map(str, docker_cmd)))
 	sh(*(docker_cmd))

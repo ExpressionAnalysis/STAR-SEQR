@@ -493,7 +493,7 @@ def main():
         finaldf['assembly_cross_disp'] = finaldf['assembly_cross_fusions'].apply(lambda x: True if len(str(x)) > 1 else False)
 
         # Generate Primers
-        finaldf.to_csv(path_or_buf="test_debug.txt", header=True, sep="\t", mode='w', index=True)
+        # finaldf.to_csv(path_or_buf="test_debug.txt", header=True, sep="\t", mode='w', index=True)
         logger.info("Generating primers using indexed fasta")
         finaldf = su.common.pandas_parallel(finaldf, apply_primers_func, args.threads, "map_async", "", chim_trx_dir)
 

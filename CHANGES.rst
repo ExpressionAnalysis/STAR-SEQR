@@ -83,3 +83,6 @@ STAR-SEQRv0.6.3:
 STAR-SEQRv0.6.4:
  * Allow prefix to be a string or a full path. Helpful for writing outside of current working directory.
  * Removed DNA functions as this has been deprecated for some time.
+
+STAR-SEQRv0.6.5:
+ * Primer generation step was taking too long. Modified to search only 200bp on each side of breakpoint.
