@@ -72,13 +72,13 @@ STAR-SEQR can perform alignment or utilize existing outputs from STAR. Note- STA
 
 Note that `--name_prefix` must be a string basename in this case.
 ::
-     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.4.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
+     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.5.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
 
 **DOCKER**
 
 Note that `-p` must be a fully qualified path in this case.
 ::
-     docker run -it -v /mounts:/mounts eagenomics/starseqr:0.6.4 starseqr.py -1 /mounts/path/UHRR_1_2_5m_L4_1.clipped.fastq.gz -2 /mounts/path/UHRR_1_2_5m_L4_2.clipped.fastq.gz -p /mounts/path/test_docker  -i /mounts/path/gencodev25lift37/STAR_INDEX -g /mounts/path/gencodev25/gencode.v25lift37.annotation.gtf  -r /mounts/path/gencodev25/GRCh37.primary_assembly.genome.fa -m 1 -vv
+     docker run -it -v /mounts:/mounts eagenomics/starseqr:0.6.5 starseqr.py -1 /mounts/path/UHRR_1_2_5m_L4_1.clipped.fastq.gz -2 /mounts/path/UHRR_1_2_5m_L4_2.clipped.fastq.gz -p /mounts/path/test_docker  -i /mounts/path/gencodev25lift37/STAR_INDEX -g /mounts/path/gencodev25/gencode.v25lift37.annotation.gtf  -r /mounts/path/gencodev25/GRCh37.primary_assembly.genome.fa -m 1 -vv
 
 
 Outputs
