@@ -12,4 +12,4 @@ import starseqr_utils.overhang_diversity
 import starseqr_utils.run_assembly
 import starseqr_utils.annotate_db
 
-__version__ = "0.6.5"
+__version__ = "0.6.6"

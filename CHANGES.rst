@@ -86,3 +86,7 @@ STAR-SEQRv0.6.4:
 
 STAR-SEQRv0.6.5:
  * Primer generation step was taking too long. Modified to search only 200bp on each side of breakpoint.
+
+STAR-SEQRv0.6.6:
+ * If no fusion transcript is identified skip primer generation. This was causing errors in some systems.
+
