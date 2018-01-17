@@ -37,13 +37,13 @@ Or from Bioconda:
 
 
 **Additional Requirements**
- - biobambam2(https://github.com/gt1/biobambam2) or conda install biobambam
- - STAR(https://github.com/alexdobin/STAR). Must use >2.5.3a. conda install star
- - Velvet(https://github.com/dzerbino/velvet) or conda install velvet
- - samtools(https://github.com/samtools/samtools) or conda install samtools
- - Salmon(https://combine-lab.github.io/salmon/) or conda install salmon
- - UCSC utils(http://hgdownload.soe.ucsc.edu/admin/exe/) or conda install ucsc-gtftogenepred
- - gffread(http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.tar.gz) or conda install gffread
+ - biobambam2(https://github.com/gt1/biobambam2) or conda install -c bioconda biobambam
+ - STAR(https://github.com/alexdobin/STAR). Must use >2.5.3a. conda install -c bioconda star
+ - Velvet(https://github.com/dzerbino/velvet) or conda install -c bioconda velvet
+ - samtools(https://github.com/samtools/samtools) or conda install -c bioconda samtools
+ - Salmon(https://combine-lab.github.io/salmon/) or conda install -c bioconda salmon
+ - UCSC utils(http://hgdownload.soe.ucsc.edu/admin/exe/) or conda install -c bioconda ucsc-gtftogenepred
+ - gffread(http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.tar.gz) or conda install -c bioconda gffread
 
 
 Build a STAR Index
@@ -66,7 +66,7 @@ STAR-SEQR can perform alignment or utilize existing outputs from STAR. Note- STA
 **Python on OS**
 ::
 
-     starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 1 -p RNA_test -n RNA -t 12 -i path/STAR_INDEX -g gencode.gtf -r hg19.fa -vv
+     starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 1 -p RNA_test -t 12 -i path/STAR_INDEX -g gencode.gtf -r hg19.fa -vv
 
 **CWL**
 
