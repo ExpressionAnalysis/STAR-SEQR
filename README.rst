@@ -33,7 +33,7 @@ Or from Docker:
 Or from Bioconda:
 ::
 
-    conda install starseqr
+    conda install -c bioconda starseqr
 
 
 **Additional Requirements**
@@ -72,7 +72,7 @@ STAR-SEQR can perform alignment or utilize existing outputs from STAR. Note- STA
 
 Note that `--name_prefix` must be a string basename in this case.
 ::
-     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.5.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
+     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.6.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
 
 **DOCKER**
 
