@@ -1,4 +1,4 @@
-|Travis| |Pypi| |Conda|
+|Travis| |Pypi| |Conda| |Last|
 
 =========
 STAR-SEQR
@@ -171,3 +171,6 @@ This project builds of the groundwork of other public contributions. Namely:
 
 .. |Conda| image:: https://anaconda.org/bioconda/starseqr/badges/installer/conda.svg
     :target: https://bioconda.github.io/recipes/starseqr/README.html
+
+.. |Last| image:: https://img.shields.io/github/last-commit/google/skia.svg
+    :target: https://github.com/ExpressionAnalysis/STAR-SEQR
