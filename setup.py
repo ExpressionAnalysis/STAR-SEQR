@@ -36,7 +36,7 @@ setup(
     author_email='jasper1918@gmail.com',
     url='https://github.com/ExpressionAnalysis/STAR-SEQR',
     packages=find_packages(),
-    install_requires=['cython', 'six', 'networkx', 'pandas >= 0.18.0', 'pysam >= 0.9.0', 'primer3-py', 'intervaltree_bio'],
+    install_requires=['cython', 'six', 'networkx==2.0', 'pandas >= 0.18.0', 'pysam >= 0.9.0', 'primer3-py', 'intervaltree_bio'],
     ext_modules=[libssw_ext],
     package_data={"starseqr_utils": ["resources/*"], '': su_tests},
     scripts=['starseqr.py'],
