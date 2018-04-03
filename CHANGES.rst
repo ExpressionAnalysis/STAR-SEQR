@@ -62,7 +62,7 @@ STAR-SEQRv0.5.1:
  * Updated basespace script
  * Modified threshold for num of jxns to minfrag20 ratio from 10% to 1%. This filter was removing TPs in some datasets and other filters are catching FPs in our training datasets.
 
- STAR-SEQRv0.6.0:
+STAR-SEQRv0.6.0:
  * With a compendia of training data tweaked thresholds to keep FP from exploding in especially noisy samples such as FFPE.
  * Added more info columns to the output
 
@@ -90,3 +90,5 @@ STAR-SEQRv0.6.5:
 STAR-SEQRv0.6.6:
  * If no fusion transcript is identified skip primer generation. This was causing errors in some systems.
 
+STAR-SEQRv0.6.7:
+ * General code cleanup and catches for some edge case scenarios.
