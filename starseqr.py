@@ -16,6 +16,7 @@ import starseqr_utils as su
 def parse_args():
     class FullPaths(argparse.Action):
         """Expand user- and relative-paths"""
+
         def __call__(self, parser, namespace, values, option_string=None):
             setattr(namespace, self.dest, os.path.abspath(os.path.expanduser(values)))
 
@@ -239,7 +240,7 @@ def main():
 
     # file log
     console_level = set_log_level_from_verbose(args.verbose)
-    logger = su.common.init_log("STAR-SEQR", logfile= args.prefix + '_STAR-SEQR.log', consoleLevel=console_level)
+    logger = su.common.init_log("STAR-SEQR", logfile=args.prefix + '_STAR-SEQR.log', consoleLevel=console_level)
 
     # start analysis
     logger.info("***************STAR-SEQR******************")
@@ -528,8 +529,6 @@ def main():
         # Get number of breakpoints partners per junction
         finaldf['breakpoint_left_rep'] = finaldf['breakpoint_left'].apply(lambda x: finaldf['breakpoint_left'].value_counts()[x])
         finaldf['breakpoint_right_rep'] = finaldf['breakpoint_right'].apply(lambda x: finaldf['breakpoint_right'].value_counts()[x])
-
-
 
         # HARD FILTERING - Change this once a probabilistic module is ready.
         # Hard filter on read counts after accounting for transcript info.
