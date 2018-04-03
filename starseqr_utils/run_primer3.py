@@ -104,10 +104,11 @@ def wrap_runp3(jxn, max_trx_fusion, chim_dir):
     clean_jxn = su.common.safe_jxn(jxn)
     fusionfa = os.path.join(chim_dir, 'transcripts-fusion-' + clean_jxn + '.fa')
     fusions_list = list(su.common.fasta_iter(fusionfa))  # list of tuples containing name, seq
+    max_trx_fusion = str(max_trx_fusion).split('|')
     if fusions_list and max_trx_fusion:
         for fusion_name, fus_seq in fusions_list:
             jxn, side, fusion_name, brk = fusion_name.split('|')
-            if fusion_name in max_trx_fusion:
+            if fusion_name == max_trx_fusion:
                 try:
                     brk = int(brk)
                     seq_len = len(fus_seq)
@@ -119,5 +120,6 @@ def wrap_runp3(jxn, max_trx_fusion, chim_dir):
                     return p3res
                 except:
                     return ()
+        return ()
     else:
         return ()
