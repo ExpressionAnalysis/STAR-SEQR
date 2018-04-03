@@ -55,10 +55,10 @@ PypI Release:
         twine upload dist/* -r pypi
         pip install -U starseqr
 
-* Draft a release in github
-    * tag v0.x.x
-    * name STAR-SEQRv0.x.x
-    * add changes from CHANGES.rst
+Github:
+ * tag v0.x.x
+ * name STAR-SEQRv0.x.x
+ * add changes from CHANGES.rst
 
 Docker:
  * Update release in docker/Dockerfile
@@ -69,13 +69,20 @@ Docker:
 
 
 DNANEXUS:
-* Make any updates to /devtools/dnanexus/dxapp.json and /devtools/dnanexus/src/starseqr.py
-* cd devtools/dnanexus
-* dx source `env`
-* dx login
-* dx build starseqr
+ * Make any updates to /devtools/dnanexus/dxapp.json and /devtools/dnanexus/src/starseqr.py
+ * cd devtools/dnanexus
+ * dx source `env`
+ * dx login
+ * dx build --app starseqr
+ * dx api app-starseqr/0.0.x publish "{\"makeDefault\": true}"
 
 
 Bioconda:
- * Notes
+ * cd into bioconda-recipes
+ * git checkout -b starseqr:vx.x.x
+ * modify code including version, url, md5
+ * vim recipes/starseqr/meta.yaml
+ * ./simulate-travis.py --disable-docker
+ * git push origin starseqr:vx.x.x
+ * login to github and do pull request
 
