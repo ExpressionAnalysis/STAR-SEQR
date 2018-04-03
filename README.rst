@@ -1,4 +1,4 @@
-|Travis| |Pypi| |Conda|
+|Travis| |Pypi| |Conda| |Last|
 
 =========
 STAR-SEQR
@@ -33,17 +33,17 @@ Or from Docker:
 Or from Bioconda:
 ::
 
-    conda install starseqr
+    conda install -c bioconda starseqr
 
 
 **Additional Requirements**
- - biobambam2(https://github.com/gt1/biobambam2) or conda install biobambam
- - STAR(https://github.com/alexdobin/STAR). Must use >2.5.3a. conda install star
- - Velvet(https://github.com/dzerbino/velvet) or conda install velvet
- - samtools(https://github.com/samtools/samtools) or conda install samtools
- - Salmon(https://combine-lab.github.io/salmon/) or conda install salmon
- - UCSC utils(http://hgdownload.soe.ucsc.edu/admin/exe/) or conda install ucsc-gtftogenepred
- - gffread(http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.tar.gz) or conda install gffread
+ - biobambam2(https://github.com/gt1/biobambam2) or conda install -c bioconda biobambam
+ - STAR(https://github.com/alexdobin/STAR). Must use >2.5.3a. conda install -c bioconda star
+ - Velvet(https://github.com/dzerbino/velvet) or conda install -c bioconda velvet
+ - samtools(https://github.com/samtools/samtools) or conda install -c bioconda samtools
+ - Salmon(https://combine-lab.github.io/salmon/) or conda install -c bioconda salmon
+ - UCSC utils(http://hgdownload.soe.ucsc.edu/admin/exe/) or conda install -c bioconda ucsc-gtftogenepred
+ - gffread(http://ccb.jhu.edu/software/stringtie/dl/gffread-0.9.8c.tar.gz) or conda install -c bioconda gffread
 
 
 Build a STAR Index
@@ -66,13 +66,13 @@ STAR-SEQR can perform alignment or utilize existing outputs from STAR. Note- STA
 **Python on OS**
 ::
 
-     starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 1 -p RNA_test -n RNA -t 12 -i path/STAR_INDEX -g gencode.gtf -r hg19.fa -vv
+     starseqr.py -1 RNA_1.fastq.gz -2 RNA_2.fastq.gz -m 1 -p RNA_test -t 12 -i path/STAR_INDEX -g gencode.gtf -r hg19.fa -vv
 
 **CWL**
 
 Note that `--name_prefix` must be a string basename in this case.
 ::
-     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.5.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
+     cwltool ~/path/STAR-SEQR/devtools/cwl/starseqr_v0.6.6.cwl --fq1 /path/UHRR_1_2_5m_L4_1.clipped.fastq.gz --fq2 /path/UHRR_1_2_5m_L4_2.clipped.fastq.gz --star_index_dir /path/gencodev25lift37/STAR_INDEX --name_prefix test_cwl --transcript_gtf /path/gencodev25/gencode.v25lift37.annotation.gtf --genome_fasta /path/gencodev25/GRCh37.primary_assembly.genome.fa --mode 1 --worker_threads 8
 
 **DOCKER**
 
@@ -171,3 +171,6 @@ This project builds of the groundwork of other public contributions. Namely:
 
 .. |Conda| image:: https://anaconda.org/bioconda/starseqr/badges/installer/conda.svg
     :target: https://bioconda.github.io/recipes/starseqr/README.html
+
+.. |Last| image:: https://img.shields.io/github/last-commit/google/skia.svg
+    :target: https://github.com/ExpressionAnalysis/STAR-SEQR
