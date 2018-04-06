@@ -104,7 +104,7 @@ def wrap_runp3(jxn, max_trx_fusion, chim_dir):
     clean_jxn = su.common.safe_jxn(jxn)
     fusionfa = os.path.join(chim_dir, 'transcripts-fusion-' + clean_jxn + '.fa')
     fusions_list = list(su.common.fasta_iter(fusionfa))  # list of tuples containing name, seq
-    max_trx_fusion = str(max_trx_fusion).split('|')
+    max_trx_fusion = str(max_trx_fusion).split('|')[0]
     if fusions_list and max_trx_fusion:
         for fusion_name, fus_seq in fusions_list:
             jxn, side, fusion_name, brk = fusion_name.split('|')
