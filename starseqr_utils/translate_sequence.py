@@ -26,6 +26,8 @@ def main():
 	    print(transcript_to_peptide(sequence, frame))
 
 def _codon_to_AA(codon):
+    '''Translates a codon to an amino acid residue'''
+    
     _codon_table = {"TTT":"F", "TTC":"F", "TTA":"L", "TTG":"L",
     "TCT":"S", "TCC":"s", "TCA":"S", "TCG":"S",
     "TAT":"Y", "TAC":"Y", "TAA":"*", "TAG":"*",
@@ -55,6 +57,8 @@ def _codon_to_AA(codon):
 
 
 def transcript_to_peptide(sequence, frame=0):
+    '''Turns a nucleotide transcript into a protein peptide in the given frame with the given offset (0-2)'''
+    
     peptide = ""
     sequence = sequence[frame:]
     for codon in [sequence[i:i+3] for i in range(0, len(sequence), 3)]:
