@@ -67,12 +67,16 @@ def create_salmon_index(fasta, outdir, nthreads):
 
 
 def run_salmon_quant(index, read1, read2, library, outdir, nthreads):
+    # the prior used in the VBEM tends to have a regularizing effect,
+    # especially for low abundance transcripts, that leads to more
+    # consistent estimates of abundance at low expression levels.
+    # http://salmon.readthedocs.io/en/latest/salmon.html#quasi-mapping-based-mode-including-lightweight-alignment
     logger.info("Running salmon quant")
     if os.path.isfile(os.path.join(outdir, "quant.sf")):
         logger.warn("Skipping salmon quant as files already exist!")
         return
     cmd = ['salmon', 'quant', '-i', index, '-l', library, '-1', read1, '-2', read2,
-           '-o', outdir, '-p', nthreads, '-m', 400, '-w', 200, '-q']
+           '-o', outdir, '-p', nthreads, '-m', 400, '-w', 200, '-q', '--useVBOpt']
     cmd_args = list(map(str, cmd))
     logger.info("*Command: " + " ".join(cmd_args))
     try:
