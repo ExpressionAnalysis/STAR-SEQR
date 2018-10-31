@@ -79,6 +79,8 @@ DNANEXUS:
 
 Bioconda:
  * cd into bioconda-recipes
+ * git checkout master
+ * git pull origin master
  * git checkout -b starseqr:vx.x.x
  * modify code including version, url, md5
  * vim recipes/starseqr/meta.yaml

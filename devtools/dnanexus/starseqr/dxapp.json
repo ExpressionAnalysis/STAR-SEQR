@@ -1,9 +1,9 @@
 {
   "name": "starseqr",
   "title": "STAR-SEQR",
-  "summary": "RNA Fusion Detection and Quantification v0.6.6",
+  "summary": "RNA Fusion Detection and Quantification v0.6.7",
   "dxapi": "1.0.0",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "inputSpec": [
     {
       "name": "fastq1",
@@ -154,6 +154,6 @@
     "user-jasper1918"
   ],
   "authorizedUsers": [
-    "org-q2_genome"
+    "org-q2_cn"
   ]
 }
